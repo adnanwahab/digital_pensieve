@@ -79,6 +79,7 @@
   <section id="completeScreen" aria-labelledby="completeTitle" hidden><div class="complete-card"><p class="eyebrow">A silver thread, remembered</p><h2 id="completeTitle">You carried<br>each other.</h2><p class="complete-copy">Through all the ways the world turned over,<br>you found a way to hold on.</p><svg class="thread-reward" viewBox="0 0 240 45" fill="none" aria-hidden="true"><defs><linearGradient id="threadGradient"><stop stop-color="#f3c990"/><stop offset=".5" stop-color="#e2d7fa"/><stop offset="1" stop-color="#99d8f7"/></linearGradient></defs><path d="M14 27C55-19 59 68 121 22S180 64 226 18" stroke="url(#threadGradient)" stroke-width="1.3"/><path d="M14 27C55-11 59 60 121 22S180 56 226 18" stroke="url(#threadGradient)" stroke-width=".4" opacity=".5"/><circle cx="14" cy="27" r="3" fill="#f3c990"/><circle cx="226" cy="18" r="3" fill="#99d8f7"/></svg><div class="clarity-value"><span id="resultClarity">100</span><small>%</small></div><p class="clarity-label">MEMORY CLARITY</p><div class="result-stats"><div><strong>6 / 6</strong><span>circles remembered</span></div><div><strong id="resultFrays">0</strong><span>frays along the way</span></div><div><strong id="resultTime">0:00</strong><span>time together</span></div></div><button id="againButton" class="primary-button" type="button">Dream again</button><button id="finishTitleButton" class="text-button" type="button">Return to the title</button><p id="threadSaved" class="thread-saved">Your silver thread has been saved.</p></div></section>
   <aside id="loadErrorPanel" class="load-error-panel" hidden><h2>The dream needs a moment.</h2><p id="errorExplanation">The 3D engine could not load. Check your connection and try again.</p><button id="retryLoad" class="secondary-button" type="button">Try again</button></aside>
   <noscript>This memory needs JavaScript and a browser with WebGL 2. Please enable JavaScript, then reload the page.</noscript>
+  <script src="common.js"></script>
   <!--
     Falling Upward — Pensieve game 07.
     One HTML file. Three.js 0.180.0 is loaded from jsDelivr with an unpkg fallback.
@@ -775,6 +776,15 @@ function createFallingUpwardScene(THREE, canvas, level) {
     $('resultClarity').textContent=String(clarity);$('resultFrays').textContent=String(s.totalFrays);$('resultTime').textContent=timeString(s.elapsed);
     $('threadSaved').textContent=saved?'Your silver thread has been saved on this browser.':'Silver thread earned. Browser storage is unavailable for this run.';
     setPhase('complete');sound.play('complete');
+    window.PensieveCampaign?.saveChapterResult({
+      chapterId:'07',
+      game:7,
+      title:'Falling Upward',
+      color:'silver',
+      completedAt:result.completedAt,
+      scores:{clarity:thread.clarity,sync:thread.sync},
+      carryover:{checkpoints:result.checkpoints,frays:result.frays,rewinds:result.rewinds,elapsedSeconds:result.elapsedSeconds,mode:result.mode}
+    });
     window.dispatchEvent(new CustomEvent('pensieve:complete',{detail:result}));
     if(window.parent!==window&&location.origin!=='null')window.parent.postMessage({type:'pensieve:complete',...result},location.origin);
     setTimeout(()=>$('againButton').focus({preventScroll:true}),150);

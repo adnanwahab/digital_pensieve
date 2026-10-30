@@ -1,0 +1,638 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The City That Remembers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed night harbor in WebGL; HUD floats over it — title top-left, phase stepper bottom-left, event panel docked right (bottom sheet on phones). Single dark theme by choice: it is night in the memory. */
+:root{
+  --ink:#0a111d;
+  --panel:rgba(13,21,35,.88);
+  --line:rgba(207,220,240,.16);
+  --fg:#e7ecf4;
+  --muted:#93a1b8;
+  --silver:#cfdcf0;
+  --amber:#f0b25c;
+  --ok:#76d3b2;
+  --warn:#e8a85e;
+  --alert:#e57a6c;
+  --display:"Instrument Serif", Georgia, "Times New Roman", serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+}
+html,body{height:100%}
+body{background:var(--ink);color:var(--fg);font-family:var(--body);overflow:hidden;font-size:14px;line-height:1.5}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;font:500 11px/1.2 var(--mono);color:var(--fg);background:rgba(10,17,29,.8);border:1px solid var(--line);padding:4px 8px;border-radius:6px;white-space:nowrap;display:flex;align-items:center;gap:6px;will-change:transform}
+.lbl.place{color:var(--muted);background:rgba(10,17,29,.55)}
+.lbl.btn{pointer-events:auto;cursor:pointer;font-family:var(--mono)}
+.lbl.btn:hover,.lbl.btn:focus-visible{border-color:var(--silver);outline:none}
+.lbl.sel{border-color:var(--amber);color:var(--amber)}
+.lbl .t{color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.live{background:var(--silver);animation:pulse 1.2s ease-in-out infinite}
+
+.hud{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);grid-template-rows:auto 1fr auto;gap:14px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-bottom, 0px));pointer-events:none}
+.hud > *{pointer-events:auto}
+header{grid-column:1;grid-row:1;align-self:start;justify-self:start;max-width:30rem}
+.eyebrow{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+h1{font:400 44px/1 var(--display);margin:6px 0 6px;letter-spacing:-.01em;text-wrap:balance}
+h1 em{color:var(--silver)}
+header p.sub{margin:0;color:var(--muted)}
+header p.sub b{color:var(--fg);font-weight:500}
+.hint{margin-top:10px;font:400 11px var(--mono);color:var(--muted);opacity:.8}
+
+nav{grid-column:1;grid-row:3;align-self:end;justify-self:start;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);max-width:100%;overflow-x:auto}
+nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:8px 14px;border-radius:8px;color:var(--muted);white-space:nowrap}
+nav button .n{font:500 10px var(--mono);letter-spacing:.1em}
+nav button .l{font:500 13px var(--body)}
+nav button:hover{color:var(--fg)}
+nav button:focus-visible{outline:2px solid var(--silver);outline-offset:-2px}
+nav button[aria-current="step"]{background:rgba(207,220,240,.1);color:var(--fg)}
+nav button[aria-current="step"] .n{color:var(--amber)}
+
+.panel{grid-column:2;grid-row:1 / 4;align-self:start;max-height:100%;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;gap:14px}
+.panel h2{font:400 30px/1.05 var(--display);margin:0;text-wrap:balance}
+.panel h3{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 0}
+.panel p{margin:0}
+.lede{color:var(--muted)}
+.clock{display:flex;align-items:center;gap:10px;font:500 13px var(--mono);padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-variant-numeric:tabular-nums}
+.clock .rec{width:9px;height:9px;border-radius:50%;background:var(--alert);animation:pulse 1s infinite}
+.clock .rec.done{background:var(--ok);animation:none}
+.clock .muted{color:var(--muted);font-weight:400;margin-left:auto;text-align:right}
+ul.rows,ol.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.rows li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:9px 0;border-top:1px solid var(--line);min-width:0}
+.rows li:first-child{border-top:0}
+.rows .nm{font-weight:500}
+.rows .q{grid-column:1 / -1;color:var(--muted);font-size:13px}
+.rows .disc{grid-column:1 / -1;font-size:13px;color:var(--silver);border-left:2px solid var(--silver);padding-left:10px}
+.pill{font:500 10.5px var(--mono);letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);align-self:start;white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:rgba(118,211,178,.4)}
+.pill.warn{color:var(--warn);border-color:rgba(232,168,94,.4)}
+.pill.alert{color:var(--alert);border-color:rgba(229,122,108,.45)}
+.pill.live{color:var(--silver)}
+.log li{grid-template-columns:3.4rem minmax(0,1fr);font-size:13px}
+.log .tm{font:500 12px var(--mono);color:var(--amber);font-variant-numeric:tabular-nums}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.card.insight{border-color:rgba(240,178,92,.5);background:rgba(240,178,92,.07)}
+.card.insight .q2{font:400 21px/1.2 var(--display);color:var(--fg)}
+.card.record{border-color:rgba(207,220,240,.35)}
+.card.interp{border-style:dashed}
+.card .k{font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card .by{font:400 12px var(--mono);color:var(--muted)}
+.chain{font:500 12px/1.7 var(--mono);color:var(--silver)}
+.chain span{white-space:nowrap}
+table.layers{width:100%;border-collapse:collapse;font-size:12.5px}
+table.layers th,table.layers td{text-align:left;padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+table.layers th{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0}
+table.layers td:first-child{font-weight:500;white-space:nowrap}
+.sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button.b{all:unset;cursor:pointer;font:500 13px var(--body);padding:9px 14px;border-radius:8px;border:1px solid var(--line);color:var(--fg)}
+button.b:hover{border-color:var(--silver)}
+button.b:focus-visible{outline:2px solid var(--silver);outline-offset:2px}
+button.b.primary{background:var(--silver);color:#0a111d;border-color:var(--silver)}
+button.b.primary:hover{background:#fff}
+button.b[disabled]{opacity:.4;cursor:not-allowed}
+button.sm{all:unset;cursor:pointer;font:500 12px var(--mono);color:var(--silver);grid-column:1 / -1;justify-self:start}
+button.sm:hover{color:#fff;text-decoration:underline}
+button.sm:focus-visible{outline:2px solid var(--silver)}
+.banner{border:1px solid rgba(118,211,178,.45);background:rgba(118,211,178,.08);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:8px}
+.banner.br{border-color:rgba(207,220,240,.45);background:rgba(207,220,240,.07)}
+@keyframes pulse{50%{opacity:.35}}
+
+@media (max-width:760px){
+  .hud{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr auto auto;gap:10px}
+  h1{font-size:30px}
+  header p.sub{font-size:13px}
+  .hint{display:none}
+  .panel{grid-column:1;grid-row:3;max-height:40vh;padding:16px;align-self:end}
+  .panel h2{font-size:24px}
+  nav{grid-row:4;justify-self:stretch}
+  nav button{padding:6px 10px;flex:1}
+}
+@media (prefers-reduced-motion:reduce){ .dot.live,.clock .rec{animation:none} }
+</style>
+
+<canvas id="scene" aria-label="3D view of the harbor district"></canvas>
+<div id="labels"></div>
+
+<div class="hud">
+  <header>
+    <p class="eyebrow">Pensieve · MMO mode</p>
+    <h1>The City That <em>Remembers</em></h1>
+    <p class="sub">Public event: <b>The Night the Harbor Went Dark</b> · 6 crews of 4 · about 25 min</p>
+    <p class="hint">Drag to orbit · scroll or pinch to zoom</p>
+  </header>
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+  <nav aria-label="Event phases" id="nav">
+    <button data-go="1"><span class="n">PHASE 1</span><span class="l">Festival</span></button>
+    <button data-go="2"><span class="n">PHASE 2</span><span class="l">Perspectives</span></button>
+    <button data-go="3"><span class="n">PHASE 3</span><span class="l">Assemble</span></button>
+    <button data-go="4"><span class="n">PHASE 4</span><span class="l">Repairs</span></button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const V3 = THREE.Vector3;
+const clamp = (x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease = s=>s<.5?2*s*s:1-Math.pow(-2*s+2,2)/2;
+const lerpAngle=(a,b,k)=>{const d=((b-a+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;return a+d*k;};
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Event data ---------- */
+const CREWS=[
+ {name:'Generator room', q:'What changed in the power system?', d:'Load on circuit A jumped from 61% to 104% at 8:52. The main breaker opened at 8:53.', pos:[-14,1.02,-7.4]},
+ {name:'Lantern street', q:'Which equipment was connected, and when?', d:'The projector joined the lantern warmers on circuit A at 8:52. Nothing else was added that hour.', pos:[-1,1.02,-9.8]},
+ {name:'Bell tower', q:'What warning signals were sent?', d:'The bellkeeper rang the warning at 8:55, two minutes after the beacon failed.', pos:[14,1.02,-10.6]},
+ {name:'Ferry deck', q:'What could the pilot see?', d:'The pilot lost sight of the beacon at 8:53 and began turning at 8:54.', pos:null},
+ {name:'Dockside', q:'Where did the waiting passengers go?', d:'Forty passengers left the slip by the east stair, toward the only lit window.', pos:[10,0.92,7]},
+ {name:'Rooftops', q:'Which lights were visible across the harbor?', d:'Only the bakery’s battery lamp stayed lit. The beacon showed as a dark gap.', pos:[-22,9.02,-15]},
+];
+const DONE_ORDER=[1,0,4,2,3,5];
+const crewDoneAt=c=>1.6+DONE_ORDER.indexOf(c)*1.3;
+const INSIGHT_AT=1.6+6*1.3+.4;
+
+const NODES=[
+ {time:'8:52:00',title:'Projector starts',rec:'The projector switched on at the lantern street stage, on circuit A.',src:'Lantern street crew',interp:{text:'They wanted the film to start on time for the children.',by:'mira_k'}},
+ {time:'8:52:40',title:'Power demand rises',rec:'Circuit A climbed from 61% to 104% of rated load in forty seconds.',src:'Generator room crew',interp:null},
+ {time:'8:53:10',title:'Breaker trips',rec:'The main breaker opened. Every lamp on circuit A, including the beacon, lost power.',src:'Generator room crew',interp:{text:'Nobody told the generator keeper the projector was coming.',by:'otter'}},
+ {time:'8:53:12',title:'Beacon goes dark',rec:'Seen from the rooftops, the beacon vanished. The bakery’s battery lamp was the only light left.',src:'Rooftops crew',interp:null},
+ {time:'8:54:05',title:'Ferry turns',rec:'The pilot began a starboard turn at 8:54, a minute before the warning bell rang at 8:55.',src:'Ferry deck + Bell tower crews',interp:{text:'Turning back was the careful call, not a mistake.',by:'harbor_jun'}},
+];
+const BRANCHES=[
+ {name:'Deliver the battery earlier',outcome:'The beacon ran on the spare battery through the outage. The ferry docked at 8:57.',beacon:true,lights:false,ferry:true,fix:true,pos:[-18,1,-5]},
+ {name:'Stagger the lantern launch',outcome:'Load peaked lower, but the breaker still tripped at 8:58. The ferry turned away later.',beacon:false,lights:false,ferry:false,fix:false,pos:[0,1,-5]},
+ {name:'Move the projector to circuit B',outcome:'Circuit A never passed 70%. The beacon stayed lit and the ferry docked on time.',beacon:true,lights:true,ferry:true,fix:true,pos:[18,1,-5]},
+ {name:'Signal the ferry from a rooftop',outcome:'The beacon still went dark, but the pilot held course on the rooftop lamp and docked.',beacon:false,lights:false,ferry:true,fix:false,pos:[10,0.9,12.5]},
+];
+const ACTS=[
+ {n:'Move the musician’s trolley',done:1.5},
+ {n:'Set up the projector',done:3},
+ {n:'Guide the parade',done:5.5},
+ {n:'Launch lanterns',done:7},
+ {n:'Deliver the spare battery',special:'battery'},
+ {n:'Help passengers reach the ferry',special:'ferry'},
+];
+const LOG=[[8,'8:52','Projector switched on at the lantern street stage'],[9,'8:53','Breaker trips. The beacon goes dark.'],[10,'8:54','The ferry turns away from the harbor'],[11,'8:55','Warning bell rings from the tower'],[11.8,'8:56','A memory storm fragments the harbor']];
+const OVER=9, STORM=11.8;
+
+/* ---------- Renderer / scene ---------- */
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0a111d);
+scene.fog=new THREE.FogExp2(0x0a111d,0.0105);
+const camera=new THREE.PerspectiveCamera(42,1,0.1,600);
+camera.position.set(34,28,52);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.maxPolarAngle=1.42;controls.minDistance=14;controls.maxDistance=150;
+controls.target.set(0,2,-2);
+
+scene.add(new THREE.HemisphereLight(0x7d93b8,0x070b12,0.75));
+const moon=new THREE.DirectionalLight(0xaabbdd,0.45);moon.position.set(-30,50,20);scene.add(moon);
+
+const mat=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85,metalness:.05},o||{}));
+function box(w,h,d,m,x,y,z){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);scene.add(b);return b;}
+
+/* water */
+const waterGeo=new THREE.PlaneGeometry(260,260,90,90);waterGeo.rotateX(-Math.PI/2);
+const water=new THREE.Mesh(waterGeo,new THREE.MeshStandardMaterial({color:0x0f2238,roughness:.32,metalness:.35,flatShading:true}));
+scene.add(water);
+const wpos=waterGeo.attributes.position, wbase=Float32Array.from(wpos.array);
+
+/* land, pier, breakwater */
+box(130,2,36,mat(0x1a2231),0,0,-25);
+box(130,.2,.4,mat(0x3a4560),0,1.05,-7.1);
+const wood=mat(0x3b3227);
+box(4,.5,18,wood,10,.65,2);
+for(let z=-5;z<=11;z+=4){box(.35,1.6,.35,wood,8.2,.1,z);box(.35,1.6,.35,wood,11.8,.1,z);}
+const stone=mat(0x2a3140);
+box(3,1.6,9,stone,-26,.2,-2.5);
+box(3,1.6,14,stone,-26,.2,15);
+// erased breakwater segment: ghost now, solid once the milestone is verified
+const ghostMat=new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.06,depthWrite:false});
+const ghostLine=new THREE.LineBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.42});
+function ghost(w,h,d,x,y,z){const g=new THREE.BoxGeometry(w,h,d);const m=new THREE.Mesh(g,ghostMat.clone());m.position.set(x,y,z);scene.add(m);const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),ghostLine.clone());e.position.copy(m.position);scene.add(e);return {m,e};}
+const gapGhost=ghost(3,1.6,6,-26,.2,5);
+const gapSolid=box(3,1.6,6,stone,-26,.2,5);gapSolid.scale.y=.001;gapSolid.visible=false;
+
+/* lighthouse + beacon */
+const LH=new V3(-26,1,20);
+const tower=new THREE.Mesh(new THREE.CylinderGeometry(1,1.4,9,18),mat(0xd9d4c8));tower.position.set(LH.x,LH.y+4.5,LH.z);scene.add(tower);
+const band=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.15,1.2,18),mat(0x8a3b35));band.position.set(LH.x,LH.y+5.5,LH.z);scene.add(band);
+const lampMat=new THREE.MeshStandardMaterial({color:0x332b1a,emissive:0xffe9b8,emissiveIntensity:2});
+const lamp=new THREE.Mesh(new THREE.SphereGeometry(.75,20,14),lampMat);lamp.position.set(LH.x,LH.y+9.7,LH.z);scene.add(lamp);
+const cap=new THREE.Mesh(new THREE.ConeGeometry(1.2,1.2,18),mat(0x2a2f3a));cap.position.set(LH.x,LH.y+10.9,LH.z);scene.add(cap);
+const beamPivot=new THREE.Group();beamPivot.position.copy(lamp.position);scene.add(beamPivot);
+const beamGeo=new THREE.ConeGeometry(4,44,24,1,true);beamGeo.translate(0,-22,0);beamGeo.rotateZ(Math.PI/2);
+const beamMat=new THREE.MeshBasicMaterial({color:0xfff1cc,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+const beamA=new THREE.Mesh(beamGeo,beamMat);beamPivot.add(beamA);
+const beamB=new THREE.Mesh(beamGeo,beamMat);beamB.rotation.y=Math.PI;beamPivot.add(beamB);
+const beaconLight=new THREE.PointLight(0xffe2a8,2,60);beaconLight.position.copy(lamp.position);scene.add(beaconLight);
+
+/* buildings */
+const winMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,emissive:0xf0b25c,emissiveIntensity:1});
+const winGeo=new THREE.PlaneGeometry(.9,1.1);
+function building(x,z,w,h,d,c,wins){const b=box(w,h,d,mat(c),x,1+h/2,z);
+  for(let i=0;i<wins;i++){const wm=new THREE.Mesh(winGeo,winMat);wm.position.set(x-w/2+.9+((i*1.7)%(w-1.4)),1+1.4+Math.floor((i*1.7)/(w-1.4))*1.8,z+d/2+.02);if(wm.position.y<1+h-.6)scene.add(wm);}
+  return b;}
+building(-14,-12,6,4,5,0x3a3440,3);              // generator room
+building(-4,-13,5,4,5,0x5a4a3c,0);               // bakery ground floor
+ghost(5,3,5,-4,1+4+1.5,-13);                     // bakery upstairs (erased)
+building(-22,-15,7,8,6,0x2e3a4c,6);              // rooftops building
+const bt=building(14,-14,3,13,3,0x4a4f5e,0);     // bell tower
+const roof=new THREE.Mesh(new THREE.ConeGeometry(2.4,2.4,4),mat(0x2a2f3a));roof.position.set(14,1+13+1.2,-14);roof.rotation.y=Math.PI/4;scene.add(roof);
+const bellPivot=new THREE.Group();bellPivot.position.set(14,1+12.4,-12.3);scene.add(bellPivot);
+const bell=new THREE.Mesh(new THREE.CylinderGeometry(.35,.7,1,14,1,true),mat(0xb8913f,{metalness:.6,roughness:.4,side:THREE.DoubleSide}));bell.position.y=-.5;bellPivot.add(bell);
+building(5,-17,6,5,5,0x34405a,4);
+ghost(8,6,6,24,1+3,-16);                         // music school (erased)
+building(-33,-14,6,6,6,0x3c4658,4);
+building(-44,-19,8,10,8,0x2c3546,6);
+ghost(5,4,5,33,1+2,-13);
+building(42,-20,8,7,8,0x333c4f,6);
+// bakery battery lamp: the one light that never went out
+const bakeryLamp=new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.3),new THREE.MeshBasicMaterial({color:0xffd27a}));bakeryLamp.position.set(-4,2.4,-10.48);scene.add(bakeryLamp);
+// rooftop signal lamp (branch 4 only)
+const roofLamp=new THREE.Mesh(new THREE.SphereGeometry(.45,14,10),new THREE.MeshBasicMaterial({color:0xfff1cc}));roofLamp.position.set(-20,9.7,-13);roofLamp.visible=false;scene.add(roofLamp);
+
+/* lantern street: poles + string lights */
+const poleMat=mat(0x2b2f38);
+const poleX=[-21,-7,7,21];poleX.forEach(x=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,4.5,8),poleMat);p.position.set(x,1+2.25,-8.6);scene.add(p);});
+const bulbMat=new THREE.MeshStandardMaterial({color:0x2a2418,emissive:0xf0b25c,emissiveIntensity:2});
+const bulbGeo=new THREE.SphereGeometry(.15,8,6);
+for(let s=0;s<3;s++){const x0=poleX[s],x1=poleX[s+1];for(let k=1;k<12;k++){const u=k/12;const b=new THREE.Mesh(bulbGeo,bulbMat);b.position.set(x0+(x1-x0)*u,1+4.4-1.3*4*u*(1-u),-8.6);scene.add(b);}}
+const streetLights=[-14,0,14].map(x=>{const l=new THREE.PointLight(0xf0b25c,1.1,18,1.6);l.position.set(x,4.4,-8.2);scene.add(l);return l;});
+
+/* projector + screen */
+const projPos=new V3(4,2,-8.4), screenPos=new V3(4,4.3,-14.42);
+const stand=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,1,6),poleMat);stand.position.set(4,1.5,-8.4);scene.add(stand);
+box(.6,.4,.6,mat(0x50565f),4,2.1,-8.4);
+const screenMat=new THREE.MeshBasicMaterial({color:0xe8eefa,transparent:true,opacity:0});
+const screen=new THREE.Mesh(new THREE.PlaneGeometry(4.4,2.6),screenMat);screen.position.copy(screenPos);scene.add(screen);
+const projGeo=new THREE.ConeGeometry(.25,1,4,1,true);projGeo.translate(0,-.5,0);projGeo.rotateX(-Math.PI/2);
+const projBeamMat=new THREE.MeshBasicMaterial({color:0xdfe8ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+const projBeam=new THREE.Mesh(projGeo,projBeamMat);projBeam.position.copy(projPos);projBeam.lookAt(screenPos);projBeam.scale.set(7,5,projPos.distanceTo(screenPos));scene.add(projBeam);
+
+/* ferry */
+const ferry=new THREE.Group();scene.add(ferry);
+const hull=new THREE.Mesh(new THREE.BoxGeometry(7,1.1,2.6),mat(0xd8d2c4));hull.position.y=.5;ferry.add(hull);
+const stripe=new THREE.Mesh(new THREE.BoxGeometry(7.05,.25,2.65),mat(0x2f5f8a));stripe.position.y=.2;ferry.add(stripe);
+const cabin=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.2,2),mat(0x9fb2c9));cabin.position.set(-.8,1.65,0);ferry.add(cabin);
+const fwin=new THREE.Mesh(new THREE.BoxGeometry(3.25,.35,2.05),winMat);fwin.position.set(-.8,1.8,0);ferry.add(fwin);
+const mast=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),new THREE.MeshBasicMaterial({color:0xff6b5b}));mast.position.set(-.8,2.6,0);ferry.add(mast);
+const F_START=new V3(60,0,40),F_STOP=new V3(24,0,20),F_AWAY=new V3(62,0,46),F_ANCHOR=new V3(34,0,30),F_DOCK=new V3(13.9,0,6);
+const yawOf=(dx,dz)=>Math.atan2(-dz,dx);
+const Y_APPROACH=yawOf(F_STOP.x-F_START.x,F_STOP.z-F_START.z), Y_AWAY=yawOf(F_AWAY.x-F_STOP.x,F_AWAY.z-F_STOP.z), Y_DOCK=yawOf(0,-1), Y_ANCHOR=2.5;
+ferry.position.copy(F_START);ferry.rotation.y=Y_APPROACH;
+
+/* players */
+const STATIONS=[[-10,1,-9.8],[4,1,-9.6],[-14,1,-8.2],[0,1,-11.2],[-6,1,-10.2],[10,.92,5]];
+const players=[];
+const bodyGeo=new THREE.CylinderGeometry(.24,.32,.85,10), headGeo=new THREE.SphereGeometry(.24,12,8);
+for(let i=0;i<24;i++){
+  const g=new THREE.Group();
+  const c=new THREE.Color().setHSL((i*0.137+.05)%1,.5,.68);
+  const body=new THREE.Mesh(bodyGeo,mat(0x3a4256));body.position.y=.43;g.add(body);
+  const head=new THREE.Mesh(headGeo,new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.55}));head.position.y=1.08;g.add(head);
+  const st=STATIONS[i%6];g.position.set(st[0]+(Math.random()-.5)*3,st[1],st[2]+(Math.random()-.5));
+  scene.add(g);players.push({g,act:i%6,seed:Math.random()*6.28,tgt:new V3()});
+}
+
+/* lanterns */
+const lanternMat=new THREE.MeshBasicMaterial({color:0xffbf66});
+const lanterns=[];for(let i=0;i<30;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),lanternMat);m.visible=false;scene.add(m);lanterns.push({m,at:2+i*.26,x:-18+Math.random()*36,dx:(Math.random()-.5)*.6,dz:.35+Math.random()*.5});}
+
+/* memory storm shards */
+const shardMat=new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+const shardGeo=new THREE.PlaneGeometry(.55,.85);
+const shards=[];for(let i=0;i<150;i++){const m=new THREE.Mesh(shardGeo,shardMat);scene.add(m);shards.push({m,r:6+Math.random()*36,a:Math.random()*6.28,h:2+Math.random()*13,sp:(.04+Math.random()*.12)*(Math.random()<.5?-1:1),rs:new V3(Math.random(),Math.random(),Math.random())});}
+
+/* phase 2: memory entrances (shallow basins) */
+const entrances=CREWS.map(()=>{
+  const g=new THREE.Group();
+  const ringMat=new THREE.MeshBasicMaterial({color:0xcfdcf0});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.5,.07,8,48),ringMat);ring.rotation.x=Math.PI/2;g.add(ring);
+  const discMat=new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.22,depthWrite:false});
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(1.42,40),discMat);disc.rotation.x=-Math.PI/2;disc.position.y=.02;g.add(disc);
+  const colMat=new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.45,7,28,1,true),colMat);col.position.y=3.5;g.add(col);
+  g.scale.setScalar(.001);g.visible=false;scene.add(g);
+  return {g,ringMat,discMat,colMat,s:0};
+});
+
+/* phase 3: timeline over the water */
+const timeline=new THREE.Group();scene.add(timeline);
+const NODE_X=i=>-20+i*10, TL_Y=7, TL_Z=13;
+const nodeMeshes=NODES.map((n,i)=>{
+  const m=new THREE.Mesh(new THREE.SphereGeometry(.75,20,14),new THREE.MeshStandardMaterial({color:0xcfdcf0,emissive:0xcfdcf0,emissiveIntensity:.55}));
+  m.position.set(NODE_X(i),TL_Y,TL_Z);m.scale.setScalar(.001);timeline.add(m);
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(1.15,.04,6,40),new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.5}));m.add(halo);
+  const drop=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,TL_Y,4),new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.25}));drop.position.y=-TL_Y/2;m.add(drop);
+  return {m,halo,s:0};
+});
+const threadMat=new THREE.MeshStandardMaterial({color:0xcfdcf0,emissive:0xcfdcf0,emissiveIntensity:.8});
+const threads=[];for(let i=0;i<4;i++){
+  const a=new V3(NODE_X(i),TL_Y,TL_Z),b=new V3(NODE_X(i+1),TL_Y,TL_Z),mid=a.clone().lerp(b,.5);mid.y+=2.2;
+  const geo=new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a,mid,b),48,.07,6,false);geo.setDrawRange(0,0);
+  const t=new THREE.Mesh(geo,threadMat);timeline.add(t);threads.push({geo,total:geo.index.count,p:0});
+}
+const rail=new THREE.Mesh(new THREE.BoxGeometry(46,.08,.08),new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.18}));rail.position.set(0,TL_Y-1.5,TL_Z);timeline.add(rail);
+const nodeAppear=i=>.6+i*.9;
+
+/* phase 4: branch portals */
+const portals=BRANCHES.map(b=>{
+  const g=new THREE.Group();g.position.set(b.pos[0],b.pos[1]+2.6,b.pos[2]);
+  const ringMat=new THREE.MeshBasicMaterial({color:0xcfdcf0});
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.7,.1,10,48),ringMat);g.add(ring);
+  const discMat=new THREE.MeshBasicMaterial({color:0xcfdcf0,transparent:true,opacity:.18,side:THREE.DoubleSide,depthWrite:false});
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(1.6,40),discMat);g.add(disc);
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,1,6),poleMat);post.position.y=-2.1;g.add(post);
+  g.scale.setScalar(.001);g.visible=false;scene.add(g);
+  return {g,ring,ringMat,discMat,s:0};
+});
+const portalExploredAt=i=>1+i*1.2;
+
+/* ---------- Labels ---------- */
+const labelsEl=document.getElementById('labels');
+const labels=[];
+function addLabel(html,cls,getPos,visible,onClick){
+  const el=document.createElement(onClick?'button':'div');
+  el.className='lbl '+cls+(onClick?' btn':'');el.innerHTML=html;el.hidden=true;
+  if(onClick)el.addEventListener('click',onClick);
+  labelsEl.appendChild(el);labels.push({el,getPos,visible});return el;
+}
+[['Beacon',new V3(-26,13.4,20)],['Bakery · upstairs erased',new V3(-4,9.2,-13)],['Generator room',new V3(-14,6,-12)],['Bell tower',new V3(14,17.4,-14)],['Music school · erased',new V3(24,8.4,-16)],['Lantern street',new V3(-14,6.2,-8.6)]]
+ .forEach(([t,p])=>addLabel(t,'place',()=>p,()=>P.phase===1));
+addLabel('Erased walkway','place',()=>new V3(-26,2.8,5),()=>P.phase===4&&!restored);
+const entranceLabels=CREWS.map((c,i)=>addLabel('<span class="dot live"></span>'+c.name,'',()=>{const p=entrances[i].g.position;return new V3(p.x,p.y+(i===5?3.2:2.6),p.z);},()=>P.phase===2));
+const nodeLabels=NODES.map((n,i)=>addLabel('<span class="t">'+n.time.slice(0,4)+'</span>'+n.title,'',()=>new V3(NODE_X(i),TL_Y+2,TL_Z),()=>P.phase===3&&P.t>nodeAppear(i),()=>{selNode=i;renderNode();}));
+const portalLabels=BRANCHES.map((b,i)=>addLabel('<span class="dot"></span>'+b.name,'',()=>new V3(b.pos[0],b.pos[1]+4.9,b.pos[2]),()=>P.phase===4,()=>{preview=i;buildPanel();}));
+const tmpV=new V3();
+function updateLabels(){
+  const w=innerWidth,h=innerHeight;
+  for(const l of labels){
+    if(!l.visible()){l.el.hidden=true;continue;}
+    tmpV.copy(l.getPos()).project(camera);
+    if(tmpV.z>1||tmpV.x<-1.15||tmpV.x>1.15||tmpV.y<-1.15||tmpV.y>1.15){l.el.hidden=true;continue;}
+    l.el.hidden=false;
+    l.el.style.transform='translate('+((tmpV.x*.5+.5)*w).toFixed(1)+'px,'+((-tmpV.y*.5+.5)*h).toFixed(1)+'px) translate(-50%,-100%)';
+  }
+}
+
+/* ---------- State ---------- */
+const P={phase:1,t:0};
+let selNode=0, preview=null, restored=false;
+const L={lights:1,beacon:1,proj:0,storm:0};
+
+/* camera flights */
+const VIEWS={1:{p:[30,24,46],t:[-2,2,-6]},2:{p:[2,46,50],t:[2,2,0]},3:{p:[0,15,44],t:[0,5.5,6]},4:{p:[-8,28,50],t:[-4,2,2]}};
+let fly=null;
+function flyTo(ph){
+  const v=VIEWS[ph],k=innerWidth<760?1.45:1;
+  const toT=new V3(...v.t), toP=new V3(...v.p).sub(toT).multiplyScalar(k).add(toT);
+  if(reduced){camera.position.copy(toP);controls.target.copy(toT);fly=null;return;}
+  fly={fp:camera.position.clone(),tp:toP,ft:controls.target.clone(),tt:toT,s:0};
+}
+controls.addEventListener('start',()=>{fly=null;});
+
+/* ---------- Panel ---------- */
+const panel=document.getElementById('panel');
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function buildPanel(){
+  const ph=P.phase;let h='';
+  if(ph===1){
+    h=`<p class="eyebrow">Phase 1 · first 5 minutes · 24 players</p>
+    <h2>Everyone attends the festival</h2>
+    <p class="lede">Players run an ordinary festival. The game records every position, object move and choice as this festival’s history.</p>
+    <div class="clock"><span class="rec" id="rec"></span><span id="clk">8:44 PM</span><span class="muted" id="recTxt">Recording scene state</span></div>
+    <h3>Activities</h3>
+    <ul class="rows">${ACTS.map((a,i)=>`<li><span class="nm">${esc(a.n)}</span><span class="pill" id="act${i}">In progress</span></li>`).join('')}</ul>
+    <h3>Event log</h3>
+    <ol class="rows log">${LOG.map((l,i)=>`<li id="log${i}" hidden><span class="tm">${l[1]}</span><span>${esc(l[2])}</span></li>`).join('')}</ol>
+    <p class="lede" style="font-size:12.5px">If players had prevented the overload, that success would be the history, and the investigation would follow another unresolved detail.</p>
+    <div class="row"><button class="b" id="replay">Replay festival</button><button class="b primary" data-go="2">Enter the memories</button></div>`;
+  }else if(ph===2){
+    h=`<p class="eyebrow">Phase 2 · six crews of four</p>
+    <h2>Crews enter different perspectives</h2>
+    <p class="lede">Six memory entrances open around the harbor. Each holds a small-group puzzle that ends in one plain-language discovery.</p>
+    <ul class="rows">${CREWS.map((c,i)=>`<li><span class="nm">${esc(c.name)}</span><span class="pill live" id="cr${i}">Exploring</span><span class="q">${esc(c.q)}</span><span class="disc" id="cd${i}" hidden>${esc(c.d)}</span></li>`).join('')}</ul>
+    <div class="card insight" id="insight" hidden><span class="k">Cross-crew discovery · Ferry deck + Bell tower</span><span class="q2">“The ferry began turning before the warning bell rang.”</span><span class="by">Unlocks an optional view from the pilot’s window</span></div>
+    <div class="row"><button class="b primary" data-go="3">Assemble the timeline</button></div>`;
+  }else if(ph===3){
+    h=`<p class="eyebrow">Phase 3 · back in the harbor</p>
+    <h2>Assemble the shared memory</h2>
+    <p class="lede">Recovered evidence becomes a timeline over the water. The game checks each link against the saved event. Select a scene to inspect it.</p>
+    <p class="chain">${NODES.map(n=>`<span>${esc(n.title)}</span>`).join(' → ')}</p>
+    <div id="nodeDetail"></div>
+    <h3>Three kinds of state</h3>
+    <table class="layers"><thead><tr><th>Layer</th><th>Changed by</th></tr></thead><tbody>
+    <tr><td><span class="sw" style="background:var(--silver)"></span>Original event</td><td>Saved by the game when it happened</td></tr>
+    <tr><td><span class="sw" style="background:var(--amber)"></span>Reconstruction</td><td>Players: verified discoveries plus marked interpretations</td></tr>
+    <tr><td><span class="sw" style="background:var(--ok)"></span>Branch</td><td>Only the players inside it</td></tr></tbody></table>
+    <div class="row"><button class="b primary" data-go="4">Explore repairs</button></div>`;
+  }else{
+    const b=preview!=null?BRANCHES[preview]:null;
+    h=`<p class="eyebrow">Phase 4 · branches</p>
+    <h2>Explore repairs</h2>
+    <p class="lede">Crews step into branches and change one detail. Successful branches stay as portals around the harbor for anyone to compare.</p>
+    ${b?`<div class="banner br"><span><b>Viewing branch:</b> ${esc(b.name)}. This is an experiment, not the public record.</span><button class="sm" id="back">Return to the harbor</button></div>`:''}
+    ${restored?`<div class="banner"><span><b>Milestone verified.</b> The public beacon is repaired and the lighthouse walkway is open again. The city keeps the original night and every solution players found.</span></div>`:''}
+    <ul class="rows">${BRANCHES.map((br,i)=>`<li><span class="nm">${esc(br.name)}</span><span class="pill" id="br${i}">Exploring</span><span class="q" id="bo${i}" hidden>${esc(br.outcome)}</span><button class="sm" data-branch="${i}" id="bv${i}" hidden>${preview===i?'Viewing now':'View this branch'}</button></li>`).join('')}</ul>
+    <button class="b primary" id="verify" ${restored?'disabled':''}>${restored?'Milestone verified':'Verify a fix as a city milestone'}</button>`;
+  }
+  panel.innerHTML=h;
+  if(ph===3)renderNode();
+  lastTick=-1;tickPanel();
+}
+function renderNode(){
+  const el=document.getElementById('nodeDetail');
+  nodeLabels.forEach((l,i)=>l.classList.toggle('sel',i===selNode));
+  if(!el)return;const n=NODES[selNode];
+  el.innerHTML=`<div class="card record"><span class="k">Recorded · ${n.time} PM · verified against the saved event</span><span><b>${esc(n.title)}.</b> ${esc(n.rec)}</span><span class="by">Recovered by ${esc(n.src)}</span></div>
+  ${n.interp?`<div class="card interp" style="margin-top:8px"><span class="k">Interpretation · does not change the record</span><span>“${esc(n.interp.text)}”</span><span class="by">Attached by ${esc(n.interp.by)}</span></div>`:''}`;
+}
+let lastTick=-1;
+function setPill(el,txt,cls){if(!el)return;if(el.textContent!==txt)el.textContent=txt;const c='pill'+(cls?' '+cls:'');if(el.className!==c)el.className=c;}
+function tickPanel(){
+  const ph=P.phase,t=P.t;
+  if(ph===1){
+    const m=44+Math.floor(Math.min(t,14));const clk=document.getElementById('clk');if(clk)clk.textContent='8:'+String(m).padStart(2,'0')+' PM';
+    const saved=t>STORM+1.5;const rec=document.getElementById('rec');if(rec)rec.classList.toggle('done',saved);
+    const rt=document.getElementById('recTxt');if(rt)rt.textContent=saved?'History saved · 24 players':'Recording scene state';
+    ACTS.forEach((a,i)=>{const el=document.getElementById('act'+i);
+      if(a.special==='battery')setPill(el,t<OVER?'Carrying':'Still en route at 8:53',t<OVER?'live':'warn');
+      else if(a.special==='ferry')setPill(el,t<OVER?'Ferry arriving':'Interrupted',t<OVER?'live':'alert');
+      else setPill(el,t>=a.done?'Done 8:'+String(44+Math.floor(a.done)).padStart(2,'0'):'In progress',t>=a.done?'ok':'live');});
+    LOG.forEach((l,i)=>{const el=document.getElementById('log'+i);if(el)el.hidden=t<l[0];});
+  }else if(ph===2){
+    CREWS.forEach((c,i)=>{const done=t>=crewDoneAt(i);setPill(document.getElementById('cr'+i),done?'Discovery':'Exploring',done?'ok':'live');
+      const d=document.getElementById('cd'+i);if(d)d.hidden=!done;
+      const dot=entranceLabels[i].querySelector('.dot');if(dot)dot.className='dot '+(done?'ok':'live');});
+    const ins=document.getElementById('insight');if(ins)ins.hidden=t<INSIGHT_AT;
+  }else if(ph===4){
+    BRANCHES.forEach((b,i)=>{const ex=t>=portalExploredAt(i);
+      setPill(document.getElementById('br'+i),ex?(b.fix?'Fixes the beacon':'Partial'):'Exploring',ex?(b.fix?'ok':'warn'):'live');
+      const o=document.getElementById('bo'+i);if(o)o.hidden=!ex;const v=document.getElementById('bv'+i);if(v)v.hidden=!ex;
+      const dot=portalLabels[i].querySelector('.dot');if(dot)dot.className='dot '+(ex?(b.fix?'ok':'warn'):'live');
+      portalLabels[i].classList.toggle('sel',preview===i);});
+    const vb=document.getElementById('verify');if(vb&&!restored)vb.disabled=t<portalExploredAt(3)+.4;
+  }
+}
+panel.addEventListener('click',e=>{
+  const go=e.target.closest('[data-go]');if(go){setPhase(+go.dataset.go);return;}
+  const br=e.target.closest('[data-branch]');if(br){preview=+br.dataset.branch;buildPanel();return;}
+  if(e.target.closest('#replay')){setPhase(1);return;}
+  if(e.target.closest('#back')){preview=null;buildPanel();return;}
+  const vb=e.target.closest('#verify');if(vb&&!vb.disabled){restored=true;preview=null;gapSolid.visible=true;buildPanel();}
+});
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)setPhase(+b.dataset.go);});
+
+function setPhase(n){
+  P.phase=n;P.t=0;preview=null;
+  if(n===1){ferry.position.copy(F_START);ferry.rotation.y=Y_APPROACH;lanterns.forEach(l=>l.m.visible=false);
+    players.forEach((p,i)=>{const st=STATIONS[p.act];p.g.position.set(st[0]+(Math.random()-.5)*3,st[1],st[2]);});}
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',+b.dataset.go===n?'step':'false'));
+  buildPanel();flyTo(n);
+}
+
+/* ---------- Simulation ---------- */
+const crewOffset=(k,r)=>[Math.cos(k*Math.PI/2+.6)*r,Math.sin(k*Math.PI/2+.6)*r];
+function update(dt,time){
+  const ph=P.phase,t=P.t;
+  /* targets for shared state */
+  let lightsT=1,beaconT=1,projT=0,stormT=0,rate=3;
+  const br=(ph===4&&preview!=null)?BRANCHES[preview]:null;
+  if(ph===1){
+    rate=10;
+    if(t>=8.5&&t<OVER){lightsT=Math.random()<.5?1:.15;}
+    else if(t>=OVER){lightsT=0;beaconT=0;}
+    projT=(t>=8&&t<OVER)?1:0;
+    stormT=clamp((t-STORM)/1.5)*.72;
+  }else if(ph===2){lightsT=0;beaconT=0;stormT=.5;}
+  else if(ph===3){lightsT=0;beaconT=0;stormT=.16;}
+  else{ if(br){beaconT=br.beacon?1:0;lightsT=br.lights?1:0;} else {beaconT=restored?1:0;lightsT=restored?1:0;} stormT=restored?0:.07; }
+  const k=Math.min(1,dt*rate);
+  L.lights+=(lightsT-L.lights)*k;L.beacon+=(beaconT-L.beacon)*Math.min(1,dt*(ph===1?12:3));
+  L.proj+=(projT-L.proj)*Math.min(1,dt*8);L.storm+=(stormT-L.storm)*Math.min(1,dt*2);
+
+  bulbMat.emissiveIntensity=.12+1.9*L.lights;winMat.emissiveIntensity=.08+.95*L.lights;
+  streetLights.forEach(l=>l.intensity=1.1*L.lights);
+  lampMat.emissiveIntensity=.08+2.2*L.beacon;beaconLight.intensity=2*L.beacon;beamMat.opacity=.09*L.beacon;
+  beamPivot.rotation.y+=dt*(reduced?.3:.9);
+  screenMat.opacity=.85*L.proj;projBeamMat.opacity=.14*L.proj;
+  roofLamp.visible=ph===4&&preview===3;
+  /* bell */
+  const swing=ph===1&&t>11&&t<14.5?Math.sin(time*8)*.55*(1-(t-11)/3.5):0;bellPivot.rotation.z+=(swing-bellPivot.rotation.z)*Math.min(1,dt*10);
+
+  /* water */
+  for(let i=0;i<wpos.count;i++){const x=wbase[i*3],z=wbase[i*3+2];wpos.array[i*3+1]=Math.sin(x*.18+time*.9)*.12+Math.cos(z*.22+time*.7)*.1;}
+  wpos.needsUpdate=true;if(frame%3===0)waterGeo.computeVertexNormals();
+
+  /* ferry */
+  if(ph===1){
+    if(t<OVER){const s=ease(clamp(t/OVER));ferry.position.lerpVectors(F_START,F_STOP,1-Math.pow(1-clamp(t/OVER),1.6));ferry.rotation.y=Y_APPROACH;}
+    else{const s=clamp((t-OVER)/5.5);ferry.position.lerpVectors(F_STOP,F_AWAY,s*s);ferry.rotation.y=lerpAngle(Y_APPROACH,Y_AWAY,ease(clamp((t-OVER)/1.6)));}
+  }else{
+    const docked=ph===4&&(br?br.ferry:restored);
+    const tp=docked?F_DOCK:F_ANCHOR,ty=docked?Y_DOCK:Y_ANCHOR;
+    const tx=new V3(tp.x,0,tp.z);ferry.position.x+=(tx.x-ferry.position.x)*Math.min(1,dt*1.2);ferry.position.z+=(tx.z-ferry.position.z)*Math.min(1,dt*1.2);
+    ferry.rotation.y=lerpAngle(ferry.rotation.y,ty,Math.min(1,dt*1.5));
+  }
+  ferry.position.y=Math.sin(time*1.3)*.08;ferry.rotation.z=Math.sin(time*1.1)*.02;
+  ferry.updateMatrixWorld();
+
+  /* lanterns */
+  lanterns.forEach(l=>{const age=t-l.at;if(ph!==1||age<0){l.m.visible=false;return;}l.m.visible=true;l.m.position.set(l.x+l.dx*age,1.8+age*.9,-9+l.dz*age);});
+
+  /* shards */
+  shardMat.opacity=L.storm;
+  const burst=ph===1?clamp((t-STORM)/1.5):1;
+  shards.forEach(s=>{s.m.visible=L.storm>.01;if(!s.m.visible)return;s.a+=s.sp*dt*(ph===1?3:1);const r=s.r*(.15+.85*ease(burst));
+    s.m.position.set(Math.cos(s.a)*r,s.h*(.3+.7*burst)+Math.sin(time+s.r)*.4,Math.sin(s.a)*r*.7+2);
+    s.m.rotation.set(time*s.rs.x,time*s.rs.y,time*s.rs.z);});
+
+  /* entrances */
+  entrances.forEach((e,i)=>{
+    const want=ph===2?1:0;e.s+=(want-e.s)*Math.min(1,dt*3);e.g.visible=e.s>.01;e.g.scale.setScalar(Math.max(.001,e.s));
+    if(CREWS[i].pos)e.g.position.set(...CREWS[i].pos);else{const p=new V3(1.6,1.07,0).applyMatrix4(ferry.matrixWorld);e.g.position.copy(p);}
+    const done=ph===2&&t>=crewDoneAt(i);
+    e.discMat.opacity=done?.55:.16+.1*Math.sin(time*3+i);e.colMat.opacity=done?.16:.06;
+    e.ringMat.color.setHex(done?0xf0b25c:0xcfdcf0);
+    e.g.rotation.y+=dt*.4;
+  });
+
+  /* timeline */
+  nodeMeshes.forEach((n,i)=>{const want=ph===3&&t>=nodeAppear(i)?(i===selNode?1.3:1):0;n.s+=(want-n.s)*Math.min(1,dt*4);n.m.scale.setScalar(Math.max(.001,n.s));n.m.visible=n.s>.01;
+    n.halo.rotation.x=time*.6+i;n.halo.rotation.y=time*.4;n.m.material.emissive.setHex(i===selNode?0xf0b25c:0xcfdcf0);});
+  threads.forEach((th,i)=>{const want=ph===3?clamp((t-nodeAppear(i)-.3)/.6):0;th.p+=(want-th.p)*Math.min(1,dt*(ph===3?6:4));
+    th.geo.setDrawRange(0,Math.floor(th.total*th.p/6)*6);});
+  rail.material.opacity=ph===3?.18:0;
+
+  /* portals */
+  portals.forEach((p,i)=>{const want=ph===4?(preview===i?1.15:1):0;p.s+=(want-p.s)*Math.min(1,dt*3);p.g.visible=p.s>.01;p.g.scale.setScalar(Math.max(.001,p.s));
+    const ex=ph===4&&t>=portalExploredAt(i);const c=ex?(BRANCHES[i].fix?0x76d3b2:0xe8a85e):0xcfdcf0;
+    p.ringMat.color.setHex(c);p.discMat.color.setHex(c);p.discMat.opacity=(ex?.32:.12)+.06*Math.sin(time*2.4+i)+(preview===i?.2:0);
+    p.ring.rotation.z=time*.3;p.g.lookAt(camera.position.x,p.g.position.y,camera.position.z);});
+
+  /* restored walkway */
+  if(restored){gapSolid.scale.y+=(1-gapSolid.scale.y)*Math.min(1,dt*2);}
+  gapGhost.m.material.opacity=restored?0:.06;gapGhost.e.material.opacity=restored?Math.max(0,gapGhost.e.material.opacity-dt):.42;
+
+  /* players */
+  players.forEach((p,i)=>{
+    let x,y,z,r=2.2;
+    if(ph===1){
+      const st=STATIONS[p.act],a=p.seed+time*.35;
+      x=st[0]+Math.cos(a)*1.5;y=st[1];z=st[2]+Math.sin(a)*.6;
+      if(p.act===3){x=st[0]+Math.sin(time*.28+p.seed)*11;}
+      if(p.act===2){x=-14+18*clamp(t/16)+Math.cos(a)*.6;}
+      if(p.act===5){z=t<OVER?9.5+Math.sin(a)*.8:4+Math.sin(a)*.6;}
+      if(t>OVER+1&&p.act!==2&&p.act!==5){x=x*.6-1.5;z=-8.2+Math.sin(a)*.5;}
+    }else if(ph===2){
+      const c=Math.floor(i/4),o=crewOffset(i%4,1.05);
+      if(CREWS[c].pos){[x,y,z]=CREWS[c].pos;x+=o[0];z+=o[1];}
+      else{const w=new V3(o[0]*.9+.4,1.06,o[1]*.6).applyMatrix4(ferry.matrixWorld);x=w.x;y=w.y;z=w.z;r=8;}
+    }else if(ph===3){x=-23+i*2;y=1;z=-7.9+(i%2)*.5;}
+    else{
+      if(restored&&i<10){x=-26+(i%2?.6:-.6);y=1;z=-5+i*2.4;
+        if(Math.abs(p.g.position.x+26)>1.3){x=-26;z=-8.3;}}
+      else{const g=i%4,b=BRANCHES[g].pos,ang=(Math.floor(i/4)/6)*Math.PI*2;x=b[0]+Math.cos(ang)*2.2;y=b[1];z=b[2]+Math.sin(ang)*1.1+(g===3?0:-.6);}
+    }
+    p.tgt.set(x,y,z);
+    const prevX=p.g.position.x,prevZ=p.g.position.z;
+    p.g.position.lerp(p.tgt,1-Math.exp(-dt*r));
+    if(ph===2&&!CREWS[Math.floor(i/4)].pos)p.g.position.y=p.tgt.y;
+    const mv=Math.hypot(p.g.position.x-prevX,p.g.position.z-prevZ);
+    p.g.children[1].position.y=1.08+(mv>.01?Math.abs(Math.sin(time*9+p.seed))*.08:0);
+  });
+
+  /* camera flight */
+  if(fly){fly.s+=dt/1.6;const e=ease(clamp(fly.s));camera.position.lerpVectors(fly.fp,fly.tp,e);controls.target.lerpVectors(fly.ft,fly.tt,e);if(fly.s>=1)fly=null;}
+}
+
+/* ---------- Loop ---------- */
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+let last=performance.now(),time=0,frame=0,panelClock=0;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;frame++;P.t+=dt;
+  update(dt,time);controls.update();renderer.render(scene,camera);updateLabels();
+  panelClock+=dt;if(panelClock>.12){panelClock=0;tickPanel();}
+  requestAnimationFrame(loop);
+}
+setPhase(1);
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>

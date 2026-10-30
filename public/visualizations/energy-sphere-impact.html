@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Sphere Impact</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #04050a; color: #cfd6e6; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  .bar { position: fixed; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+         padding: 10px 14px; background: rgba(10, 14, 28, 0.72); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; max-width: 720px; margin: 0 auto; }
+  button { background: transparent; color: #e6ecf8; border: 1px solid rgba(255,255,255,0.22); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,0.06); }
+  label { font-size: 14px; color: #9aa6bf; }
+  input[type=range] { flex: 1; min-width: 120px; accent-color: #5fb8ff; }
+  #nout { font-size: 14px; min-width: 76px; color: #e6ecf8; }
+  #fps { font-size: 13px; color: #7d889f; min-width: 52px; }
+  #err { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; font-size: 15px; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="err">WebGL2 isn't available in this browser.</div>
+<div class="bar">
+  <button id="replay">Replay</button>
+  <button id="pause">Pause</button>
+  <label for="n">Particles</label>
+  <input type="range" id="n" min="100000" max="2000000" step="100000" value="1000000">
+  <span id="nout">1,000,000</span>
+  <span id="fps"></span>
+</div>
+<script>
+const cv = document.getElementById('cv');
+const gl = cv.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+if (!gl) {
+  document.getElementById('err').style.display = 'flex';
+} else {
+
+// Every particle's path is computed analytically from its vertex ID and time,
+// so no per-particle buffers are needed.
+const VS = `#version 300 es
+precision highp float;
+uniform float uT; uniform mat4 uVP; uniform float uScale;
+out vec3 vCol; out float vA;
+
+uint hsh(uint x){ x^=x>>16; x*=0x7feb352du; x^=x>>15; x*=0x846ca68bu; x^=x>>16; return x; }
+float rnd(uint i, uint s){ return float(hsh(i*16u+s)) / 4294967295.0; }
+
+const float TI = 3.6;   // impact time (s)
+const float R  = 2.4;   // sphere radius
+const float G  = 9.8;   // gravity
+
+vec3 center(float t){
+  vec3 a = vec3(-7., 12., -5.);
+  vec3 b = vec3(0., R*0.75, 0.);
+  float k = clamp((t-2.7)/(TI-2.7), 0., 1.);
+  return mix(a, b, k*k);
+}
+mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+
+void main(){
+  uint id = uint(gl_VertexID);
+  float r1=rnd(id,0u), r2=rnd(id,1u), r3=rnd(id,2u), r4=rnd(id,3u);
+  float z = r1*2.-1., ph = r2*6.28318; float s = sqrt(1.-z*z);
+  vec3 dir = vec3(s*cos(ph), z, s*sin(ph));
+  float rr = pow(r3, 0.33);              // uniform fill of the sphere volume
+  float t = uT; float tt = min(t, TI);
+
+  // swirl inside the sphere (inner layers spin faster)
+  vec3 lr = dir*rr*R;
+  lr.xz = rot(tt*(0.5+(1.-rr)*2.2))*lr.xz;
+  lr.xy = rot(tt*0.3*(1.-rr))*lr.xy;
+  lr *= 1. + 0.03*sin(t*9. + r2*40.);
+
+  vec3 p; float heat;
+  if (t < TI) {
+    // gathering + falling
+    vec3 c = center(t);
+    float arrive = 0.4 + r4*2.5;
+    vec3 fd = normalize(dir + vec3(rnd(id,5u)-.5, rnd(id,6u)*.8, rnd(id,7u)-.5));
+    vec3 far = fd*(26.+r4*22.); far.y = abs(far.y)+1.;
+    float k = smoothstep(arrive-1.3, arrive, t);
+    vec3 target = c + lr;
+    vec3 off = mix(far, target, k) - target;
+    off.xz = rot((1.-k)*3.)*off.xz;     // spiral inward
+    p = target + off;
+    heat = mix(0.35, 1.15-rr*0.7, k);
+    vA = mix(0.18, 1., k);
+  } else {
+    // impact: radial blast with drag, gravity, and damped ground bounces
+    vec3 p0 = center(TI) + lr;
+    float dt = t - TI;
+    vec2 h = p0.xz; float hl = length(h)+1e-3; vec2 hd = h/hl;
+    float sp = (5.+20.*rnd(id,8u))*(0.35+rr);
+    float vy = (rnd(id,9u)*1.3-0.15)*sp*0.65 + 1.5;
+    vec2 vh = hd*sp + vec2(rnd(id,10u)-.5, rnd(id,11u)-.5)*5.;
+    float drag = 0.55 + rnd(id,12u)*0.5;
+    p.xz = p0.xz + vh*(1.-exp(-drag*dt))/drag;
+
+    float y = max(p0.y, 0.02), v = vy, tl = dt; bool done = false;
+    for (int i=0; i<5; i++) {
+      float disc = v*v + 2.*G*y;
+      float th = (v + sqrt(disc))/G;     // time until ground hit
+      if (tl < th) { y = y + v*tl - 0.5*G*tl*tl; done = true; break; }
+      tl -= th; v = sqrt(disc)*0.38; y = 0.;   // bounce with restitution
+    }
+    if (!done) y = 0.;
+    p.y = y;
+    heat = (1.15-rr*0.7)*exp(-dt*0.45) + exp(-dt*5.)*0.8;
+    vA = 1.;
+  }
+
+  vec3 col = mix(vec3(0.08,0.12,0.6), vec3(0.25,0.75,1.), smoothstep(0.,.55,heat));
+  col = mix(col, vec3(1.), smoothstep(.6,1.1,heat));
+  vCol = col;
+  vec4 cp = uVP*vec4(p,1.);
+  gl_Position = cp;
+  gl_PointSize = clamp(uScale/cp.w, 1., 3.);
+}`;
+
+const FS = `#version 300 es
+precision mediump float;
+in vec3 vCol; in float vA; uniform float uA; out vec4 o;
+void main(){ o = vec4(vCol*vA*uA, 1.); }`;
+
+function sh(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+const pr = gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(pr);
+const U = {
+  t: gl.getUniformLocation(pr,'uT'), vp: gl.getUniformLocation(pr,'uVP'),
+  sc: gl.getUniformLocation(pr,'uScale'), a: gl.getUniformLocation(pr,'uA')
+};
+const vao = gl.createVertexArray();
+
+let N = 1000000, yaw = 0.6, pitch = 0.32, dragging = false, lx = 0, ly = 0;
+let paused = false, simT = 0, last = performance.now(), fc = 0, ft = last;
+const nIn = document.getElementById('n'), nOut = document.getElementById('nout'), fpsEl = document.getElementById('fps');
+const pauseBtn = document.getElementById('pause');
+
+nIn.oninput = () => { N = +nIn.value; nOut.textContent = N.toLocaleString(); };
+document.getElementById('replay').onclick = () => { simT = 0; };
+pauseBtn.onclick = () => { paused = !paused; pauseBtn.textContent = paused ? 'Play' : 'Pause'; };
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); pauseBtn.click(); }
+  if (e.key === 'r' || e.key === 'R') simT = 0;
+});
+cv.addEventListener('pointerdown', e => { dragging = true; lx = e.clientX; ly = e.clientY; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+cv.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  yaw -= (e.clientX-lx)*0.006;
+  pitch = Math.max(0.05, Math.min(1.3, pitch + (e.clientY-ly)*0.005));
+  lx = e.clientX; ly = e.clientY;
+});
+cv.addEventListener('pointerup', () => { dragging = false; cv.style.cursor = 'grab'; });
+let D = 24;
+cv.addEventListener('wheel', e => { e.preventDefault(); D = Math.max(8, Math.min(60, D*(1+e.deltaY*0.001))); }, { passive: false });
+
+function persp(f, a, n, fa){ const t = 1/Math.tan(f/2); return [t/a,0,0,0, 0,t,0,0, 0,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0]; }
+function look(e, c){
+  let z = [e[0]-c[0], e[1]-c[1], e[2]-c[2]]; let l = Math.hypot(...z); z = z.map(v=>v/l);
+  let x = [z[2], 0, -z[0]]; l = Math.hypot(...x); x = x.map(v=>v/l);
+  const y = [z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0]];
+  return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
+    -(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]), -(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]), -(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]), 1];
+}
+function mul(a, b){
+  const o = new Array(16);
+  for (let i=0;i<4;i++) for (let j=0;j<4;j++){ let s=0; for (let k=0;k<4;k++) s += a[k*4+j]*b[i*4+k]; o[i*4+j] = s; }
+  return o;
+}
+
+const LOOP = 11;
+function frame(now){
+  const dtr = Math.min(0.05, (now-last)/1000); last = now;
+  if (!paused) { simT += dtr; if (simT > LOOP) simT = 0; if (!dragging) yaw += dtr*0.08; }
+  fc++; if (now-ft > 500) { fpsEl.textContent = Math.round(fc*1000/(now-ft)) + ' fps'; fc = 0; ft = now; }
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = cv.clientWidth*dpr|0, h = cv.clientHeight*dpr|0;
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0.016, 0.02, 0.04, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  const di = simT - 3.6; const shake = di > 0 ? Math.exp(-di*3)*0.6 : 0;   // camera shake on impact
+  const tgt = [Math.sin(now*0.07)*shake, 2.8 + Math.sin(now*0.09)*shake, Math.cos(now*0.08)*shake];
+  const eye = [Math.sin(yaw)*Math.cos(pitch)*D, Math.sin(pitch)*D + 2.8, Math.cos(yaw)*Math.cos(pitch)*D];
+  const VP = mul(persp(0.9, w/h, 0.1, 300), look(eye, tgt));
+
+  gl.useProgram(pr); gl.bindVertexArray(vao);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);   // additive glow
+  gl.uniform1f(U.t, simT);
+  gl.uniformMatrix4fv(U.vp, false, VP);
+  gl.uniform1f(U.sc, h*0.06);
+  gl.uniform1f(U.a, 0.11*Math.sqrt(1e6/N));
+  gl.drawArrays(gl.POINTS, 0, N);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

@@ -172,6 +172,7 @@ pre#json{margin:0;font:12px/1.5 var(--mono);background:rgba(0,0,0,.25);border:1p
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 'use strict';
@@ -574,7 +575,17 @@ function finish(){
   const tp = $('threadPath'); tp.setAttribute('d', path.join(' '));
   tp.setAttribute('stroke', `rgb(${Math.round(190 + cl * 45)},${Math.round(190 + cl * 5)},${Math.round(215 - cl * 90)})`);
   tp.setAttribute('stroke-width', (1.5 + sync * 3).toFixed(1));
-  $('json').textContent = JSON.stringify({ game: 3, clarity: +cl.toFixed(2), sync: +sync.toFixed(2), color: 'silver', collected, scattered }, null, 2);
+  const thread = { game: 3, clarity: +cl.toFixed(2), sync: +sync.toFixed(2), color: 'silver', collected, scattered };
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'03',
+    game:3,
+    title:'Ink Drift',
+    color:'silver',
+    scores:{clarity:thread.clarity,sync:thread.sync},
+    carryover:{collected,scattered},
+    summaryText:`Collected ${collected} fragments while ${scattered} scattered.`
+  });
+  $('json').textContent = JSON.stringify(thread, null, 2);
   show('ovEnd', true);
 }
 

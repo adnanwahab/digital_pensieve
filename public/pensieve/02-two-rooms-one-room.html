@@ -137,6 +137,7 @@ svg.thread{width:100%;height:46px;display:block}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 const PI = Math.PI;
@@ -463,6 +464,15 @@ function finish(){
   $('thread').innerHTML = `<defs><linearGradient id="tg"><stop offset="0" stop-color="#e8b75a"/><stop offset=".5" stop-color="#dfe3ee"/><stop offset="1" stop-color="#6fb4ff"/></linearGradient></defs><polyline points="${pts.join(' ')}" fill="none" stroke="url(#tg)" stroke-width="3" stroke-linecap="round"/>`;
   const thread = { game:2, clarity:+clarity.toFixed(2), sync:+sync.toFixed(2), color:'silver',
     carryovers:{ hybridRooms: results.filter(r => r.found > 0).map(r => r.name.toLowerCase()) } };
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'02',
+    game:2,
+    title:'Two Rooms, One Room',
+    color:'silver',
+    scores:{clarity:thread.clarity,sync:thread.sync},
+    carryover:thread.carryovers,
+    summaryText:`${found} of ${total} differences found across ${results.length} rooms.`
+  });
   $('eJson').textContent = JSON.stringify(thread, null, 2);
   $('end').hidden = false; chime([261.63, 392, 523.25, 659.25, 783.99], 3, .09);
 }

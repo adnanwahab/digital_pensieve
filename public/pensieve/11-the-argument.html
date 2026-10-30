@@ -139,6 +139,7 @@ pre.json{margin:0;padding:12px 14px;background:rgba(0,0,0,.35);border:1px solid 
 <div id="overlay"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 "use strict";
@@ -173,16 +174,39 @@ const SCRIPT = [
     B:{ line:["I don’t know yet.","I want to decide it with you, not around you.","Maybe I should."],
         thought:"I want to be asked to stay. I won’t be the one to say it first." } }
 ];
+const OBJECT_LABELS = {
+  key:"key",
+  shoe:"shoe",
+  letter:"letter",
+  photo:"photo",
+  teacup:"teacup",
+  watch:"pocket watch",
+  ring:"ring",
+  umbrella:"umbrella"
+};
+function getWeightCarryover(){
+  const carry = window.PensieveCampaign?.getLatestChapterResult('04')?.carryover;
+  const rows = Array.isArray(carry?.glowingObjects) ? carry.glowingObjects.filter(Boolean) : [];
+  return rows;
+}
+const WEIGHT_CARRY = getWeightCarryover();
+const SLOT_SOURCE = {
+  key: WEIGHT_CARRY[0] || 'key',
+  letter: WEIGHT_CARRY[1] || 'letter'
+};
+const carryName = slot => OBJECT_LABELS[SLOT_SOURCE[slot]] || slot;
+const carriesFromWeight = slot => WEIGHT_CARRY.includes(SLOT_SOURCE[slot]);
+
 const OBJ = {
-  key:{ alt:"Set the key down quietly", past:"set the key down quietly", carry:true },
-  letter:{ alt:"Leave the letter open on the table", past:"left the letter open on the table", carry:true },
+  key:{ alt:`Set the ${carryName('key')} down quietly`, past:`set the ${carryName('key')} down quietly`, carry:carriesFromWeight('key') },
+  letter:{ alt:`Leave the ${carryName('letter')} open on the table`, past:`left the ${carryName('letter')} open on the table`, carry:carriesFromWeight('letter') },
   phone:{ alt:"Turn the phone face-down", past:"turned the phone face-down", carry:false },
   door:{ alt:"Leave the front door open", past:"left the front door open", carry:false }
 };
 const OBJ_KEYS = ["key","letter","phone","door"];
 
 const keepAll = () => [0,1,2].map(() => ({ kind:"keep" }));
-const S = { phase:"intro", round:1, turn:"A", edits:{ A:keepAll(), B:keepAll() }, peace:{ A:false, B:false }, res:null, log:[] };
+const S = { phase:"intro", round:1, turn:"A", edits:{ A:keepAll(), B:keepAll() }, peace:{ A:false, B:false }, res:null, log:[], completionThread:null };
 
 const encode = e => e.kind === "keep" ? "keep" : e.kind + ":" + e.v;
 const decode = v => {
@@ -237,6 +261,46 @@ function endingText(r){
     case "close": return { title:"Close enough", body:"You end up standing close, not quite touching. The kettle clicks off. Someone says “tea?” and that is enough for tonight." + doorNote };
     default: return { title:"Sitting down", body:"You both sit at the table. The letter lies between you. Nothing is decided yet, but it will be decided together." + doorNote };
   }
+}
+
+function carryTagsHTML(){
+  if (!WEIGHT_CARRY.length) return `<span class="tag">No glowing objects carried over yet</span>`;
+  return WEIGHT_CARRY.slice(0, 3).map(id => `<span class="tag"><i class="glowdot"></i>${OBJECT_LABELS[id] || id}</span>`).join("");
+}
+
+function persistOutcome(cleared){
+  if (!S.res) return null;
+  const selectedObjects = OBJ_KEYS.filter(k => S.res.o[k]).map(k => ({
+    slot: k,
+    source: SLOT_SOURCE[k] || k,
+    label: carryName(k)
+  }));
+  const clarity = Math.max(0.2, 1 - Math.min(1, Math.max(0, S.res.heat + 2) / 8));
+  const sync = cleared ? 1 : 0.45;
+  const saved = window.PensieveCampaign?.saveChapterResult({
+    chapterId:'11',
+    game:11,
+    title:'The Argument',
+    color:cleared ? 'silver' : 'grey',
+    scores:{clarity:+clarity.toFixed(2),sync:+sync.toFixed(2)},
+    carryover:{
+      atPeace:cleared,
+      replays:S.round,
+      ending:S.res.ending,
+      sharedSlots:S.res.shared,
+      selectedObjects,
+      carriedFromWeight:WEIGHT_CARRY
+    },
+    summaryText:`Ending: ${S.res.ending}. ${cleared ? 'Both chose peace.' : 'Memory remained frayed.'}`
+  });
+  S.completionThread = saved || {
+    game:11,
+    chapterId:'11',
+    color:cleared ? 'silver' : 'grey',
+    scores:{clarity:+clarity.toFixed(2),sync:+sync.toFixed(2)},
+    carryover:{atPeace:cleared,replays:S.round,ending:S.res.ending,selectedObjects,carriedFromWeight:WEIGHT_CARRY}
+  };
+  return S.completionThread;
 }
 
 /* ---------- Three.js scene ---------- */
@@ -695,7 +759,7 @@ function renderOverlay(){
         <li>Watch the replay with every change combined.</li>
         <li>If you both press “at peace” on the same replay, the memory clears. You get up to ${MAX_ROUNDS} replays.</li>
       </ol>
-      <div class="carry"><span>Glowing since game 4:</span><span class="tag"><i class="glowdot"></i>key</span><span class="tag"><i class="glowdot"></i>letter</span></div>
+      <div class="carry"><span>Carried from The Weight of Things:</span>${carryTagsHTML()}</div>
       <div class="row"><button class="btn primary" data-act="start">Begin with Gold’s eyes</button></div>
     </div>`;
   } else if (S.phase === "cover"){
@@ -716,7 +780,7 @@ function renderOverlay(){
     </div>`;
   } else if (S.phase === "cleared" || S.phase === "blurred"){
     const r = S.res, cleared = S.phase === "cleared";
-    const json = JSON.stringify({ game:11, clarity:null, atPeace:cleared, replays:S.round, ending:r.ending, color:cleared ? "silver" : "grey", frayed:!cleared }, null, 2);
+    const json = JSON.stringify(S.completionThread || { game:11, clarity:null, atPeace:cleared, replays:S.round, ending:r.ending, color:cleared ? "silver" : "grey", frayed:!cleared }, null, 2);
     html = `<div class="card" role="dialog" aria-labelledby="t-end">
       <span class="eyebrow">${cleared ? "Memory cleared" : "Memory blurred"} · after ${S.round} ${S.round === 1 ? "replay" : "replays"}</span>
       <h2 id="t-end">${cleared ? "A silver thread rises" : "A grey thread, frayed"}</h2>
@@ -774,12 +838,12 @@ document.addEventListener("click", ev => {
   else if (act === "change"){ S.round++; S.peace = { A:false, B:false }; S.turn = "A"; setPhase("cover"); }
   else if (act === "peace"){
     const p = b.dataset.p; S.peace[p] = !S.peace[p]; b.setAttribute("aria-pressed", String(S.peace[p]));
-    if (S.peace.A && S.peace.B){ setTimeout(() => { releaseThread(0xe6eaf4); setPhase("cleared"); }, 650); }
+    if (S.peace.A && S.peace.B){ setTimeout(() => { releaseThread(0xe6eaf4); persistOutcome(true); setPhase("cleared"); }, 650); }
   }
-  else if (act === "blur"){ releaseThread(0x6b7080); setPhase("blurred"); }
+  else if (act === "blur"){ releaseThread(0x6b7080); persistOutcome(false); setPhase("blurred"); }
   else if (act === "restart"){
     if (thread){ scene.remove(thread); thread = null; }
-    replayId++; S.round = 1; S.edits = { A:keepAll(), B:keepAll() }; S.peace = { A:false, B:false }; S.res = null; setPhase("intro");
+    replayId++; S.round = 1; S.edits = { A:keepAll(), B:keepAll() }; S.peace = { A:false, B:false }; S.res = null; S.completionThread = null; setPhase("intro");
   }
 });
 

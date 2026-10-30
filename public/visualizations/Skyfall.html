@@ -1,0 +1,477 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Skyfall</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGPU canvas; title mark top-left, control strip pinned bottom-left over the sky. Single dusk look. */
+:root {
+  --night: #070a1c;
+  --ink: #f3e9de;
+  --ink-dim: rgba(243, 233, 222, 0.62);
+  --ember: #ffb183;
+  --glass: rgba(10, 14, 36, 0.58);
+  --line: rgba(243, 233, 222, 0.16);
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--mono);
+  overflow: hidden;
+}
+canvas#sky {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+.mark {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 20px);
+  left: max(20px, env(safe-area-inset-left, 0px));
+  right: max(20px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  display: grid; gap: 4px;
+}
+.mark h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(40px, 7vw, 72px);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 30px rgba(7, 10, 28, 0.6);
+}
+.mark p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-dim);
+  max-width: 34ch;
+}
+.panel {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  margin-right: auto;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 14px 20px;
+  padding: 12px 14px;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 11px;
+}
+.seg { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; }
+.seg button, .btn {
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.seg button:hover, .btn:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--night); }
+.btn { border: 1px solid var(--line); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.field { display: flex; align-items: center; gap: 8px; color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.field output { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 5ch; text-transform: none; letter-spacing: 0; }
+input[type="range"] { width: 96px; accent-color: var(--ember); }
+.hint { color: var(--ink-dim); letter-spacing: 0.02em; }
+#nogpu {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: radial-gradient(ellipse at 50% 80%, #6b3a52 0%, #1a1d48 45%, var(--night) 80%);
+}
+#nogpu div { max-width: 44ch; display: grid; gap: 10px; }
+#nogpu h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 400; font-size: 34px; }
+#nogpu p { margin: 0; color: var(--ink-dim); line-height: 1.6; font-size: 12px; }
+@media (max-width: 560px) {
+  .hint { display: none; }
+  input[type="range"] { width: 72px; }
+}
+</style>
+
+<canvas id="sky" aria-label="A kaleidoscopic sky of neon sacred geometry with shards streaming toward a glowing center"></canvas>
+
+<header class="mark">
+  <h1>Skyfall</h1>
+  <p>A dusk sky folds into a kaleidoscope and pours into one point.</p>
+</header>
+
+<div class="panel" role="group" aria-label="Controls">
+  <div class="seg" role="group" aria-label="Pattern">
+    <button id="p0" data-p="0" aria-pressed="true">Spiral</button>
+    <button id="p1" data-p="1" aria-pressed="false">Rings</button>
+    <button id="p2" data-p="2" aria-pressed="false">Rays</button>
+    <button id="p3" data-p="3" aria-pressed="false">Sweep</button>
+  </div>
+  <label class="field" for="speed">Speed <input id="speed" type="range" min="0" max="3" step="0.05" value="1"><output id="speedOut">1.00×</output></label>
+  <label class="field" for="density">Shards <input id="density" type="range" min="2000" max="30000" step="1000" value="12000"><output id="densOut">12,000</output></label>
+  <label class="field" for="folds">Folds <input id="folds" type="range" min="3" max="12" step="1" value="6"><output id="foldOut">6</output></label>
+  <button class="btn" id="pause">Pause</button>
+  <span class="hint">Drag to move the center · keys 1–4</span>
+</div>
+
+<div id="nogpu" hidden>
+  <div>
+    <h2>The sky needs WebGPU</h2>
+    <p id="nogpuMsg">This browser didn't hand over a WebGPU device. Try a recent Chrome or Edge on desktop, or Safari 26 and later.</p>
+  </div>
+</div>
+
+<script>
+const WGSL = /* wgsl */`
+struct Uniforms {
+  res: vec2f, time: f32, aspect: f32,
+  center: vec2f, blend: f32, maxR: f32,
+  patA: f32, patB: f32, count: f32, sizeK: f32,
+  folds: f32, p0: f32, p1: f32, p2: f32,
+};
+@group(0) @binding(0) var<uniform> U: Uniforms;
+const TAU = 6.28318530718;
+
+fn pcg(v: u32) -> u32 {
+  let s = v * 747796405u + 2891336453u;
+  let w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+  return (w >> 22u) ^ w;
+}
+fn h(i: u32, k: u32) -> f32 { return f32(pcg(i * 11u + k)) / 4294967295.0; }
+fn hash2(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
+fn vnoise(p: vec2f) -> f32 {
+  let i = floor(p); let f = fract(p); let u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash2(i), hash2(i + vec2f(1, 0)), u.x),
+             mix(hash2(i + vec2f(0, 1)), hash2(i + vec2f(1, 1)), u.x), u.y);
+}
+fn fbm(p0: vec2f) -> f32 {
+  var p = p0; var a = 0.5; var s = 0.0;
+  for (var k = 0; k < 5; k++) { s += a * vnoise(p); p = p * 2.03 + vec2f(1.7, 9.2); a *= 0.5; }
+  return s;
+}
+
+// Procedural dusk sky in world space (x in ±aspect, y in ±1).
+fn sky(p: vec2f, t: f32) -> vec3f {
+  let hgt = clamp(p.y * 0.5 + 0.5, 0.0, 1.0);
+  var col = vec3f(0.36, 0.16, 0.30);
+  col = mix(col, vec3f(1.00, 0.60, 0.40), smoothstep(0.00, 0.30, hgt));
+  col = mix(col, vec3f(0.44, 0.42, 0.66), smoothstep(0.30, 0.50, hgt));
+  col = mix(col, vec3f(0.09, 0.17, 0.42), smoothstep(0.46, 0.74, hgt));
+  col = mix(col, vec3f(0.03, 0.04, 0.14), smoothstep(0.74, 1.00, hgt));
+  let sun = vec2f(0.55, -0.42);
+  col += vec3f(1.0, 0.68, 0.42) * exp(-length((p - sun) * vec2f(1.0, 2.2)) * 3.2) * 0.7;
+
+  let q = p * vec2f(1.1, 3.2) + vec2f(t * 0.03, 0.0);
+  let n = fbm(q + fbm(q * 0.7 + vec2f(t * 0.01)) * 0.8);
+  let band = smoothstep(0.12, 0.40, hgt) * (1.0 - smoothstep(0.56, 0.82, hgt));
+  let cl = smoothstep(0.45, 0.80, n) * band;
+  var cc = mix(vec3f(0.95, 0.48, 0.42), vec3f(0.30, 0.27, 0.52), smoothstep(0.3, 0.6, hgt));
+  cc += vec3f(1.0, 0.76, 0.52) * smoothstep(0.6, 0.85, n) * 0.35 * (1.0 - smoothstep(0.3, 0.5, hgt));
+  col = mix(col, cc, cl * 0.85);
+
+  let sp = p * 90.0;
+  let g = floor(sp); let f = fract(sp) - 0.5;
+  let rnd = hash2(g);
+  if (rnd > 0.982) {
+    let tw = 0.6 + 0.4 * sin(t * 3.0 + rnd * 60.0);
+    col += vec3f(0.9, 0.92, 1.0) * (1.0 - smoothstep(0.0, 0.12, length(f))) * tw * smoothstep(0.55, 0.85, hgt) * (1.0 - cl);
+  }
+  return col;
+}
+
+// --- kaleidoscope helpers ---
+fn pal(x: f32) -> vec3f { return 0.5 + 0.5 * cos(TAU * (x + vec3f(0.0, 0.33, 0.67))); }
+fn rot(v: vec2f, a: f32) -> vec2f { let c = cos(a); let s = sin(a); return vec2f(c * v.x - s * v.y, s * v.x + c * v.y); }
+fn lineGlow(d: f32) -> f32 { return (1.0 - smoothstep(0.0, 0.0028, d)) * 0.9 + 0.0035 / (d + 0.004) * 0.22; }
+
+// --- background pass ---
+@vertex fn vsBg(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4f {
+  var p = array<vec2f, 3>(vec2f(-1, -3), vec2f(-1, 1), vec2f(3, 1));
+  return vec4f(p[vi], 0.0, 1.0);
+}
+@fragment fn fsBg(@builtin(position) fc: vec4f) -> @location(0) vec4f {
+  let uv = fc.xy / U.res;
+  let p = vec2f((uv.x * 2.0 - 1.0) * U.aspect, -(uv.y * 2.0 - 1.0));
+  let t = U.time;
+  let d = rot(p - U.center, t * 0.06);
+  let r = max(length(d), 1e-4);
+  let segs = U.folds * 2.0;
+  let seg = TAU / segs;
+  var a = atan2(d.y, d.x);
+  a = a - seg * floor(a / seg);
+  a = abs(a - seg * 0.5);                       // mirror fold
+  let dir = vec2f(cos(a), sin(a));
+
+  // Log-polar tunnel: each layer is twice the size of the one inside it, and layers drift inward.
+  let L = 0.693147;
+  let zr = log(r) + t * 0.32;
+  let layer = floor(zr / L);
+  let lr = exp(zr - layer * L);                 // 1..2 within a layer
+  let pl = dir * lr;
+
+  // Sky folded into the wedge, then pushed through a neon palette.
+  let tp = vec2f(pl.x - 1.2, pl.y * 1.6) * 0.9 + vec2f(sin(layer * 1.7) * 0.4, -0.15);
+  let sk = sky(tp, t);
+  let lum = dot(sk, vec3f(0.3, 0.55, 0.15));
+  let hue = layer * 0.13 + a * 0.6 + t * 0.04;
+  var col = mix(sk, pal(hue) * (0.25 + lum * 1.6), 0.62) * 0.62;
+
+  // Sacred-geometry linework, measured in screen units so lines stay crisp at every depth.
+  let k = r / lr;
+  var g = 0.0;
+  g += lineGlow(abs(lr - 1.0) * k);                                   // layer ring
+  g += lineGlow(abs(length(pl - vec2f(1.5, 0.0)) - 0.5) * k);         // flower-of-life petal
+  g += lineGlow(abs(length(pl - vec2f(1.0, 0.0)) - 0.5) * k) * 0.6;
+  g += lineGlow(abs(pl.x - 1.72) * k) * 0.8;                          // polygon edge
+  g += lineGlow(abs(dot(pl, vec2f(0.5, 0.8660254)) - 0.78) * k) * 0.7; // star chords
+  g += lineGlow(abs(pl.y) * k) * 0.35;                                // mirror spokes
+  let lineCol = pal(hue + 0.35 + lr * 0.25) * 1.25 + 0.15;
+  col += lineCol * g * smoothstep(0.0, 0.07, r);
+
+  col += vec3f(1.0, 0.92, 0.85) * (exp(-r * r * 420.0) * 1.8 + exp(-r * 8.0) * 0.3);
+  col *= 1.0 - 0.4 * smoothstep(0.7, 1.7, length(p / vec2f(U.aspect, 1.0)));
+  return vec4f(col, 1.0);
+}
+
+// --- shards ---
+fn shardPos(pat: f32, i: u32, t: f32) -> vec4f {
+  let s0 = h(i, 0u); let s1 = h(i, 1u); let s2 = h(i, 2u); let s3 = h(i, 3u);
+  let rate = 0.09 + 0.10 * s1;
+  var ph = fract(t * rate + s0);
+  if (pat > 0.5 && pat < 1.5) {
+    let ring = floor(s0 * 10.0);
+    ph = fract(t * 0.12 + ring / 10.0 + s1 * 0.012);
+  } else if (pat > 2.5) {
+    ph = fract(t * 0.11 + s2 + s0 * 0.07);
+  }
+  var r = U.maxR * (1.0 - pow(ph, 1.8));
+  var a = 0.0;
+  if (pat < 0.5) {
+    a = (s3 - 0.5) * 0.5 - r * 1.9 + t * 0.08;
+  } else if (pat < 1.5) {
+    a = s2 * TAU + 0.12 * sin(r * 9.0 - t);
+    r *= 1.0 + (s3 - 0.5) * 0.03;
+  } else if (pat < 2.5) {
+    a = floor(s2 * 3.0) / 3.0 * (TAU / U.folds) * 0.5 + (s3 - 0.5) * 0.05;
+  } else {
+    a = s2 * TAU + (1.0 - r / U.maxR) * 1.3;
+  }
+  return vec4f(vec2f(cos(a), sin(a)) * r, ph, r);
+}
+// Copy m of 2*folds: mirror on odd copies, then rotate.
+fn sym(v: vec2f, m: u32) -> vec2f {
+  var q = v;
+  if ((m & 1u) == 1u) { q.y = -q.y; }
+  return rot(q, f32(m / 2u) * TAU / U.folds);
+}
+fn shardMix(b: u32, m: u32, t: f32) -> vec4f {
+  var A = shardPos(U.patA, b, t);
+  if (U.blend > 0.0) { A = mix(A, shardPos(U.patB, b, t), U.blend); }
+  let q = rot(sym(A.xy, m), -t * 0.06);
+  return vec4f(U.center + q, A.z, A.w);
+}
+
+struct VOut {
+  @builtin(position) pos: vec4f,
+  @location(0) bary: vec3f,
+  @location(1) col: vec3f,
+  @location(2) a: f32,
+  @location(3) heat: f32,
+};
+
+@vertex fn vsShard(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VOut {
+  var o: VOut;
+  let copies = u32(U.folds) * 2u;
+  let b = ii / copies; let m = ii % copies;
+  let cur = shardMix(b, m, U.time);
+  let prv = shardMix(b, m, U.time - 0.02);
+  let dv = cur.xy - prv.xy;
+  let mag = length(dv) / 0.02;
+  var dir = select(normalize(U.center - cur.xy + vec2f(1e-5)), normalize(dv), mag > 1e-4);
+  let stretch = 1.0 + clamp(mag * 0.06, 0.0, 3.5);
+  let ph = cur.z; let r = cur.w;
+
+  var verts = array<vec2f, 3>(vec2f(1.0, 0.0), vec2f(-0.5, 0.866), vec2f(-0.5, -0.866));
+  var bc = array<vec3f, 3>(vec3f(1, 0, 0), vec3f(0, 1, 0), vec3f(0, 0, 1));
+  var v = rot(verts[vi], (h(b, 8u) - 0.5) * 5.0 * ph);
+  if ((m & 1u) == 1u) { v.y = -v.y; }
+  v.x *= stretch;
+  let size = (0.010 + 0.024 * h(b, 5u)) * U.sizeK * clamp(r / 0.45 + 0.12, 0.12, 1.0);
+  let nrm = vec2f(-dir.y, dir.x);
+  let wp = cur.xy + (dir * v.x + nrm * v.y) * size;
+  o.pos = vec4f(wp.x / U.aspect, wp.y, 0.0, 1.0);
+  o.bary = bc[vi];
+
+  let neon = pal(h(b, 4u) * 0.25 + r * 0.55 - U.time * 0.08);
+  o.col = mix(neon, sky(cur.xy, U.time), 0.2);
+  o.a = smoothstep(0.0, 0.07, ph) * smoothstep(0.012, 0.11, r);
+  o.heat = 1.0 - smoothstep(0.0, 0.5, r);
+  return o;
+}
+@fragment fn fsShard(v: VOut) -> @location(0) vec4f {
+  let mn = min(min(v.bary.x, v.bary.y), v.bary.z);
+  let edge = 1.0 - smoothstep(0.0, 0.11, mn);
+  var col = v.col * (0.22 + edge * 1.25) + vec3f(1.0) * edge * edge * 0.25 + vec3f(1.0, 0.85, 0.7) * v.heat * v.heat * 0.5;
+  let a = v.a * (0.35 + 0.65 * edge);
+  return vec4f(col * a * 0.8, a * 0.5);
+}
+`;
+
+const canvas = document.getElementById('sky');
+const MAX = 30000;
+const state = {
+  t: 0, speed: 1, folds: 6, count: 12000, paused: false,
+  patA: 0, patB: 0, blend: 0, blending: false,
+  center: [0, 0.02], target: [0, 0.02],
+};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) state.speed = 0.35;
+if (Math.min(innerWidth, innerHeight) < 600) state.count = 7000;
+
+function fail(msg) {
+  document.getElementById('nogpu').hidden = false;
+  if (msg) document.getElementById('nogpuMsg').textContent = msg;
+}
+
+async function init() {
+  if (!navigator.gpu) return fail();
+  let adapter, device;
+  try {
+    adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) return fail();
+    device = await adapter.requestDevice();
+  } catch (e) { return fail('WebGPU is present but no device could be created: ' + e.message); }
+  device.lost.then(info => { if (info.reason !== 'destroyed') fail('The GPU device was lost (' + info.message + '). Reload the page to try again.'); });
+
+  const ctx = canvas.getContext('webgpu');
+  const format = navigator.gpu.getPreferredCanvasFormat();
+  ctx.configure({ device, format, alphaMode: 'opaque' });
+
+  const module = device.createShaderModule({ code: WGSL });
+  const info = await module.getCompilationInfo();
+  const errs = info.messages.filter(m => m.type === 'error');
+  if (errs.length) { console.error(errs); return fail('Shader failed to compile: ' + errs[0].message); }
+
+  const bgl = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: {} }] });
+  const layout = device.createPipelineLayout({ bindGroupLayouts: [bgl] });
+  const bgPipe = device.createRenderPipeline({
+    layout, vertex: { module, entryPoint: 'vsBg' },
+    fragment: { module, entryPoint: 'fsBg', targets: [{ format }] },
+    primitive: { topology: 'triangle-list' },
+  });
+  const shardPipe = device.createRenderPipeline({
+    layout, vertex: { module, entryPoint: 'vsShard' },
+    fragment: { module, entryPoint: 'fsShard', targets: [{ format, blend: {
+      color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' }, // premultiplied, low alpha = mostly additive
+      alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+    } }] },
+    primitive: { topology: 'triangle-list' },
+  });
+  const ubuf = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const bind = device.createBindGroup({ layout: bgl, entries: [{ binding: 0, resource: { buffer: ubuf } }] });
+  const u = new Float32Array(16);
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+    const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+    const lim = device.limits.maxTextureDimension2D;
+    canvas.width = Math.min(w, lim); canvas.height = Math.min(h, lim);
+  }
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!state.paused) state.t += dt * state.speed;
+    if (state.blending) {
+      state.blend = Math.min(1, state.blend + dt / 1.6);
+      if (state.blend >= 1) { state.patA = state.patB; state.blend = 0; state.blending = false; }
+    }
+    const k = 1 - Math.exp(-dt * 5);
+    state.center[0] += (state.target[0] - state.center[0]) * k;
+    state.center[1] += (state.target[1] - state.center[1]) * k;
+
+    const W = canvas.width, H = canvas.height, aspect = W / H;
+    const [cx, cy] = state.center;
+    let maxR = 0;
+    for (const [x, y] of [[-aspect, -1], [aspect, -1], [-aspect, 1], [aspect, 1]]) maxR = Math.max(maxR, Math.hypot(x - cx, y - cy));
+    const e = state.blend * state.blend * (3 - 2 * state.blend);
+    u.set([W, H, state.t, aspect, cx, cy, e, maxR * 1.05, state.patA, state.patB, state.count, Math.sqrt(12000 / state.count), state.folds, 0, 0, 0]);
+    device.queue.writeBuffer(ubuf, 0, u);
+
+    const enc = device.createCommandEncoder();
+    const pass = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
+    pass.setBindGroup(0, bind);
+    pass.setPipeline(bgPipe); pass.draw(3);
+    pass.setPipeline(shardPipe); pass.draw(3, state.count - state.count % (state.folds * 2));
+    pass.end();
+    device.queue.submit([enc.finish()]);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// --- controls ---
+const patButtons = [...document.querySelectorAll('.seg button')];
+function setPattern(p) {
+  const shown = state.blending ? state.patB : state.patA;
+  if (p === shown) return;
+  state.patA = shown; state.patB = p; state.blend = 0; state.blending = true;
+  patButtons.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === p)));
+}
+patButtons.forEach(b => b.addEventListener('click', () => setPattern(+b.dataset.p)));
+
+const speed = document.getElementById('speed'), speedOut = document.getElementById('speedOut');
+const dens = document.getElementById('density'), densOut = document.getElementById('densOut');
+speed.value = state.speed; dens.value = state.count;
+const syncOut = () => { speedOut.textContent = (+state.speed).toFixed(2) + '×'; densOut.textContent = state.count.toLocaleString(); };
+speed.addEventListener('input', () => { state.speed = +speed.value; syncOut(); });
+dens.addEventListener('input', () => { state.count = Math.min(MAX, +dens.value); syncOut(); });
+syncOut();
+const folds = document.getElementById('folds'), foldOut = document.getElementById('foldOut');
+folds.addEventListener('input', () => { state.folds = +folds.value; foldOut.textContent = folds.value; });
+
+const pauseBtn = document.getElementById('pause');
+function togglePause() { state.paused = !state.paused; pauseBtn.textContent = state.paused ? 'Play' : 'Pause'; }
+pauseBtn.addEventListener('click', togglePause);
+
+function toWorld(ev) {
+  const r = canvas.getBoundingClientRect();
+  const aspect = r.width / r.height;
+  const x = ((ev.clientX - r.left) / r.width * 2 - 1) * aspect;
+  const y = -((ev.clientY - r.top) / r.height * 2 - 1);
+  return [Math.max(-aspect * 0.9, Math.min(aspect * 0.9, x)), Math.max(-0.9, Math.min(0.9, y))];
+}
+let dragging = false;
+canvas.addEventListener('pointerdown', ev => { dragging = true; canvas.setPointerCapture(ev.pointerId); state.target = toWorld(ev); });
+canvas.addEventListener('pointermove', ev => { if (dragging) state.target = toWorld(ev); });
+canvas.addEventListener('pointerup', () => { dragging = false; });
+canvas.addEventListener('dblclick', () => { state.target = [0, 0.02]; });
+addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '4') setPattern(+ev.key - 1);
+  if (ev.key === ' ') { ev.preventDefault(); togglePause(); }
+});
+
+init();
+</script>
+
+</body></html>

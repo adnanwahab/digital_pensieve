@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brain forest fire</title>
+<style>
+:root{--bg:#faf9f5;--card:#f1efe8;--text:#1f1e1d;--muted:#5f5e5a;--border:rgba(0,0,0,0.15);}
+@media (prefers-color-scheme:dark){:root{--bg:#1f1e1d;--card:#2c2c2a;--text:#f1efe8;--muted:#b4b2a9;--border:rgba(255,255,255,0.18);}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;}
+main{max-width:720px;margin:0 auto;padding:24px 16px;}
+h1{font-size:20px;font-weight:500;margin:0 0 4px;}
+p.sub{font-size:14px;color:var(--muted);margin:0 0 16px;}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;}
+button{font:inherit;font-size:14px;color:var(--text);background:transparent;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;}
+button:hover{background:var(--card);}
+.stats{margin-left:auto;font-size:13px;color:var(--muted);}
+.stats b{font-weight:500;color:var(--text);}
+canvas{width:100%;height:auto;display:block;cursor:crosshair;border-radius:12px;background:var(--card);}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 20px;margin-top:14px;}
+label{font-size:13px;color:var(--muted);}
+label b{font-weight:500;color:var(--text);}
+input[type=range]{width:100%;accent-color:#D85A30;}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12px;color:var(--muted);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin-right:5px;}
+</style>
+</head>
+<body>
+<main>
+<h1>Brain forest fire</h1>
+<p class="sub">Neurons fire, ignite their neighbors, then need time to recover. Click the brain to light a spark.</p>
+<div class="bar">
+<button id="pause">Pause</button>
+<button id="storm">Lightning strike</button>
+<button id="reset">Reset</button>
+<span class="stats">Firing <b id="fc">0</b> · Recovering <b id="rc">0</b></span>
+</div>
+<canvas id="cv"></canvas>
+<div class="ctrls">
+<label>Spread chance <b id="tv">45%</b><input type="range" id="t" min="5" max="100" step="1" value="45"></label>
+<label>Spontaneous sparks <b id="fv">3</b><input type="range" id="f" min="0" max="20" step="1" value="3"></label>
+<label>Recovery time <b id="rv">18</b><input type="range" id="r" min="2" max="60" step="1" value="18"></label>
+</div>
+<div class="legend">
+<span><span class="dot" style="background:#888780"></span>Resting (fuel)</span>
+<span><span class="dot" style="background:#EF9F27"></span>Firing (fire)</span>
+<span><span class="dot" style="background:#D85A30"></span>Recovering (ash)</span>
+</div>
+</main>
+<script>
+const W=680,H=420,cv=document.getElementById('cv'),ctx=cv.getContext('2d'),dpr=window.devicePixelRatio||1;
+cv.width=W*dpr;cv.height=H*dpr;ctx.scale(dpr,dpr);
+function inBrain(x,y){
+ const a=(x-320)/250,b=(y-185)/150;
+ if(a*a+b*b<1&&y<290)return true;
+ const c=(x-480)/92,d=(y-305)/52;
+ if(c*c+d*d<1)return true;
+ if(y>270&&y<405&&x>392&&x<438-(y-270)*0.08)return true;
+ return false;
+}
+let N=[],grid={},cs=12;
+function key(x,y){return Math.floor(x/cs)+','+Math.floor(y/cs);}
+let tries=0;
+while(tries<60000&&N.length<1900){tries++;
+ const x=Math.random()*W,y=Math.random()*H;if(!inBrain(x,y))continue;
+ const gx=Math.floor(x/cs),gy=Math.floor(y/cs);let ok=true;
+ for(let i=-1;i<=1&&ok;i++)for(let j=-1;j<=1&&ok;j++){const c=grid[(gx+i)+','+(gy+j)];if(c)for(const k of c){const n=N[k];if((n.x-x)**2+(n.y-y)**2<64){ok=false;break;}}}
+ if(!ok)continue;
+ const id=N.length;N.push({x,y,nb:[],s:0,r:0,src:-1});(grid[key(x,y)]=grid[key(x,y)]||[]).push(id);
+}
+for(let i=0;i<N.length;i++){const n=N[i],gx=Math.floor(n.x/cs),gy=Math.floor(n.y/cs);
+ for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++){const c=grid[(gx+a)+','+(gy+b)];if(c)for(const k of c){if(k!==i){const m=N[k];if((m.x-n.x)**2+(m.y-n.y)**2<17*17)n.nb.push(k);}}}
+ if(Math.random()<0.04){const k=Math.floor(Math.random()*N.length);const m=N[k];if(Math.hypot(m.x-n.x,m.y-n.y)<160){n.nb.push(k);n.ax=k;}}
+}
+const edges=document.createElement('canvas');edges.width=W*dpr;edges.height=H*dpr;const ec=edges.getContext('2d');ec.scale(dpr,dpr);
+ec.strokeStyle='rgba(136,135,128,0.18)';ec.lineWidth=0.5;ec.beginPath();
+for(let i=0;i<N.length;i++){const n=N[i];for(const k of n.nb){if(k>i||n.ax===k){ec.moveTo(n.x,n.y);ec.lineTo(N[k].x,N[k].y);}}}
+ec.stroke();
+let T=0.45,F=3,R=18,paused=false;
+function ignite(i,src){const n=N[i];if(n.s===0){n.s=1;n.src=src;}}
+function step(){
+ const fire=[];for(let i=0;i<N.length;i++)if(N[i].s===1)fire.push(i);
+ for(const n of N){if(n.s===2){n.r--;if(n.r<=0)n.s=0;}}
+ for(const i of fire){N[i].s=2;N[i].r=R;}
+ for(const i of fire)for(const k of N[i].nb)if(N[k].s===0&&Math.random()<T)ignite(k,i);
+ const sp=F/10000;for(let i=0;i<N.length;i++)if(N[i].s===0&&Math.random()<sp)ignite(i,-1);
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.drawImage(edges,0,0,W,H);
+ ctx.lineWidth=1.2;ctx.strokeStyle='rgba(239,159,39,0.8)';ctx.beginPath();
+ let fc=0,rc=0;
+ for(const n of N){if(n.s===1&&n.src>=0){ctx.moveTo(N[n.src].x,N[n.src].y);ctx.lineTo(n.x,n.y);}}
+ ctx.stroke();
+ for(const n of N){
+  if(n.s===0){ctx.fillStyle='#888780';ctx.globalAlpha=0.55;ctx.beginPath();ctx.arc(n.x,n.y,1.6,0,6.283);ctx.fill();}
+  else if(n.s===1){fc++;ctx.globalAlpha=0.25;ctx.fillStyle='#FAC775';ctx.beginPath();ctx.arc(n.x,n.y,6,0,6.283);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#EF9F27';ctx.beginPath();ctx.arc(n.x,n.y,3,0,6.283);ctx.fill();}
+  else{rc++;const t=n.r/R;ctx.globalAlpha=0.25+0.7*t;ctx.fillStyle=t>0.6?'#D85A30':'#993C1D';ctx.beginPath();ctx.arc(n.x,n.y,1.6+1.2*t,0,6.283);ctx.fill();}
+ }
+ ctx.globalAlpha=1;
+ document.getElementById('fc').textContent=fc;document.getElementById('rc').textContent=rc;
+}
+let last=0;
+function loop(ts){if(!paused&&ts-last>45){step();last=ts;}draw();requestAnimationFrame(loop);}
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
+ for(let i=0;i<N.length;i++){const n=N[i];if((n.x-x)**2+(n.y-y)**2<400)ignite(i,-1);}});
+const pb=document.getElementById('pause');
+pb.onclick=()=>{paused=!paused;pb.textContent=paused?'Play':'Pause';};
+document.getElementById('storm').onclick=()=>{for(let j=0;j<6;j++)ignite(Math.floor(Math.random()*N.length),-1);};
+document.getElementById('reset').onclick=()=>{for(const n of N){n.s=0;n.r=0;}};
+function bind(id,out,fn){const el=document.getElementById(id);el.oninput=()=>{fn(+el.value);document.getElementById(out).textContent=id==='t'?el.value+'%':el.value;};}
+bind('t','tv',v=>T=v/100);bind('f','fv',v=>F=v);bind('r','rv',v=>R=v);
+for(let j=0;j<4;j++)ignite(Math.floor(Math.random()*N.length),-1);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

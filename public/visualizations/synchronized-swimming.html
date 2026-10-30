@@ -1,0 +1,1080 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Unison Synchro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: full-bleed 3D natatorium at night. Scoreboard top-left, your four seats top-right,
+   cue lane along the bottom edge, lobby and results as overlays. Single committed night look. */
+:root{
+  --ink:#04121c;
+  --panel:rgba(4,22,32,.88);
+  --panel-solid:#061b27;
+  --line:#173f52;
+  --tile:#e4f1ef;
+  --muted:#8db1be;
+  --chlorine:#7fe3ff;
+  --coral:#ff6b5a; --kelp:#3fcf8e; --lumen:#f5c84c;
+  --g-perfect:#7fe3ff; --g-great:#8ff0c4; --g-good:#ffd166; --g-off:#ffa36b; --g-wrong:#ff6b8a; --g-miss:#62808d;
+  --f-display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:var(--tile);font-family:var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%}
+
+#hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(env(safe-area-inset-top,0px) + 14px) calc(env(safe-area-inset-bottom,0px) + 14px)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;min-width:0}
+.eyebrow{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.board{width:min(330px,100%)}
+.board .rows{display:grid;gap:6px;margin-top:8px}
+.trow{display:grid;grid-template-columns:8px 1fr 64px 52px;align-items:center;gap:10px}
+.trow .sw{width:8px;height:26px;border-radius:2px}
+.trow .nm{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .nm small{display:block;font-weight:500;font-size:10px;color:var(--muted);letter-spacing:.04em}
+.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;border-radius:3px;transition:width .25s}
+.trow .pts{font-family:var(--f-display);font-weight:800;font-size:26px;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.trow.you .nm{color:var(--coral)}
+
+.right{display:grid;gap:8px;justify-items:end}
+.ctrl{display:flex;gap:8px;align-items:center;pointer-events:auto}
+.ctrl button{font:600 12px var(--f-body);color:var(--tile);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.ctrl button:focus-visible,.seg button:focus-visible,.btn:focus-visible,.pad button:focus-visible{outline:2px solid var(--chlorine);outline-offset:2px}
+.prog{width:120px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--chlorine)}
+.seats{width:min(270px,100%)}
+.seats .rows{display:grid;gap:5px;margin-top:8px}
+.srow{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;font-size:12px}
+.srow .no{font-family:var(--f-display);font-weight:800;font-size:16px;color:var(--coral)}
+.srow .who{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .who small{color:var(--muted);font-family:var(--f-mono);font-size:10px;margin-left:4px}
+.srow .gr{font-family:var(--f-mono);font-size:11px;min-width:76px;text-align:right}
+.srow .gr.pop{animation:pop .35s ease-out}
+@keyframes pop{from{transform:scale(1.35)}to{transform:scale(1)}}
+
+.bottom{display:grid;gap:10px;justify-items:center}
+#pad{display:none;grid-template-columns:repeat(4,1fr);gap:8px;width:min(420px,100%);pointer-events:auto}
+#pad button{height:58px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--tile);font:600 12px var(--f-body);display:grid;place-items:center;gap:0;touch-action:manipulation}
+#pad button b{font-size:20px;line-height:1}
+#pad button:active{background:var(--line)}
+@media (pointer:coarse){body.playing #pad{display:grid}}
+.trackwrap{width:min(940px,100%);background:var(--panel);border:1px solid var(--line);border-radius:4px}
+#track{display:block;width:100%;height:96px}
+
+#count{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;font-family:var(--f-display);font-weight:800;font-size:clamp(80px,18vw,200px);color:var(--tile);text-shadow:0 4px 40px rgba(0,0,0,.5);letter-spacing:.02em}
+#toast{position:fixed;left:50%;top:32%;transform:translateX(-50%);pointer-events:none;font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5vw,48px);color:var(--chlorine);letter-spacing:.06em;text-transform:uppercase;opacity:0;transition:opacity .2s;white-space:nowrap}
+#toast.on{opacity:1}
+
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(2,10,16,.5);pointer-events:auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px)}
+.card{width:min(660px,100%);max-height:100%;overflow:auto;background:var(--panel-solid);border:1px solid var(--line);border-radius:6px;padding:24px;display:grid;gap:18px}
+.card h1{font-family:var(--f-display);font-weight:800;font-size:clamp(52px,9vw,80px);line-height:.9;letter-spacing:.01em;margin:6px 0 0;text-wrap:balance}
+.card h1 span{color:var(--chlorine)}
+.card h2{font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.03em;margin:0;text-transform:uppercase}
+.card p{margin:0;line-height:1.5;color:var(--muted);max-width:60ch}
+.field{display:grid;gap:8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:600 13px var(--f-body);padding:8px 12px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--tile);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--chlorine);border-color:var(--chlorine);color:var(--ink)}
+.seatlist{display:grid;gap:6px}
+.seatlist .s{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:4px}
+.seatlist .s .no{font-family:var(--f-display);font-weight:800;font-size:20px;color:var(--coral)}
+.seatlist .s .st{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+kbd{font-family:var(--f-mono);font-size:11px;padding:1px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;color:var(--tile);margin-left:2px}
+.moves{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.moves{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mv{display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:4px;min-width:0}
+.mv .ar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--ink);font-weight:700;font-size:16px}
+.mv b{font-size:14px}
+.mv span{font-size:11px;color:var(--muted);line-height:1.35}
+.note{font-family:var(--f-mono);font-size:11px;color:var(--muted);border-left:2px solid var(--chlorine);padding-left:10px;line-height:1.5}
+.btn{font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.06em;text-transform:uppercase;padding:12px 22px;border-radius:4px;border:0;background:var(--chlorine);color:var(--ink);cursor:pointer;justify-self:start}
+.btn.ghost{background:transparent;color:var(--tile);border:1px solid var(--line)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.standings{display:grid;gap:8px}
+.st-row{display:grid;grid-template-columns:44px 1fr repeat(3,64px) 72px;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:4px}
+.st-row.head{border:0;padding-block:0}
+.st-row.head span{font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right}
+.st-row .pl{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1}
+.st-row .tn{font-weight:700;display:flex;gap:8px;align-items:center;min-width:0}
+.st-row .tn i{width:8px;height:22px;border-radius:2px;flex:none}
+.st-row .mk{font-family:var(--f-mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.st-row .tot{font-family:var(--f-display);font-weight:800;font-size:28px;text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:560px){
+  .st-row{grid-template-columns:34px 1fr 64px}
+  .st-row .mk,.st-row.head span.mk{display:none}
+  .board{width:100%}
+  .seats{display:none}
+  .trow{grid-template-columns:8px 1fr 48px 44px}
+}
+.seatstats{overflow-x:auto}
+.seatstats table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+.seatstats th,.seatstats td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.seatstats th:first-child,.seatstats td:first-child{text-align:left}
+.seatstats th{font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+@media (prefers-reduced-motion:reduce){.srow .gr.pop{animation:none}.meter i{transition:none}}
+</style>
+
+<div id="stage"></div>
+
+<div id="hud">
+  <div class="top">
+    <div class="panel board" aria-live="off">
+      <div class="eyebrow">Scoreboard · Team free routine</div>
+      <div class="rows" id="boardRows"></div>
+    </div>
+    <div class="right">
+      <div class="ctrl">
+        <div class="prog" aria-hidden="true"><i id="progBar"></i></div>
+        <button id="muteBtn" type="button">Sound on</button>
+        <button id="quitBtn" type="button" hidden>Leave routine</button>
+      </div>
+      <div class="panel seats">
+        <div class="eyebrow">Team Coral · your four</div>
+        <div class="rows" id="seatRows"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div id="pad" class="pad">
+      <button type="button" data-move="L"><b>←</b>Spin</button>
+      <button type="button" data-move="U"><b>↑</b>Boost</button>
+      <button type="button" data-move="D"><b>↓</b>Vertical</button>
+      <button type="button" data-move="R"><b>→</b>Ballet leg</button>
+    </div>
+    <div class="trackwrap"><canvas id="track"></canvas></div>
+  </div>
+</div>
+
+<div id="count"></div>
+<div id="toast"></div>
+
+<div class="overlay" id="lobby">
+  <div class="card">
+    <div>
+      <div class="eyebrow">Synchro night · Routine 1 · 100 BPM · 76 counts</div>
+      <h1>Unison<span>.</span></h1>
+    </div>
+    <p>Four swimmers, one routine, two rival clubs in the same pool. Hit each move on its chime. The judges reward your team for moving together, so a perfect hit alone is worth less than four good ones in unison.</p>
+
+    <div class="field">
+      <div class="eyebrow">Mode</div>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-mode="online" aria-pressed="true">Online room</button>
+        <button type="button" data-mode="couch" aria-pressed="false">Couch, 4 on one keyboard</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="eyebrow">Team Coral seats</div>
+      <div class="seatlist" id="lobbySeats"></div>
+      <div class="note" id="modeNote"></div>
+    </div>
+
+    <div class="field">
+      <div class="eyebrow">Rival clubs · Kelp Club and Lumen Aquatics</div>
+      <div class="seg" id="levelSeg">
+        <button type="button" data-level="club" aria-pressed="false">Club</button>
+        <button type="button" data-level="national" aria-pressed="true">National</button>
+        <button type="button" data-level="olympic" aria-pressed="false">Olympic</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="eyebrow">The four moves</div>
+      <div class="moves" id="moveLegend"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="startBtn" type="button">Start routine</button>
+      <span class="eyebrow">or press Enter</span>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="results" hidden>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Judges' panel · final marks</div>
+      <h2 id="resTitle" style="font-size:40px;margin-top:6px">Final standings</h2>
+    </div>
+    <div class="standings" id="standings"></div>
+    <p>Execution scores timing against the music. Synchronization scores how close the four swimmers hit each move to one another. Artistic impression rewards moves where all four land within 60 ms, and long runs of them.</p>
+    <div class="field">
+      <div class="eyebrow">Team Coral by seat</div>
+      <div class="seatstats" id="seatStats"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="againBtn" type="button">Swim again</button>
+      <button class="btn ghost" id="lobbyBtn" type="button">Back to lobby</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   UNISON — synchronized swimming, 4-player team vs 2 CPU teams (12 swimmers)
+   Sections: constants · network (TODO server) · audio · scene · swimmers ·
+             game rules · UI · loop
+   ===================================================================== */
+
+// ---------- Constants -------------------------------------------------
+const BPM = 100, SPB = 60 / BPM, COUNT_IN = 8, END_BEAT = 76, WIN = 0.22;
+const MOVES = {
+  U: { name: 'Boost',      key: '↑', color: '#7fe3ff', hold: 1.0, angle: -Math.PI/2, freq: 1046.5, desc: 'Eggbeater up, arms high' },
+  L: { name: 'Spin',       key: '←', color: '#ffd166', hold: 1.0, angle: Math.PI,    freq: 880.0,  desc: 'One full turn in place' },
+  D: { name: 'Vertical',   key: '↓', color: '#b9a3ff', hold: 1.6, angle: Math.PI/2,  freq: 784.0,  desc: 'Head down, legs up' },
+  R: { name: 'Ballet leg', key: '→', color: '#ff9db5', hold: 1.6, angle: 0,          freq: 1174.7, desc: 'On your back, one leg up' },
+};
+const MOVE_KEYS = ['U','L','D','R'];
+// Authored routine: [beat, move]. Count-in is beats 0–7 ("5, 6, 7, 8" on 4–7).
+const ROUTINE = [
+  [8,'U'],[10,'U'],[12,'L'],[14,'U'],[16,'D'],[19,'R'],[22,'U'],
+  [24,'L'],[25,'L'],[26,'U'],[28,'D'],[31,'R'],[34,'U'],[35,'U'],[36,'L'],[38,'D'],
+  [40,'U'],[41,'L'],[42,'U'],[43,'L'],[44,'R'],[47,'U'],[48,'D'],[51,'U'],[52,'L'],[53,'L'],[54,'R'],
+  [57,'U'],[58,'U'],[59,'U'],[60,'D'],[63,'R'],[66,'L'],[67,'U'],[68,'L'],[69,'U'],[70,'D'],[72,'U'],
+];
+const CUES = ROUTINE.map(([beat, move], i) => ({ i, beat, t: beat * SPB, move }));
+const CUE_AT_EIGHTH = new Map(CUES.map(c => [c.beat * 2, c]));
+const GRADES = {
+  perfect: { label: 'Perfect', pts: 1.0,  color: '#7fe3ff' },
+  great:   { label: 'Great',   pts: 0.8,  color: '#8ff0c4' },
+  good:    { label: 'Good',    pts: 0.5,  color: '#ffd166' },
+  off:     { label: 'Off beat',pts: 0.15, color: '#ffa36b' },
+  wrong:   { label: 'Wrong move', pts: 0, color: '#ff6b8a' },
+  miss:    { label: 'Miss',    pts: 0,    color: '#62808d' },
+};
+// CPU timing profiles, in seconds. `team` = shared drift per cue, `ind` = each swimmer's own scatter.
+const PROFILES = {
+  Kelp:    { team: 0.030, ind: 0.030, miss: 0.035, wrong: 0.012 },
+  Lumen:   { team: 0.045, ind: 0.045, miss: 0.050, wrong: 0.020 },
+  standin: { team: 0.000, ind: 0.038, miss: 0.030, wrong: 0.012 },
+};
+const LEVELS = { club: { s: 1.7, m: 2.0 }, national: { s: 1.0, m: 1.0 }, olympic: { s: 0.55, m: 0.4 } };
+const TEAM_DEFS = [
+  { key: 'kelp',  name: 'Kelp Club',      sub: 'CPU',  color: '#3fcf8e', suit: '#15523c', x: -10.5, cpu: 'Kelp' },
+  { key: 'coral', name: 'Team Coral',     sub: 'YOU',  color: '#ff6b5a', suit: '#7c2620', x: 0,     cpu: null },
+  { key: 'lumen', name: 'Lumen Aquatics', sub: 'CPU',  color: '#f5c84c', suit: '#6e5210', x: 10.5,  cpu: 'Lumen' },
+];
+const FORMATION = [[0,-1.7],[-1.7,0],[1.7,0],[0,1.7]]; // diamond: back, left, right, front
+const COUCH_KEYS = {
+  KeyW:[0,'U'], KeyA:[0,'L'], KeyS:[0,'D'], KeyD:[0,'R'],
+  KeyT:[1,'U'], KeyF:[1,'L'], KeyG:[1,'D'], KeyH:[1,'R'],
+  KeyI:[2,'U'], KeyJ:[2,'L'], KeyK:[2,'D'], KeyL:[2,'R'],
+  ArrowUp:[3,'U'], ArrowLeft:[3,'L'], ArrowDown:[3,'D'], ArrowRight:[3,'R'],
+};
+const ONLINE_KEYS = { KeyW:'U', KeyA:'L', KeyS:'D', KeyD:'R', ArrowUp:'U', ArrowLeft:'L', ArrowDown:'D', ArrowRight:'R' };
+const COUCH_LABELS = ['W A S D', 'T F G H', 'I J K L', '↑ ← ↓ →'];
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeInOut = x => x < .5 ? 2*x*x : 1 - Math.pow(-2*x + 2, 2) / 2;
+function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); }
+
+// ---------- Network layer (server is TODO) ----------------------------
+/*
+ * TODO(server): implement a room server, e.g. Bun.serve({ websocket }) with one room per team of 4.
+ * Clients judge their own hits locally against a shared song clock (same model as Pensieve's
+ * Lullaby), so latency never punishes timing. The server only relays and records.
+ *
+ * Protocol sketch (JSON over WebSocket):
+ *   C→S  {type:'join', room, name}                 S→C  {type:'welcome', seat, seats:[{name, connected}]}
+ *   S→C  {type:'seats', seats}                      lobby updates as people join/leave
+ *   C→S  {type:'ready', level}                      S→C  {type:'start', startAt:<serverMs>, seed}
+ *   C→S  {type:'ping', t0}                          S→C  {type:'pong', t0, serverMs}   → clock offset
+ *   C→S  {type:'hit', seat, cue, move, dt}          S→all {type:'hit', seat, cue, move, dt}
+ *   S→C  {type:'leave', seat}                       seat falls back to a stand-in
+ *   S→C  {type:'result', teams}                     authoritative final marks
+ *
+ * `seed` should drive the CPU teams' plans so every client sees the same rivals.
+ */
+class RoomClient {
+  constructor(url) { this.url = url; this.ws = null; this.handlers = {}; this.offsetMs = 0; this.seat = 0; }
+  on(type, fn) { this.handlers[type] = fn; }
+  connect(room, name) {
+    // TODO(server): this.ws = new WebSocket(this.url); route messages to this.handlers[msg.type]
+    return Promise.reject(new Error('Room server not implemented'));
+  }
+  syncClock() { /* TODO(server): ping/pong a few times, keep median offset in this.offsetMs */ }
+  sendReady(level) { /* TODO(server) */ }
+  sendHit(hit) { /* TODO(server): this.ws.send(JSON.stringify({type:'hit', ...hit})) */ }
+}
+// Offline stand-in used until the server exists: you hold seat 0, stand-ins fill seats 1–3.
+class OfflineNet {
+  constructor() { this.seat = 0; this.remoteHit = null; }
+  connect() { return Promise.resolve({ seat: 0, seats: [{ name: 'You', human: true }, null, null, null] }); }
+  onRemoteHit(fn) { this.remoteHit = fn; } // remote players' hits would arrive here
+  sendHit(_hit) { /* no-op offline */ }
+}
+const net = new OfflineNet();
+
+// ---------- Audio -----------------------------------------------------
+const Snd = {
+  ctx: null, master: null, noise: null, lat: 0, muted: false,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    const comp = this.ctx.createDynamicsCompressor();
+    this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.55;
+    this.master.connect(comp); comp.connect(this.ctx.destination);
+    const len = this.ctx.sampleRate * 0.5, buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.noise = buf;
+    this.lat = this.ctx.outputLatency || this.ctx.baseLatency || 0;
+  },
+  env(g, at, a, peak, dur) { g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + a); g.gain.exponentialRampToValueAtTime(0.0001, at + dur); },
+  tone(freq, at, dur, type, vol, attack = 0.005, dest) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, at); this.env(g, at, attack, vol, dur);
+    o.connect(g); g.connect(dest || this.master); o.start(at); o.stop(at + dur + 0.05);
+  },
+  kick(at) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.frequency.setValueAtTime(130, at); o.frequency.exponentialRampToValueAtTime(42, at + 0.14);
+    this.env(g, at, 0.003, 0.7, 0.28); o.connect(g); g.connect(this.master); o.start(at); o.stop(at + 0.3);
+  },
+  noiseHit(at, type, freq, vol, dur) {
+    const s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    s.buffer = this.noise; f.type = type; f.frequency.value = freq; this.env(g, at, 0.002, vol, dur);
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(at); s.stop(at + dur + 0.02);
+  },
+  hat(at) { this.noiseHit(at, 'highpass', 7000, 0.12, 0.05); },
+  clap(at) { this.noiseHit(at, 'bandpass', 1500, 0.3, 0.14); },
+  block(at, hi) { this.tone(hi ? 1320 : 880, at, 0.12, 'sine', hi ? 0.35 : 0.22); },
+  chime(freq, at) { this.tone(freq, at, 0.7, 'sine', 0.13); this.tone(freq * 2, at, 0.35, 'sine', 0.04); },
+  pad(notes, at, dur, vol = 0.05) {
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1000; f.connect(this.master);
+    for (const n of notes) for (const det of [-6, 6]) {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = n; o.detune.value = det; this.env(g, at, 0.35, vol, dur);
+      o.connect(g); g.connect(f); o.start(at); o.stop(at + dur + 0.1);
+    }
+  },
+  setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.55, this.ctx.currentTime, 0.02); },
+};
+const CHORDS = [ // Am F C G, one per bar
+  { root: 110.00, notes: [220.00, 261.63, 329.63] },
+  { root: 87.31,  notes: [174.61, 220.00, 261.63] },
+  { root: 130.81, notes: [261.63, 329.63, 392.00] },
+  { root: 98.00,  notes: [196.00, 246.94, 293.66] },
+];
+const MAX_EIGHTH = (END_BEAT + 1) * 2;
+function playEighth(e, at) {
+  const beat = e / 2, onBeat = e % 2 === 0, b = Math.floor(beat);
+  if (beat < COUNT_IN) { if (onBeat) Snd.block(at, b >= 4); }
+  else if (beat < END_BEAT) {
+    const rel = beat - COUNT_IN, ch = CHORDS[Math.floor(rel / 4) % 4], inBar = Math.floor(rel % 4);
+    if (onBeat) {
+      Snd.kick(at); if (inBar === 1 || inBar === 3) Snd.clap(at);
+      Snd.tone(ch.root, at, SPB * 0.9, 'triangle', 0.2);
+      if (inBar === 0 && rel % 4 === 0) Snd.pad(ch.notes, at, SPB * 4);
+    } else Snd.hat(at);
+    Snd.tone(ch.notes[e % 3] * 2, at, SPB * 0.45, 'triangle', 0.035);
+  } else if (beat === END_BEAT) {
+    Snd.pad([220, 261.63, 329.63, 493.88], at, SPB * 6, 0.06); Snd.tone(110, at, SPB * 4, 'triangle', 0.25);
+  }
+  const cue = CUE_AT_EIGHTH.get(e);
+  if (cue) Snd.chime(MOVES[cue.move].freq, at);
+}
+
+// ---------- Scene -----------------------------------------------------
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04121c);
+scene.fog = new THREE.Fog(0x04121c, 30, 80);
+const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
+let camDist = 20;
+
+scene.add(new THREE.HemisphereLight(0xc8f2ff, 0x08303f, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(6, 14, 9); scene.add(sun);
+
+function tileTex(base, line, n) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 256, 256); g.strokeStyle = line; g.lineWidth = 2;
+  for (let i = 0; i <= n; i++) { const p = i * 256 / n; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 256); g.moveTo(0, p); g.lineTo(256, p); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+function causticTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256); g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineCap = 'round';
+  for (let k = 0; k < 70; k++) {
+    g.lineWidth = 1 + Math.random() * 2; g.beginPath();
+    const x = Math.random() * 256, y = Math.random() * 256;
+    g.moveTo(x, y); g.bezierCurveTo(x + (Math.random()-.5)*80, y + (Math.random()-.5)*80, x + (Math.random()-.5)*80, y + (Math.random()-.5)*80, x + (Math.random()-.5)*60, y + (Math.random()-.5)*60);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const POOL_W = 32, POOL_D = 16, POOL_H = 4;
+{ // basin
+  const floorTex = tileTex('#8fd2dc', '#6aaebb', 8); floorTex.repeat.set(8, 4);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(POOL_W, POOL_D), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -POOL_H; scene.add(floor);
+  const wallTex = tileTex('#a9dde3', '#7fbcc6', 8); wallTex.repeat.set(8, 1);
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(POOL_W, POOL_H + 0.35, POOL_D), new THREE.MeshStandardMaterial({ map: wallTex, side: THREE.BackSide, roughness: 0.8 }));
+  walls.position.y = -(POOL_H - 0.35) / 2; scene.add(walls);
+  for (const td of TEAM_DEFS) { // dark floor T-marks under each team
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, 9), new THREE.MeshStandardMaterial({ color: 0x0d3b52 }));
+    m.position.set(td.x, -POOL_H + 0.01, 0); scene.add(m);
+    const l = new THREE.PointLight(new THREE.Color(td.color), 0.9, 11); l.position.set(td.x, -2.6, 0); scene.add(l);
+  }
+  const deckTex = tileTex('#d6e5e3', '#b6cbc9', 4); deckTex.repeat.set(10, 3);
+  const deckMat = new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.9 });
+  const deck = (w, d, x, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, 0.7, d), deckMat); b.position.set(x, 0, z); scene.add(b); };
+  deck(48, 10, 0, -POOL_D/2 - 5); deck(48, 10, 0, POOL_D/2 + 5); deck(8, POOL_D, -POOL_W/2 - 4, 0); deck(8, POOL_D, POOL_W/2 + 4, 0);
+  // judges' table on the far deck, five chairs
+  const tbl = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 1), new THREE.MeshStandardMaterial({ color: 0x0b2c3c }));
+  tbl.position.set(0, 0.75, -POOL_D/2 - 2.4); scene.add(tbl);
+  for (let i = 0; i < 5; i++) {
+    const j = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.5), new THREE.MeshStandardMaterial({ color: 0x1d4a5c }));
+    j.position.set(-2.8 + i * 1.4, 0.9, -POOL_D/2 - 3.2); scene.add(j);
+  }
+}
+const caus = causticTex(); caus.repeat.set(6, 3);
+const causMesh = new THREE.Mesh(new THREE.PlaneGeometry(POOL_W, POOL_D), new THREE.MeshBasicMaterial({ map: caus, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
+causMesh.rotation.x = -Math.PI / 2; causMesh.position.y = -POOL_H + 0.03; scene.add(causMesh);
+
+// Water surface with ambient swell + splash ripples
+const Water = (() => {
+  const geo = new THREE.PlaneGeometry(POOL_W, POOL_D, 112, 56); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, n = pos.count;
+  const bx = new Float32Array(n), bz = new Float32Array(n);
+  for (let i = 0; i < n; i++) { bx[i] = pos.getX(i); bz[i] = pos.getZ(i); }
+  const mat = new THREE.MeshPhongMaterial({ color: 0x1c95b8, transparent: true, opacity: 0.6, shininess: 110, specular: 0x9fe8ff, depthWrite: false });
+  const mesh = new THREE.Mesh(geo, mat); scene.add(mesh);
+  const ripples = [];
+  return {
+    ripple(x, z, a) { ripples.push({ x, z, a, t0: wallT }); if (ripples.length > 16) ripples.shift(); },
+    update(w) {
+      for (let i = 0; i < n; i++) {
+        const x = bx[i], z = bz[i];
+        let y = 0.035 * Math.sin(x * 0.7 + w * 1.3) + 0.03 * Math.sin(z * 1.1 - w * 1.7) + 0.018 * Math.sin((x + z) * 1.9 + w * 2.3);
+        for (const r of ripples) {
+          const age = w - r.t0, dx = x - r.x, dz = z - r.z, d = Math.sqrt(dx*dx + dz*dz);
+          if (d < age * 3 + 0.3) y += r.a * Math.exp(-age * 1.1) * Math.exp(-d * 0.35) * Math.sin(d * 5 - age * 11);
+        }
+        pos.setY(i, y);
+      }
+      pos.needsUpdate = true; geo.computeVertexNormals();
+      while (ripples.length && w - ripples[0].t0 > 4) ripples.shift();
+    },
+  };
+})();
+
+// Splash particles + unison rings
+const FX = (() => {
+  const N = 600, pos = new Float32Array(N * 3), vel = new Float32Array(N * 3), life = new Float32Array(N);
+  for (let i = 0; i < N; i++) pos[i*3+1] = -50;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xeafcff, size: 0.11, transparent: true, opacity: 0.85, depthWrite: false }));
+  scene.add(pts);
+  let ptr = 0;
+  const rings = TEAM_DEFS.map(td => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(1.55, 1.85, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(td.color), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.set(td.x, 0.08, 0); scene.add(m); return { m, t0: -99 };
+  });
+  return {
+    splash(x, z, count) {
+      for (let k = 0; k < count; k++) {
+        const i = ptr; ptr = (ptr + 1) % N;
+        pos[i*3] = x + (Math.random()-.5)*.4; pos[i*3+1] = 0.05; pos[i*3+2] = z + (Math.random()-.5)*.4;
+        vel[i*3] = (Math.random()-.5)*1.6; vel[i*3+1] = 2.2 + Math.random()*2.4; vel[i*3+2] = (Math.random()-.5)*1.6; life[i] = 1.2;
+      }
+    },
+    ring(ti) { rings[ti].t0 = wallT; },
+    update(dt) {
+      for (let i = 0; i < N; i++) {
+        if (life[i] <= 0) continue;
+        vel[i*3+1] -= 9.8 * dt;
+        pos[i*3] += vel[i*3]*dt; pos[i*3+1] += vel[i*3+1]*dt; pos[i*3+2] += vel[i*3+2]*dt; life[i] -= dt;
+        if (life[i] <= 0 || pos[i*3+1] < -0.05) { life[i] = 0; pos[i*3+1] = -50; }
+      }
+      geo.attributes.position.needsUpdate = true;
+      for (const r of rings) {
+        const age = wallT - r.t0;
+        if (age < 1.2) { r.m.visible = true; const s = 1 + age * 2.6; r.m.scale.set(s, s, s); r.m.material.opacity = 0.85 * (1 - age / 1.2); }
+        else r.m.visible = false;
+      }
+    },
+  };
+})();
+
+// ---------- Fire whips: ~1,000,000 GPU particles, one rainbow whip per quartet ----------
+// The CPU only simulates each whip (a 26-link verlet rope) and records its recent shape into a
+// small float texture: 96 rows = the last 1.6 s at 60 rows/s, one texel per link, w = emission density.
+// Every particle is stateless: from its random seed and the time it computes its own birth time,
+// looks up where its link was at that moment, and integrates drag + flame buoyancy in closed form.
+// Kelp (left) = green, Coral (center) = blue, Lumen (right) = purple.
+const Whips = (() => {
+  const HUES = [0.36, 0.58, 0.78];
+  const NODES = 26, SEG = 0.3, H = 96, RATE = 60;
+  const PER_WHIP = 333334; // × 3 whips ≈ 1,000,000 particles
+  // One shared geometry: position holds 3 random seeds, aR a 4th (visibility threshold).
+  const geo = new THREE.BufferGeometry();
+  const seeds = new Float32Array(PER_WHIP * 3), aR = new Float32Array(PER_WHIP);
+  for (let i = 0; i < seeds.length; i++) seeds[i] = Math.random();
+  for (let i = 0; i < PER_WHIP; i++) aR[i] = Math.random();
+  geo.setAttribute('position', new THREE.BufferAttribute(seeds, 3));
+  geo.setAttribute('aR', new THREE.BufferAttribute(aR, 1));
+  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
+
+  const vertexShader = `
+    attribute float aR;
+    uniform sampler2D uHist; uniform float uTime, uHue, uScale;
+    varying vec3 vC; varying float vA;
+    const float NODES = ${NODES}.0, H = ${H}.0, RATE = ${RATE}.0;
+    vec3 hsl2rgb(vec3 c){ vec3 rgb = clamp(abs(mod(c.x*6.0 + vec3(0.0,4.0,2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+      return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0*c.z - 1.0)); }
+    vec4 hist(float row, float k){ return texture2D(uHist, vec2((k + 0.5) / NODES, (mod(row, H) + 0.5) / H)); }
+    void main(){
+      float s1 = position.x, s2 = position.y, s3 = position.z;
+      float L = 0.45 + s1 * 0.75;                  // lifetime
+      float age = mod(uTime + s2 * L, L);
+      float birth = uTime - age;
+      float row = floor(birth * RATE);
+      float k = min(NODES - 1.0, floor(pow(s3, 0.7) * NODES)); // biased toward the tip
+      vec4 p0 = hist(row, k), p1 = hist(row - 1.0, k);
+      float density = p0.w;
+      if (aR >= density) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; }
+      vec3 rnd = fract(sin(vec3(s1, s2, s3) * vec3(12.9898, 78.233, 37.719) + aR * 91.7) * 43758.5453) - 0.5;
+      vec3 rnd2 = fract(rnd.yzx * 17.13 + 0.37) - 0.5;
+      float spread = mix(0.9, 3.4, smoothstep(0.35, 1.0, density));
+      vec3 v = (p0.xyz - p1.xyz) * RATE * 0.2 + rnd * spread + vec3(0.0, 0.5, 0.0);
+      const float K = 2.2;
+      float e = (1.0 - exp(-K * age)) / K;
+      vec3 pos = p0.xyz + rnd2 * 0.22 + v * e;
+      pos.y += 1.5 * (age - e) / K;                // buoyancy under drag
+      pos.x += sin(p0.y * 3.0 + birth * 2.0) * 0.45 * age * age;
+      pos.z += cos(p0.x * 3.0 + birth * 2.0) * 0.45 * age * age;
+      float lr = 1.0 - age / L;
+      float hue = uHue + 0.1 * sin(k * 0.45 - birth * 4.0) + (aR - 0.5) * 0.04;
+      vec3 base = hsl2rgb(vec3(fract(hue), 1.0, 0.55));
+      vC = mix(base, vec3(1.0), 0.6 * lr * lr * lr);  // white-hot at birth
+      vA = pow(lr, 1.3) * (0.8 + 0.2 * sin(uTime * 31.0 + s1 * 600.0)) * 0.2;
+      vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+      float s0 = 0.06 + s1 * 0.07 + (k / NODES) * 0.06;
+      gl_PointSize = max(1.0, s0 * (0.3 + 0.7 * lr) * uScale / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }`;
+  const fragmentShader = `
+    varying vec3 vC; varying float vA;
+    void main(){ vec2 d = gl_PointCoord - 0.5; float a = max(0.0, 1.0 - dot(d, d) * 4.0); a *= a * vA;
+      if (a < 0.002) discard; gl_FragColor = vec4(vC * a, a); }`;
+
+  const whips = TEAM_DEFS.map((td, i) => {
+    const p = [], q = [];
+    for (let k = 0; k < NODES; k++) { p.push(new THREE.Vector3(td.x + k * SEG * 0.6, 1.6 + k * 0.05, 0)); q.push(p[k].clone()); }
+    const data = new Float32Array(NODES * H * 4);
+    const tex = new THREE.DataTexture(data, NODES, H, THREE.RGBAFormat, THREE.FloatType);
+    tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+    const material = new THREE.ShaderMaterial({
+      uniforms: { uHist: { value: tex }, uTime: { value: 0 }, uHue: { value: HUES[i] }, uScale: { value: 600 } },
+      vertexShader, fragmentShader, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const pts = new THREE.Points(geo, material); pts.frustumCulled = false; scene.add(pts);
+    const wh = { td, i, p, q, data, tex, material, prev: new Float32Array(NODES * 3), crack: 0, burstV: 0, density: 0.3, lastRow: -1, cdir: new THREE.Vector3(0, 1, 0) };
+    savePrev(wh); for (let r = 0; r < H; r++) writeRow(wh, r); // prime history so nothing samples zeros
+    return wh;
+  });
+  // f blends from the shape at the last written row (prev) to the current shape, so dropped frames stay smooth
+  function writeRow(wh, row, f = 1) {
+    const base = (((row % H) + H) % H) * NODES * 4, d = wh.data, pv = wh.prev;
+    for (let k = 0; k < NODES; k++) {
+      const o = base + k * 4, n = wh.p[k];
+      d[o]   = pv[k*3]   + (n.x - pv[k*3])   * f;
+      d[o+1] = pv[k*3+1] + (n.y - pv[k*3+1]) * f;
+      d[o+2] = pv[k*3+2] + (n.z - pv[k*3+2]) * f;
+      d[o+3] = wh.density;
+    }
+  }
+  function savePrev(wh) { for (let k = 0; k < NODES; k++) { wh.prev[k*3] = wh.p[k].x; wh.prev[k*3+1] = wh.p[k].y; wh.prev[k*3+2] = wh.p[k].z; } }
+  return {
+    count: PER_WHIP * 3,
+    setScale(v) { for (const wh of whips) wh.material.uniforms.uScale.value = v; },
+    crack(i, s) {
+      const wh = whips[i];
+      wh.cdir.set(Math.random() - .5, 0.4 + Math.random() * 0.6, Math.random() - .5).normalize();
+      wh.crack = Math.max(wh.crack, s * 1.3);
+      wh.burstV = Math.max(wh.burstV, s * 0.9);
+    },
+    burst(i) { this.crack(i, 1); whips[i].burstV = 1; },
+    update(dt, w) {
+      const dt2 = dt * dt;
+      for (const wh of whips) {
+        const { p, q, td, i } = wh;
+        wh.crack *= Math.exp(-dt * 5);
+        wh.burstV *= Math.exp(-dt * 6);
+        p[0].set(
+          td.x + Math.sin(w * 1.1 + i * 2) * 1.4 + wh.cdir.x * wh.crack,
+          1.7 + Math.sin(w * 1.9 + i) * 0.35 + wh.cdir.y * wh.crack,
+          Math.cos(w * 0.8 + i * 1.3) * 1.1 + wh.cdir.z * wh.crack);
+        q[0].copy(p[0]);
+        for (let k = 1; k < NODES; k++) {
+          const a = p[k], b = q[k];
+          const vx = (a.x - b.x) * 0.985, vy = (a.y - b.y) * 0.985, vz = (a.z - b.z) * 0.985;
+          b.copy(a);
+          a.x += vx + Math.sin(w * 0.7 + k * 0.3 + i) * 0.4 * dt2;
+          a.y += vy + 1.6 * dt2;
+          a.z += vz;
+        }
+        for (let it = 0; it < 8; it++) for (let k = 1; k < NODES; k++) {
+          const a = p[k - 1], b = p[k];
+          let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+          const len = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1e-6, diff = (len - SEG) / len;
+          if (k === 1) { b.x -= dx * diff; b.y -= dy * diff; b.z -= dz * diff; }
+          else { dx *= diff * .5; dy *= diff * .5; dz *= diff * .5; a.x += dx; a.y += dy; a.z += dz; b.x -= dx; b.y -= dy; b.z -= dz; }
+        }
+        for (let k = 1; k < NODES; k++) if (p[k].y < 0.25) p[k].y = 0.25;
+        // teams in sync burn denser; cracks and unison bursts light up every particle
+        const st = teams[i].stats;
+        const heat = Game.state === 'play' && st && st.resolved ? 0.5 + 0.5 * st.syncSum / st.resolved : 0.85;
+        wh.density = Math.min(1, 0.32 * heat + wh.burstV);
+        const row = Math.floor(w * RATE);
+        if (wh.lastRow < 0 || row - wh.lastRow > H) { wh.lastRow = row - 1; savePrev(wh); }
+        const span = row - wh.lastRow;
+        for (let r = wh.lastRow + 1; r <= row; r++) writeRow(wh, r, (r - wh.lastRow) / span);
+        if (span > 0) { wh.lastRow = row; savePrev(wh); }
+        wh.tex.needsUpdate = true;
+        wh.material.uniforms.uTime.value = w;
+      }
+    },
+  };
+})();
+
+// ---------- Swimmers --------------------------------------------------
+const SKINS = ['#f0c7a4', '#d6a27a', '#b07850', '#895535', '#5f3a24', '#e6b893', '#c38e66'];
+const matCache = {};
+function mat(hex, emissive) {
+  const k = hex + (emissive || '');
+  if (!matCache[k]) matCache[k] = new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: 0.55, emissive: emissive ? new THREE.Color(hex) : 0x000000, emissiveIntensity: emissive ? 0.22 : 0 });
+  return matCache[k];
+}
+const G3 = {
+  torso: new THREE.CylinderGeometry(0.2, 0.16, 0.72, 12),
+  hips:  new THREE.SphereGeometry(0.17, 12, 8),
+  head:  new THREE.SphereGeometry(0.16, 16, 12),
+  cap:   new THREE.SphereGeometry(0.168, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  arm:   new THREE.CylinderGeometry(0.055, 0.045, 0.6, 8),
+  leg:   new THREE.CylinderGeometry(0.075, 0.05, 0.85, 8),
+};
+// Pose targets. y = hip height, bx = body pitch, aL/aR = shoulder roll, lL/lR = hip pitch.
+const POSES = {
+  tread: { y: -0.66, bx: 0,            aL: -1.5,     aR: 1.5,     lL: -0.35, lR: -0.35 },
+  U:     { y: -0.30, bx: 0,            aL: -2.75,    aR: 2.75,    lL: -0.2,  lR: -0.2 },
+  L:     { y: -0.45, bx: 0,            aL: -2.25,    aR: 2.25,    lL: -0.25, lR: -0.25 },
+  D:     { y: 0.08,  bx: Math.PI,      aL: -Math.PI, aR: Math.PI, lL: 0,     lR: 0 },
+  R:     { y: 0.02,  bx: -Math.PI / 2, aL: -Math.PI, aR: Math.PI, lL: 0,     lR: -Math.PI / 2 },
+};
+function limb(parent, x, y, geo, m, half) {
+  const p = new THREE.Group(); p.position.set(x, y, 0);
+  const mesh = new THREE.Mesh(geo, m); mesh.position.y = -half; p.add(mesh); parent.add(p); return p;
+}
+class Swimmer {
+  constructor(team, seat) {
+    this.team = team; this.seat = seat;
+    this.x = team.def.x + FORMATION[seat][0]; this.z = FORMATION[seat][1];
+    this.root = new THREE.Group(); this.root.position.set(this.x, -0.66, this.z);
+    this.body = new THREE.Group(); this.root.add(this.body);
+    const suit = mat(team.def.suit), skin = mat(SKINS[(team.idx * 4 + seat * 3) % SKINS.length]), cap = mat(team.def.color, true);
+    const torso = new THREE.Mesh(G3.torso, suit); torso.position.y = 0.38; this.body.add(torso);
+    const hips = new THREE.Mesh(G3.hips, suit); hips.scale.set(1, 0.7, 0.85); hips.position.y = 0.04; this.body.add(hips);
+    const head = new THREE.Mesh(G3.head, skin); head.position.y = 0.92; this.body.add(head);
+    const c = new THREE.Mesh(G3.cap, cap); c.position.y = 0.92; c.rotation.x = -0.35; this.body.add(c);
+    this.shL = limb(this.body, -0.25, 0.68, G3.arm, skin, 0.3);
+    this.shR = limb(this.body,  0.25, 0.68, G3.arm, skin, 0.3);
+    this.hipL = limb(this.body, -0.09, 0.02, G3.leg, skin, 0.425);
+    this.hipR = limb(this.body,  0.09, 0.02, G3.leg, skin, 0.425);
+    scene.add(this.root);
+    this.phase = Math.random() * 6.28; this.reset();
+  }
+  reset() { this.pose = 'tread'; this.until = 0; this.spin0 = -99; this.cur = { ...POSES.tread }; }
+  perform(move, now) {
+    this.pose = move; this.until = now + MOVES[move].hold * SPB;
+    if (move === 'L') this.spin0 = now;
+    Whips.crack(this.team.idx, move === 'D' || move === 'R' ? 0.45 : 0.3);
+    if (move === 'D' || move === 'R') { FX.splash(this.x, this.z, move === 'D' ? 16 : 10); Water.ripple(this.x, this.z, 0.12); }
+    else Water.ripple(this.x, this.z, 0.05);
+  }
+  update(now, dt, w) {
+    if (this.pose !== 'tread' && now >= this.until) this.pose = 'tread';
+    const P = POSES[this.pose], c = this.cur, k = 1 - Math.exp(-dt * 9);
+    for (const key in P) c[key] += (P[key] - c[key]) * k;
+    const tw = this.pose === 'tread' ? 1 : 0.25;
+    const scull = Math.sin(w * 6.5 + this.phase) * 0.18 * tw, kick = Math.sin(w * 7.5 + this.phase) * 0.4 * tw;
+    this.root.position.y = c.y + Math.sin(w * 2.2 + this.phase) * 0.03 * tw;
+    this.body.rotation.x = c.bx;
+    this.shL.rotation.z = c.aL + scull; this.shR.rotation.z = c.aR - scull;
+    this.hipL.rotation.x = c.lL + kick; this.hipR.rotation.x = c.lR - kick;
+    const sp = (now - this.spin0) / (SPB * 0.95);
+    this.root.rotation.y = sp >= 0 && sp < 1 ? easeInOut(sp) * Math.PI * 2 : 0;
+  }
+}
+
+// ---------- Game state & rules ---------------------------------------
+const Game = { state: 'lobby', mode: 'online', level: 'national', songStart: 0, eighth: 0, teams: [] };
+let wallT = 0;
+const teams = TEAM_DEFS.map((def, idx) => {
+  const t = { def, idx, human: !def.cpu };
+  t.swimmers = [0, 1, 2, 3].map(s => new Swimmer(t, s));
+  return t;
+});
+const coral = teams[1];
+
+function seatIsHuman(seat) { return Game.mode === 'couch' || seat === net.seat; }
+
+function makePlan(profile, sMul, mMul) {
+  const drift = CUES.map(() => gauss() * profile.team * sMul);
+  return CUES.map(c => {
+    const miss = Math.random() < profile.miss * mMul;
+    const wrong = !miss && Math.random() < profile.wrong * mMul;
+    const dt = Math.max(-WIN, Math.min(WIN, drift[c.i] + gauss() * profile.ind * sMul));
+    const move = wrong ? MOVE_KEYS.filter(m => m !== c.move)[Math.floor(Math.random() * 3)] : c.move;
+    return { t: c.t + dt, dt, move, miss };
+  });
+}
+
+function resetMatch() {
+  const L = LEVELS[Game.level];
+  for (const t of teams) {
+    t.res = CUES.map(() => ({ seat: [null, null, null, null], done: false }));
+    t.stats = { resolved: 0, ptsSum: 0, syncSum: 0, unison: 0, streak: 0, maxStreak: 0 };
+    t.missPtr = [0, 0, 0, 0];
+    t.agents = [0, 1, 2, 3].map(s => {
+      if (t.def.cpu) return { plan: makePlan(PROFILES[t.def.cpu], L.s, L.m), ptr: 0 };
+      if (!seatIsHuman(s)) return { plan: makePlan(PROFILES.standin, 1, 1), ptr: 0 };
+      return null;
+    });
+    t.swimmers.forEach(sw => sw.reset());
+  }
+}
+
+function songTime() { return Snd.ctx.currentTime - Game.songStart - Snd.lat; }
+
+function gradeFor(ok, dt) {
+  if (!ok) return 'wrong';
+  const a = Math.abs(dt);
+  return a <= 0.05 ? 'perfect' : a <= 0.10 ? 'great' : a <= 0.16 ? 'good' : 'off';
+}
+function registerHit(team, seat, ci, move, dt) {
+  const r = team.res[ci]; if (r.seat[seat]) return;
+  const ok = move === CUES[ci].move, grade = gradeFor(ok, dt);
+  r.seat[seat] = { grade, dt, ok };
+  team.swimmers[seat].perform(move, CUES[ci].t + dt);
+  if (team === coral) UI.seatGrade(seat, grade, dt);
+  resolve(team, ci);
+}
+function setMiss(team, seat, ci) {
+  const r = team.res[ci]; if (r.seat[seat]) return;
+  r.seat[seat] = { grade: 'miss', dt: 0, ok: false };
+  if (team === coral) UI.seatGrade(seat, 'miss', 0);
+  resolve(team, ci);
+}
+function resolve(team, ci) {
+  const r = team.res[ci];
+  if (r.done || r.seat.some(s => !s)) return;
+  r.done = true;
+  const oks = r.seat.filter(s => s.ok), dts = oks.map(s => s.dt);
+  const spread = oks.length > 1 ? Math.max(...dts) - Math.min(...dts) : 0;
+  r.sync = (oks.length / 4) * clamp01(1 - spread / 0.18);
+  r.unison = oks.length === 4 && spread <= 0.06 && r.seat.every(s => s.grade !== 'off');
+  const st = team.stats;
+  st.resolved++; st.syncSum += r.sync; st.ptsSum += r.seat.reduce((a, s) => a + GRADES[s.grade].pts, 0);
+  if (r.unison) { st.unison++; st.streak++; st.maxStreak = Math.max(st.maxStreak, st.streak); FX.ring(team.idx); Whips.burst(team.idx); if (team === coral) UI.toast(st.streak > 1 ? `Unison ×${st.streak}` : 'Unison'); }
+  else st.streak = 0;
+}
+function marks(team) {
+  const s = team.stats;
+  if (!s.resolved) return { exec: 0, sync: 0, art: 0, total: 0 };
+  const exec = 10 * s.ptsSum / (s.resolved * 4);
+  const sync = 10 * s.syncSum / s.resolved;
+  const art = 10 * (0.6 * s.unison / s.resolved + 0.4 * Math.min(1, s.maxStreak / 8));
+  return { exec, sync, art, total: exec * 3.5 + sync * 4 + art * 2.5 };
+}
+
+// Human input → nearest open cue for that seat
+function humanInput(seat, move) {
+  if (Game.state !== 'play') return;
+  const t = songTime();
+  let best = -1, bestA = Infinity;
+  for (let i = coral.missPtr[seat]; i < CUES.length; i++) {
+    const d = t - CUES[i].t; if (d < -WIN) break;
+    if (!coral.res[i].seat[seat] && Math.abs(d) <= WIN && Math.abs(d) < bestA) { best = i; bestA = Math.abs(d); }
+  }
+  if (best >= 0) {
+    const dt = t - CUES[best].t;
+    registerHit(coral, seat, best, move, dt);
+    if (seat === net.seat) net.sendHit({ seat, cue: best, move, dt });
+  } else coral.swimmers[seat].perform(move, t); // freestyle, unscored
+}
+net.onRemoteHit(h => registerHit(coral, h.seat, h.cue, h.move, h.dt));
+
+function startMatch() {
+  Snd.init(); if (Snd.ctx.state === 'suspended') Snd.ctx.resume();
+  resetMatch();
+  Game.songStart = Snd.ctx.currentTime + 0.5; Game.eighth = 0; Game.state = 'play';
+  document.body.classList.add('playing');
+  UI.lobby.hidden = true; UI.results.hidden = true; UI.quit.hidden = false;
+  UI.renderSeats(); UI.renderBoard();
+}
+function toLobby() {
+  Game.state = 'lobby'; document.body.classList.remove('playing');
+  UI.count.textContent = ''; UI.quit.hidden = true; UI.results.hidden = true; UI.lobby.hidden = false;
+  teams.forEach(t => t.swimmers.forEach(sw => sw.reset()));
+  UI.renderLobby(); UI.renderSeats();
+}
+function finishMatch() {
+  for (const t of teams) for (let i = 0; i < CUES.length; i++) for (let s = 0; s < 4; s++) if (!t.res[i].seat[s]) setMiss(t, s, i);
+  Game.state = 'results'; document.body.classList.remove('playing');
+  UI.quit.hidden = true; UI.count.textContent = '';
+  teams.forEach(t => t.swimmers.forEach(sw => sw.reset()));
+  UI.showResults();
+}
+
+function updatePlay() {
+  // audio lookahead
+  const ahead = Snd.ctx.currentTime + 0.15;
+  while (Game.eighth <= MAX_EIGHTH && Game.songStart + Game.eighth * SPB / 2 <= ahead) { playEighth(Game.eighth, Game.songStart + Game.eighth * SPB / 2); Game.eighth++; }
+  const t = songTime();
+  for (const team of teams) {
+    team.agents.forEach((ag, s) => {
+      if (!ag) return;
+      while (ag.ptr < CUES.length && ag.plan[ag.ptr].t <= t) {
+        const p = ag.plan[ag.ptr]; if (!p.miss) registerHit(team, s, ag.ptr, p.move, p.dt); ag.ptr++;
+      }
+    });
+    for (let s = 0; s < 4; s++) while (team.missPtr[s] < CUES.length && CUES[team.missPtr[s]].t + WIN < t) { setMiss(team, s, team.missPtr[s]); team.missPtr[s]++; }
+  }
+  // "5, 6, 7, 8" count-in
+  const beat = Math.floor(t / SPB);
+  UI.count.textContent = t < 0 ? '' : beat < 4 ? (beat === 0 ? 'Ready' : '') : beat < COUNT_IN ? String(beat + 1) : '';
+  if (t > END_BEAT * SPB + 1.4) finishMatch();
+  return t;
+}
+
+// Lobby / results ambience: clubs warm up with small group moves
+let nextDemo = 1.5, demoTeam = 0;
+const pending = [];
+function updateDemo() {
+  if (wallT > nextDemo) {
+    const ranked = Game.state === 'results' ? [...teams].sort((a, b) => marks(b).total - marks(a).total) : null;
+    const team = ranked ? ranked[0] : teams[demoTeam++ % 3];
+    const move = ranked ? 'U' : MOVE_KEYS[Math.floor(Math.random() * 4)];
+    team.swimmers.forEach(sw => pending.push({ sw, move, at: wallT + Math.random() * 0.08 }));
+    nextDemo = wallT + (ranked ? 1.3 : 1.6 + Math.random());
+  }
+  for (let i = pending.length - 1; i >= 0; i--) if (pending[i].at <= wallT) { pending[i].sw.perform(pending[i].move, wallT); pending.splice(i, 1); }
+}
+
+// ---------- UI --------------------------------------------------------
+const $ = id => document.getElementById(id);
+const UI = {
+  lobby: $('lobby'), results: $('results'), count: $('count'), quit: $('quitBtn'),
+  boardRows: $('boardRows'), seatRows: $('seatRows'), progBar: $('progBar'),
+  toastEl: $('toast'), toastTimer: 0,
+  renderBoard() {
+    this.boardRows.innerHTML = teams.map(t => `
+      <div class="trow ${t === coral ? 'you' : ''}">
+        <span class="sw" style="background:${t.def.color}"></span>
+        <span class="nm">${t.def.name}<small>${t.def.sub} · SYNC</small></span>
+        <span class="meter"><i id="sync-${t.idx}" style="background:${t.def.color}"></i></span>
+        <span class="pts" id="pts-${t.idx}">0.0</span>
+      </div>`).join('');
+  },
+  updateBoard() {
+    for (const t of teams) {
+      const m = marks(t);
+      const p = $('pts-' + t.idx), s = $('sync-' + t.idx);
+      if (p) p.textContent = m.total.toFixed(1);
+      if (s) s.style.width = (m.sync * 10).toFixed(0) + '%';
+    }
+  },
+  seatName(s) {
+    if (Game.mode === 'couch') return { who: `Player ${s + 1}`, keys: COUCH_LABELS[s] };
+    return s === net.seat ? { who: 'You', keys: 'WASD / arrows' } : { who: 'Stand-in', keys: 'open seat' };
+  },
+  renderSeats() {
+    this.seatRows.innerHTML = [0, 1, 2, 3].map(s => {
+      const n = this.seatName(s);
+      return `<div class="srow"><span class="no">${s + 1}</span><span class="who">${n.who}<small>${n.keys}</small></span><span class="gr" id="gr-${s}">—</span></div>`;
+    }).join('');
+  },
+  seatGrade(s, grade, dt) {
+    const el = $('gr-' + s); if (!el) return;
+    const g = GRADES[grade];
+    const ms = (grade === 'miss' || grade === 'wrong') ? '' : ` ${dt >= 0 ? '+' : '−'}${Math.round(Math.abs(dt) * 1000)}`;
+    el.textContent = g.label + ms; el.style.color = g.color;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  },
+  toast(text) {
+    this.toastEl.textContent = text; this.toastEl.classList.add('on');
+    clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => this.toastEl.classList.remove('on'), 700);
+  },
+  renderLobby() {
+    $('lobbySeats').innerHTML = [0, 1, 2, 3].map(s => {
+      const n = this.seatName(s);
+      const keys = Game.mode === 'couch' ? COUCH_LABELS[s].split(' ').map(k => `<kbd>${k}</kbd>`).join('') :
+        s === net.seat ? '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span class="st">or arrows</span>' : '<span class="st">waiting · stand-in swims</span>';
+      return `<div class="s"><span class="no">${s + 1}</span><span>${n.who}</span><span>${keys}</span></div>`;
+    }).join('');
+    $('modeNote').textContent = Game.mode === 'online'
+      ? 'Room server is a TODO. Until it exists, stand-ins swim the three open seats.'
+      : 'Four players share one keyboard. Some keyboards drop keys when many are held at once.';
+    document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === Game.mode)));
+    document.querySelectorAll('#levelSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === Game.level)));
+  },
+  renderLegend() {
+    const keyFor = { U: 'W ↑', L: 'A ←', D: 'S ↓', R: 'D →' };
+    $('moveLegend').innerHTML = MOVE_KEYS.map(m => `
+      <div class="mv"><span class="ar" style="background:${MOVES[m].color}">${MOVES[m].key}</span>
+      <b>${MOVES[m].name}</b><span>${MOVES[m].desc}</span><span><kbd>${keyFor[m].split(' ')[0]}</kbd><kbd>${keyFor[m].split(' ')[1]}</kbd></span></div>`).join('');
+  },
+  showResults() {
+    const ranked = teams.map(t => ({ t, m: marks(t) })).sort((a, b) => b.m.total - a.m.total);
+    const place = ['1st', '2nd', '3rd'];
+    const yourPlace = ranked.findIndex(r => r.t === coral);
+    $('resTitle').textContent = yourPlace === 0 ? 'Team Coral takes gold' : `Team Coral finishes ${place[yourPlace]}`;
+    $('standings').innerHTML = `<div class="st-row head"><span></span><span></span><span class="mk">Exec</span><span class="mk">Sync</span><span class="mk">Art</span><span>Total</span></div>` +
+      ranked.map((r, i) => `
+      <div class="st-row">
+        <span class="pl" style="color:${r.t.def.color}">${place[i]}</span>
+        <span class="tn"><i style="background:${r.t.def.color}"></i>${r.t.def.name}</span>
+        <span class="mk">${r.m.exec.toFixed(1)}</span><span class="mk">${r.m.sync.toFixed(1)}</span><span class="mk">${r.m.art.toFixed(1)}</span>
+        <span class="tot">${r.m.total.toFixed(1)}</span>
+      </div>`).join('');
+    const rows = [0, 1, 2, 3].map(s => {
+      const c = { perfect: 0, great: 0, good: 0, off: 0, wrong: 0, miss: 0 }; let abs = 0, n = 0;
+      coral.res.forEach(r => { const x = r.seat[s]; c[x.grade]++; if (x.ok) { abs += Math.abs(x.dt); n++; } });
+      return `<tr><td>${s + 1} · ${this.seatName(s).who}</td><td>${c.perfect}</td><td>${c.great}</td><td>${c.good}</td><td>${c.off}</td><td>${c.wrong}</td><td>${c.miss}</td><td>${n ? Math.round(abs / n * 1000) : '—'}</td></tr>`;
+    }).join('');
+    const st = coral.stats;
+    $('seatStats').innerHTML = `<table><thead><tr><th>Seat</th><th>Perfect</th><th>Great</th><th>Good</th><th>Off</th><th>Wrong</th><th>Miss</th><th>Avg ms</th></tr></thead><tbody>${rows}</tbody></table>
+      <p style="margin-top:10px">Unison moves: ${st.unison} of ${CUES.length} · longest run: ${st.maxStreak}</p>`;
+    this.results.hidden = false;
+  },
+};
+
+// Cue lane
+const Track = {
+  cv: $('track'), g: null, w: 0, h: 0, dpr: 1,
+  resize() {
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.w = this.cv.clientWidth; this.h = this.cv.clientHeight;
+    this.cv.width = this.w * this.dpr; this.cv.height = this.h * this.dpr;
+    this.g = this.cv.getContext('2d'); this.g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  },
+  arrow(x, y, ang, s) {
+    const g = this.g; g.save(); g.translate(x, y); g.rotate(ang);
+    g.strokeStyle = '#04121c'; g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(-7*s, 0); g.lineTo(6*s, 0); g.moveTo(1*s, -6*s); g.lineTo(7*s, 0); g.lineTo(1*s, 6*s); g.stroke(); g.restore();
+  },
+  draw(t) {
+    const g = this.g, w = this.w, h = this.h; if (!g) return;
+    g.clearRect(0, 0, w, h);
+    const x0 = Math.min(84, w * 0.16), look = w < 500 ? 2.4 : 3.2, px = (w - x0 - 16) / look, cy = h * 0.44;
+    // beat grid
+    for (let b = Math.max(0, Math.ceil((t - 0.6) / SPB)); b * SPB < t + look; b++) {
+      const x = x0 + (b * SPB - t) * px; if (x < 0) continue;
+      g.strokeStyle = (b - COUNT_IN) % 4 === 0 && b >= COUNT_IN ? 'rgba(127,227,255,.28)' : 'rgba(141,177,190,.12)';
+      g.lineWidth = 1; g.beginPath(); g.moveTo(x, 10); g.lineTo(x, h - 10); g.stroke();
+    }
+    // hit ring, pulses on the beat
+    const ph = t > 0 ? (t % SPB) / SPB : 1, pulse = 1 + 0.18 * Math.max(0, 1 - ph * 3);
+    g.strokeStyle = '#7fe3ff'; g.lineWidth = 2; g.beginPath(); g.arc(x0, cy, 22 * pulse, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = 'rgba(127,227,255,.08)'; g.fill();
+    // cues
+    let labelled = false;
+    for (const c of CUES) {
+      const dx = c.t - t; if (dx < -0.7 || dx > look) continue;
+      const x = x0 + dx * px, M = MOVES[c.move], past = dx < -WIN;
+      g.globalAlpha = past ? 0.25 : 1;
+      g.fillStyle = M.color; g.beginPath(); g.arc(x, cy, 17, 0, Math.PI * 2); g.fill();
+      this.arrow(x, cy, M.angle, 1);
+      // your team's results under the chip
+      const r = Game.state === 'play' ? coral.res[c.i] : null;
+      for (let s = 0; s < 4; s++) {
+        const res = r && r.seat[s];
+        g.fillStyle = res ? GRADES[res.grade].color : 'rgba(141,177,190,.3)';
+        g.beginPath(); g.arc(x - 12 + s * 8, cy + 28, 2.8, 0, Math.PI * 2); g.fill();
+      }
+      g.globalAlpha = 1;
+      if (!labelled && dx > -WIN) { // name the next move
+        labelled = true; g.fillStyle = '#e4f1ef'; g.font = '600 11px Figtree, system-ui, sans-serif'; g.textAlign = 'center';
+        g.fillText(M.name.toUpperCase(), x, cy - 25);
+      }
+    }
+    if (Game.state !== 'play') {
+      g.fillStyle = 'rgba(141,177,190,.85)'; g.font = '500 11px "JetBrains Mono", monospace'; g.textAlign = 'right';
+      g.fillText('ROUTINE PREVIEW · CUES CROSS THE RING ON THE CHIME', w - 14, h - 10);
+    }
+  },
+};
+
+// ---------- Input wiring ---------------------------------------------
+window.addEventListener('keydown', e => {
+  if (Game.state === 'lobby' && e.key === 'Enter') { e.preventDefault(); startMatch(); return; }
+  if (Game.state === 'results' && e.key === 'Enter') { e.preventDefault(); startMatch(); return; }
+  if (Game.state === 'play' && e.key === 'Escape') { toLobby(); return; }
+  if (Game.state !== 'play' || e.repeat) return;
+  if (Game.mode === 'couch') { const m = COUCH_KEYS[e.code]; if (m) { e.preventDefault(); humanInput(m[0], m[1]); } }
+  else { const m = ONLINE_KEYS[e.code]; if (m) { e.preventDefault(); humanInput(net.seat, m); } }
+});
+document.querySelectorAll('#pad button').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); humanInput(net.seat, b.dataset.move); }));
+$('startBtn').addEventListener('click', startMatch);
+$('againBtn').addEventListener('click', startMatch);
+$('lobbyBtn').addEventListener('click', toLobby);
+$('quitBtn').addEventListener('click', toLobby);
+$('muteBtn').addEventListener('click', () => { Snd.setMuted(!Snd.muted); $('muteBtn').textContent = Snd.muted ? 'Sound off' : 'Sound on'; });
+document.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => { Game.mode = b.dataset.mode; UI.renderLobby(); UI.renderSeats(); }));
+document.querySelectorAll('#levelSeg button').forEach(b => b.addEventListener('click', () => { Game.level = b.dataset.level; UI.renderLobby(); }));
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight, aspect = w / h;
+  renderer.setSize(w, h, false);
+  camera.aspect = aspect; camera.fov = 46;
+  camDist = Math.min(40, Math.max(19, 17.5 / (Math.tan(23 * Math.PI / 180) * aspect)));
+  scene.fog.near = camDist + 8; scene.fog.far = camDist + 60;
+  camera.updateProjectionMatrix(); Track.resize();
+  Whips.setScale(renderer.getPixelRatio() * h / (2 * Math.tan(camera.fov * Math.PI / 360)));
+}
+window.addEventListener('resize', resize);
+
+// ---------- Main loop -------------------------------------------------
+UI.renderBoard(); UI.renderSeats(); UI.renderLobby(); UI.renderLegend();
+net.connect().then(() => UI.renderSeats());
+resize();
+let last = performance.now(), boardTick = 0;
+function frame(nowMs) {
+  const dt = Math.min(0.05, (nowMs - last) / 1000); last = nowMs; wallT += dt;
+  let clock = wallT, t = -1;
+  if (Game.state === 'play') { t = updatePlay(); clock = t; }
+  else updateDemo();
+  for (const team of teams) for (const sw of team.swimmers) sw.update(clock, dt, wallT);
+  Water.update(wallT); FX.update(dt); Whips.update(dt, wallT);
+  caus.offset.set(wallT * 0.02, wallT * 0.013);
+  const sway = Math.sin(wallT * 0.12) * 1.4;
+  camera.position.set(sway, camDist * 0.58, camDist * 0.92); camera.lookAt(0, -0.9, 0);
+  renderer.render(scene, camera);
+  Track.draw(Game.state === 'play' ? t : (wallT % (END_BEAT * SPB)));
+  if ((boardTick += dt) > 0.1) { boardTick = 0; if (Game.state === 'play') { UI.updateBoard(); UI.progBar.style.width = (clamp01(t / (END_BEAT * SPB)) * 100).toFixed(1) + '%'; } }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+
+</body></html>

@@ -66,10 +66,41 @@ body{font-family:var(--mono);font-size:12px;font-weight:300;
 .seq{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10px;color:var(--dim);letter-spacing:.04em}
 .seq span{display:inline-flex;align-items:center;gap:5px}
 .seq i{width:8px;height:8px;display:inline-block}
+.mode-menu{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.mode-menu label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.mode-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mode-btn{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--moon);background:rgba(14,10,28,.55);border:1px solid var(--line);padding:9px 10px;cursor:pointer;text-align:left}
+.mode-btn:hover,.mode-btn:focus-visible{border-color:var(--rose);background:rgba(244,236,255,.12)}
+.mode-btn.active{border-color:var(--rose);color:#fff;background:rgba(255,158,199,.14)}
+.mode-note{font-size:10px;color:var(--dim);letter-spacing:.04em}
 button.go{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;
   background:var(--moon);color:var(--ink);border:0;padding:13px 18px;cursor:pointer;margin-top:4px}
 button.go:hover{background:var(--rose)}
 button.go:focus-visible{outline:2px solid var(--rose);outline-offset:3px}
+
+body.museum-mode-active .hud,
+body.museum-mode-active .hint,
+body.museum-mode-active .map,
+body.museum-mode-active .banner,
+body.museum-mode-active .touch,
+body.museum-mode-active #talk,
+body.museum-mode-active #rise,
+body.museum-mode-active #memCap{display:none !important}
+
+.memory-frame{position:fixed;inset:0;z-index:30;display:grid;place-items:center;
+  padding:18px max(16px,env(safe-area-inset-left,0px));
+  background:radial-gradient(ellipse at center,rgba(14,10,28,.2),rgba(14,10,28,.86))}
+.memory-frame-card{width:min(1080px,100%);height:min(86vh,860px);background:rgba(12,10,24,.82);
+  border:1px solid var(--line);display:flex;flex-direction:column;gap:10px;padding:10px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.memory-frame-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 0}
+.memory-frame-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
+.memory-frame-close{all:unset;box-sizing:border-box;cursor:pointer;padding:7px 10px;border:1px solid var(--line);
+  color:var(--moon);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.memory-frame-close:hover,.memory-frame-close:focus-visible{background:rgba(244,236,255,.1)}
+.memory-frame-view{flex:1;min-height:280px;border:1px solid var(--line);background:#0a0b16}
+.memory-frame-view iframe{width:100%;height:100%;border:0;display:block;background:#0a0b16}
 
 .fade{position:fixed;inset:0;background:#fff3f8;opacity:0;pointer-events:none;transition:opacity .35s}
 
@@ -139,7 +170,7 @@ body.talking .touch, body.talking .hint{display:none!important}
 <div class="hud" aria-live="polite">
   <div class="stage"><span class="num" id="num">—</span><span class="name" id="name">Waking Clear</span></div>
   <div class="tech" id="tech">unprocessed · soft vignette</div>
-  <div class="meta" id="meta">Platform 1 / 17 · 00:00.0</div>
+  <div class="meta" id="meta">Platform 1 / 12 · 00:00.0</div>
   <div class="gift" id="gift" hidden>Moth wings · jump again in midair</div>
 </div>
 
@@ -187,15 +218,18 @@ body.talking .touch, body.talking .hint{display:none!important}
     </div>
     <h1>Documenting <em>Pensieve</em></h1>
     <p>A digital pensieve should feel magical and trustworthy: people step into memories, inspect details together, and come back with clearer understanding. This prototype maps that journey across interactive memory scenes.</p>
-    <div class="keys" id="keys">
-      <b>Capture</b><span>How memories are recorded (audio, video, text, sensor context, and consent signals)</span>
-      <b>Memory fidelity</b><span>What stays exact vs interpreted (timestamps, perspective shifts, reconstruction quality)</span>
-      <b>Navigation</b><span>How users enter, scrub, branch, and compare moments without getting lost</span>
-      <b>Collaboration</b><span>How two or more people annotate, challenge, and reconcile the same memory</span>
-      <b>Safety + privacy</b><span>Permissions, redaction, encryption, deletion rights, and trauma-aware guardrails</span>
-      <b>Evidence + trust</b><span>Provenance, tamper logs, version history, and confidence scores for each memory layer</span>
-    </div>
+
     <div class="seq" id="seq"></div>
+    <div class="mode-menu">
+      <label>Game mode</label>
+      <div class="mode-buttons" id="modeButtons" role="group" aria-label="Select game mode">
+        <button class="mode-btn active" data-mode="2player-pensieve" type="button">2player pensieve</button>
+        <button class="mode-btn" data-mode="4player-mode" type="button">4player mode</button>
+        <button class="mode-btn" data-mode="city-mode" type="button">city-mode</button>
+        <button class="mode-btn" data-mode="mueseum-mode" type="button">mueseum mode</button>
+      </div>
+      <div class="mode-note" id="modeNotice">Selected: 2player pensieve</div>
+    </div>
     <button class="go" id="goBtn" type="button">Enter the pensieve</button>
   </div>
 </div>
@@ -203,8 +237,20 @@ body.talking .touch, body.talking .hint{display:none!important}
 <div class="overlay" id="win" hidden>
   <div class="card">
     <h1>You <em>surfaced</em></h1>
-    <p id="winText">17 platforms climbed.</p>
+    <p id="winText">12 platforms climbed.</p>
     <button class="go" id="againBtn" type="button">Dream again</button>
+  </div>
+</div>
+
+<div class="memory-frame" id="memoryFrame" hidden>
+  <div class="memory-frame-card" role="dialog" aria-modal="true" aria-label="Memory preview">
+    <div class="memory-frame-bar">
+      <span class="memory-frame-title" id="memoryFrameTitle">Memory</span>
+      <button class="memory-frame-close" id="memoryFrameClose" type="button">Close · Esc</button>
+    </div>
+    <div class="memory-frame-view">
+      <iframe id="memoryFrameEl" title="Memory preview" loading="lazy"></iframe>
+    </div>
   </div>
 </div>
 
@@ -256,7 +302,7 @@ $('seq').innerHTML = EFFECTS.slice(1,9).map(e=>`<span><i style="background:${hex
 /* ---------- seeded course ---------- */
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
 const rng = mulberry(11);
-const N = 17;
+const N = 12;
 const plats = [{x:0,y:0,z:0,r:5.0,bob:0,bs:0,phase:0,effect:0}];
 let dir = 0;
 for (let i=1;i<N;i++){
@@ -524,6 +570,8 @@ function spawnSpot(i){
 player.yaw = startYaw;
 let checkpoint=0, maxReached=0, visited=new Set([0]);
 let started=false, locked=false, dragLook=false, won=false, paused=false, previewing=false;
+let museumActive=false;
+let portalOpen=false;
 let elapsed=0, simT=0, hovered=-1;
 
 let effA=0, effB=0, mixT=1;
@@ -555,6 +603,19 @@ function fmt(t){ const m=Math.floor(t/60), s=t-m*60; return String(m).padStart(2
 /* ---------- input ---------- */
 const keys={};
 addEventListener('keydown',e=>{
+  if (museumActive){
+    if (e.code==='Escape'){
+      e.preventDefault();
+      stopMuseumMode();
+      started=false;
+      $('start').hidden=false;
+    }
+    return;
+  }
+  if (portalOpen){
+    if (e.code==='Escape' || e.code==='KeyQ'){ e.preventDefault(); closeMemoryFrame(); }
+    return;
+  }
   if (e.code==='KeyQ' && mode==='memory'){ exitMemory(); return; }
   if (dlg.open){ handleDlgKey(e); return; }
   keys[e.code]=true;
@@ -584,6 +645,37 @@ function setPaused(v){
   if (!v && previewing){ previewing=false; setEffect(plats[player.on].effect); }
   if (!v) { hovered=-1; }
 }
+
+const memoryFrame = {
+  root: $('memoryFrame'),
+  frame: $('memoryFrameEl'),
+  title: $('memoryFrameTitle'),
+  close: $('memoryFrameClose'),
+  platform: -1
+};
+function openMemoryFrame(i, target){
+  if (!target || portalOpen) return;
+  portalOpen = true;
+  memoryFrame.platform = i;
+  for (const k in keys) keys[k]=false;
+  player.vel.set(0,0,0);
+  if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+  memoryFrame.title.textContent = `Memory from platform ${i+1}`;
+  memoryFrame.frame.src = target;
+  memoryFrame.root.hidden = false;
+}
+function closeMemoryFrame(){
+  if (!portalOpen) return;
+  portalOpen = false;
+  memoryFrame.root.hidden = true;
+  memoryFrame.frame.src = 'about:blank';
+  const i = memoryFrame.platform;
+  memoryFrame.platform = -1;
+  if (i>=0 && plats[i]) plats[i].cubeCd = 1;
+  if (!coarse && !dragLook && started && !won && !paused && !dlg.open) tryLock();
+}
+memoryFrame.close.addEventListener('click', ()=>closeMemoryFrame());
+memoryFrame.root.addEventListener('pointerdown',e=>{ if (e.target===memoryFrame.root) closeMemoryFrame(); });
 
 /* touch: joystick, jump, drag-look */
 const joy={x:0,y:0,id:null}; const knob=$('knob');
@@ -616,9 +708,122 @@ mapView.addEventListener('click',e=>{
   if (coarse || dragLook) setTimeout(()=>{ if(previewing){ previewing=false; setEffect(plats[player.on].effect);} }, 3500);
 });
 
+/* museum mode (mock): gallery wall + animated WebGL paintings */
+const museumScene = new THREE.Scene();
+museumScene.background = new THREE.Color(0x090a12);
+const museumCam = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, .1, 120);
+const museumPaintings = [];
+
+museumScene.add(new THREE.AmbientLight(0xa0a8d6, .35));
+{ const k = new THREE.PointLight(0xffe2c4, 1.05, 35); k.position.set(0,4.5,5.5); museumScene.add(k); }
+{ const r = new THREE.PointLight(0x88a6ff, .55, 32); r.position.set(-5,3.2,1); museumScene.add(r); }
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(20,22),
+  new THREE.MeshStandardMaterial({color:0x171824, roughness:.95, metalness:.03})
+);
+floor.rotation.x = -Math.PI/2; floor.position.y = -.9; museumScene.add(floor);
+
+const wallMat = new THREE.MeshStandardMaterial({color:0x2a2c3f, roughness:.88, metalness:.04});
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(16,8,.5), wallMat);
+backWall.position.set(0,2.1,-8.8); museumScene.add(backWall);
+const sideWallL = new THREE.Mesh(new THREE.BoxGeometry(.45,8,8), wallMat);
+sideWallL.position.set(-8,2.1,-4.8); museumScene.add(sideWallL);
+const sideWallR = sideWallL.clone(); sideWallR.position.x = 8; museumScene.add(sideWallR);
+
+const paintVS = `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`;
+const paintFS = `uniform float uTime; uniform float uSeed; uniform vec3 uTint; varying vec2 vUv;
+void main(){
+  vec2 p=vUv-0.5;
+  float r=length(p)*2.2;
+  float a=atan(p.y,p.x);
+  float w=sin(a*6.0 + uTime*0.8 + uSeed*9.0)*0.5+0.5;
+  float ripple=sin((r*12.0-uTime*1.7) + uSeed*5.0)*0.5+0.5;
+  float bands=sin((p.x*14.0 + p.y*8.0) - uTime*1.1 + uSeed*7.0)*0.5+0.5;
+  vec3 base=mix(vec3(0.04,0.06,0.12), uTint, .4 + .6*w);
+  vec3 glow=mix(vec3(0.18,0.24,0.38), uTint, ripple);
+  vec3 c=mix(base, glow, .55*bands + .25*ripple);
+  c += (1.0-smoothstep(0.0,1.15,r))*0.15;
+  gl_FragColor=vec4(c,1.0);
+}`;
+
+for (let i=0;i<4;i++){
+  const x = -5.4 + i*3.6;
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(2.65,1.95,.2),
+    new THREE.MeshStandardMaterial({color:0x6f5a48, roughness:.5, metalness:.16})
+  );
+  frame.position.set(x,2.2,-8.42); museumScene.add(frame);
+
+  const hue = (i*.18 + .56) % 1;
+  const painting = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.25,1.55),
+    new THREE.ShaderMaterial({
+      uniforms:{uTime:{value:0},uSeed:{value:i*.37+.19},uTint:{value:new THREE.Color().setHSL(hue,.55,.58)}},
+      vertexShader:paintVS,
+      fragmentShader:paintFS
+    })
+  );
+  painting.position.set(x,2.2,-8.3);
+  museumScene.add(painting);
+  museumPaintings.push(painting);
+}
+
+function renderMuseum(time){
+  museumCam.position.set(Math.sin(time*.24)*1.5, 1.95, 6.8 + Math.cos(time*.2)*.25);
+  museumCam.lookAt(0,2.1,-8.35);
+  museumPaintings.forEach((p,i)=>{ p.material.uniforms.uTime.value = time*(.85+i*.12); });
+  renderer.setRenderTarget(null);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0,0,innerWidth,innerHeight);
+  renderer.setClearColor(0x090a12,1);
+  renderer.clear();
+  renderer.render(museumScene, museumCam);
+}
+
 /* start / win */
+const modeButtons = [...document.querySelectorAll('#modeButtons .mode-btn')];
+const modeNotice = $('modeNotice');
+let selectedGameMode = '2player-pensieve';
+museumActive = false;
+const modeLabels = {
+  '2player-pensieve':'2player pensieve',
+  '4player-mode':'4player mode',
+  'city-mode':'city-mode',
+  'mueseum-mode':'mueseum mode'
+};
+function syncSelectedMode(mode){
+  if (mode) selectedGameMode = mode;
+  document.body.dataset.gameMode = selectedGameMode;
+  modeButtons.forEach(btn=>btn.classList.toggle('active', btn.dataset.mode===selectedGameMode));
+  if (modeNotice) modeNotice.textContent = `Selected: ${modeLabels[selectedGameMode] || selectedGameMode}`;
+}
+modeButtons.forEach(btn=>btn.addEventListener('click',()=>syncSelectedMode(btn.dataset.mode)));
+syncSelectedMode('2player-pensieve');
+
+function startMuseumMode(){
+  museumActive = true;
+  document.body.classList.add('museum-mode-active');
+  if (document.exitPointerLock) document.exitPointerLock();
+  paused = false; previewing = false;
+}
+function stopMuseumMode(){
+  museumActive = false;
+  document.body.classList.remove('museum-mode-active');
+}
+
 $('goBtn').addEventListener('click',()=>{
-  $('start').hidden=true; started=true; previewing=false; setEffect(plats[player.on].effect);
+  if (selectedGameMode==='mueseum-mode'){
+    location.href='/mueseum-mode/';
+    return;
+  }
+  if (selectedGameMode==='city-mode'){
+    location.href='/pensieve/city-that-remembers-fixed.html';
+    return;
+  }
+  $('start').hidden=true; started=true;
+  stopMuseumMode();
+  previewing=false; setEffect(plats[player.on].effect);
   if (coarse) return; tryLock(); canvas.focus();
 });
 function win(){
@@ -641,6 +846,7 @@ function resize(){
   const w=innerWidth, h=innerHeight;
   renderer.setSize(w,h,false);
   camera.aspect=w/h; camera.updateProjectionMatrix();
+  museumCam.aspect=w/h; museumCam.updateProjectionMatrix();
   const bw=Math.floor(w*PR), bh=Math.floor(h*PR);
   if (rt) rt.dispose();
   rt = new THREE.WebGLRenderTarget(bw,bh,{minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter, format:THREE.RGBAFormat});
@@ -884,7 +1090,7 @@ function checkCubes(dt){
     const cy=p.group.position.y+p.cube.position.y, h=Math.hypot(player.pos.x-p.x, player.pos.z-p.z);
     p.cubeMat.uniforms.uGlow.value=Math.max(0,1-h/4);
     if (p.cubeCd<=0 && h<.8 && player.pos.y<cy+.45 && player.pos.y+1.75>cy-.45){
-      if (p.target){ window.location.assign(p.target); return; }
+      if (p.target){ openMemoryFrame(i, p.target); return; }
       enterMemory(i);
       return;
     }
@@ -1159,7 +1365,11 @@ const clock=new THREE.Clock(); let t=0, hudTick=0;
 function frame(){
   requestAnimationFrame(frame);
   const dt=Math.min(clock.getDelta(),.05); t+=dt;
-  const running = started && !won && !paused && !dlg.open && (mode==='course'||mode==='memory');
+  if (museumActive && started){
+    renderMuseum(t);
+    return;
+  }
+  const running = started && !won && !paused && !portalOpen && !dlg.open && (mode==='course'||mode==='memory');
   if (running) step(dt);
   if (running && mode==='course') checkCubes(dt);
   if (running && mode==='memory') checkOrb();

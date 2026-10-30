@@ -128,6 +128,7 @@ pre.json{font-family:var(--f-data);font-size:12px;background:var(--deep);padding
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 // ---------- constants ----------
@@ -349,6 +350,15 @@ function finish(){
     results.map(r => `<tr><td>${r.level}${r.level>=4?" · tide":""}</td><td>${r.steps}</td><td>${r.par}</td><td>${r.bumps}</td><td>${pct(r.clarity)}</td></tr>`).join("") +
     `<tr><td><b>Total</b></td><td>${steps}</td><td>${par}</td><td>${results.reduce((s,r)=>s+r.bumps,0)}</td><td><b>${pct(clarity)}</b></td></tr>`;
   const thread = { game:6, clarity:+clarity.toFixed(2), sync:+sync.toFixed(2), color:"silver" };
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'06',
+    game:6,
+    title:'Mirror Walk',
+    color:'silver',
+    scores:{clarity:thread.clarity,sync:thread.sync},
+    carryover:{totalSteps:steps,totalPar:par,totalBumps:results.reduce((s,r)=>s+r.bumps,0)},
+    summaryText:`Finished ${results.length} levels in ${steps} steps (par ${par}).`
+  });
   document.getElementById("json").textContent = JSON.stringify(thread, null, 2);
   document.getElementById("end").hidden = false;
   drawThread(clarity, sync);

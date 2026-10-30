@@ -1,0 +1,442 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Vision Sketchbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed WebGL stage; floating tab strip top-left; tweak panel docked right (bottom sheet on phones). Single dark look by choice. */
+:root {
+  --void: #05060c;
+  --panel: rgba(14, 16, 30, 0.78);
+  --line: rgba(160, 175, 255, 0.16);
+  --ink: #e8ebff;
+  --muted: #8d93b8;
+  --accent: #9fd8ff;
+  --accent-ink: #05060c;
+  --display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--void); color: var(--ink); font-family: var(--mono); overflow: hidden; }
+#stage { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+
+.tabs {
+  position: fixed; z-index: 5;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.tabs button {
+  font: 600 14px/1 var(--display); letter-spacing: 0.02em;
+  color: var(--muted); background: transparent; border: 0; border-radius: 999px;
+  padding: 9px 16px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tabs button:focus-visible, .panel button:focus-visible, .panel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.panel {
+  position: fixed; z-index: 5;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  width: 280px; max-height: calc(100% - 28px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.panel header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.panel h1 { margin: 0; font: 700 17px/1.15 var(--display); text-wrap: balance; }
+.panel .src { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+.toggle { font: 500 11px var(--mono); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; cursor: pointer; flex-shrink: 0; }
+.body { overflow-y: auto; padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+.panel.collapsed .body { display: none; }
+.panel.collapsed header { border-bottom: 0; }
+
+.row { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.row label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.row output { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.row select { grid-column: 1 / -1; font: 12px var(--mono); color: var(--ink); background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; }
+.actions button {
+  flex: 1 1 auto; font: 500 12px var(--mono); color: var(--ink);
+  background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer;
+}
+.actions button:hover { border-color: var(--accent); }
+.hint { font-size: 11px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .panel {
+    top: auto; left: calc(16px + env(safe-area-inset-left, 0px));
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: auto; max-height: 48%;
+  }
+}
+</style>
+
+<canvas id="stage" aria-label="Animated visualization"></canvas>
+
+<nav class="tabs" role="tablist" aria-label="Scene">
+  <button id="tab-eye" role="tab" aria-selected="true" data-scene="eye">Eye</button>
+  <button id="tab-spiral" role="tab" aria-selected="false" data-scene="spiral">Miniwalls</button>
+</nav>
+
+<aside class="panel" id="panel">
+  <header>
+    <div>
+      <h1 id="p-title">Eye in the sky</h1>
+      <p class="src" id="p-src">particles rushing from the perimeter to the centroid</p>
+    </div>
+    <button class="toggle" id="collapse" aria-expanded="true">Hide</button>
+  </header>
+  <div class="body" id="controls"></div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+(() => {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(dpr);
+  renderer.setClearColor(0x05060c, 1);
+
+  const composer = new THREE.EffectComposer(renderer);
+  const renderPass = new THREE.RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 1.2, 0.6, 0.15);
+  composer.addPass(renderPass);
+  composer.addPass(bloom);
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  function starfield(n, spread) {
+    const g = new THREE.BufferGeometry();
+    const p = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const v = new THREE.Vector3().randomDirection ? new THREE.Vector3().randomDirection() : new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+      v.multiplyScalar(spread * (0.6 + Math.random() * 0.4));
+      p.set([v.x, v.y, v.z], i * 3);
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({ color: 0x6f7bb8, size: 0.06, transparent: true, opacity: 0.55 }));
+  }
+
+  /* ---------------- Scene 1: rainbow miniwalls ---------------- */
+  function makeSpiral() {
+    const defaults = { count: 900, turns: 6, radius: 7, height: 7, inward: 0.75, flow: 0.04, spin: 0.15, wallW: 0.55, wallH: 0.95, hueSpread: 1, hueDrift: 0.04, sat: 0.9, canvasGlow: 1.6, bloom: 1.1 };
+    const params = Object.assign({}, defaults, store.get('vs-spiral') || {});
+    const scene = new THREE.Scene();
+    scene.add(starfield(700, 60));
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    camera.position.set(0, 4, 17);
+
+    const canvasMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const whiteCanvas = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.4), canvasMat);
+    scene.add(whiteCanvas);
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.8, 3.6)), new THREE.LineBasicMaterial({ color: 0xcfe6ff }));
+    scene.add(frame);
+
+    const MAX = 3000;
+    const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 0.035), new THREE.MeshBasicMaterial({ toneMapped: false }), MAX);
+    walls.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const color = new THREE.Color();
+    for (let i = 0; i < MAX; i++) walls.setColorAt(i, color.setRGB(1, 1, 1));
+    walls.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    scene.add(walls);
+    const dummy = new THREE.Object3D();
+
+    function update(time) {
+      const n = Math.round(params.count);
+      walls.count = n;
+      const g = params.canvasGlow;
+      canvasMat.color.setRGB(g, g, g);
+      whiteCanvas.scale.setScalar(1 + 0.025 * Math.sin(time * 1.3));
+      for (let i = 0; i < n; i++) {
+        const t = ((i / n) + time * params.flow) % 1;
+        const a = t * params.turns * Math.PI * 2 + time * params.spin;
+        const r = params.radius * (1 - params.inward * t) + 1.6 * params.inward * t;
+        const y = (t - 0.5) * params.height;
+        const fade = Math.pow(Math.sin(Math.PI * t), 0.6);
+        dummy.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+        dummy.rotation.set(0, Math.PI / 2 - a, 0);
+        dummy.scale.set(params.wallW * fade, params.wallH * fade, 1);
+        dummy.updateMatrix();
+        walls.setMatrixAt(i, dummy.matrix);
+        let h = (t * params.hueSpread + time * params.hueDrift) % 1;
+        if (h < 0) h += 1;
+        color.setHSL(h, params.sat, 0.58);
+        walls.setColorAt(i, color);
+      }
+      walls.instanceMatrix.needsUpdate = true;
+      walls.instanceColor.needsUpdate = true;
+      bloom.strength = params.bloom;
+    }
+
+    const controls = [
+      { key: 'count', label: 'Walls', min: 60, max: 3000, step: 10 },
+      { key: 'turns', label: 'Turns', min: 1, max: 16, step: 0.1 },
+      { key: 'radius', label: 'Outer radius', min: 3, max: 14, step: 0.1 },
+      { key: 'height', label: 'Spiral height', min: 0, max: 16, step: 0.1 },
+      { key: 'inward', label: 'Pull toward canvas', min: 0, max: 1, step: 0.01 },
+      { key: 'flow', label: 'Flow speed', min: -0.2, max: 0.2, step: 0.005 },
+      { key: 'spin', label: 'Spin', min: -1.5, max: 1.5, step: 0.01 },
+      { key: 'wallW', label: 'Wall width', min: 0.05, max: 2, step: 0.01 },
+      { key: 'wallH', label: 'Wall height', min: 0.05, max: 3, step: 0.01 },
+      { key: 'hueSpread', label: 'Rainbow cycles', min: 0, max: 5, step: 0.05 },
+      { key: 'hueDrift', label: 'Color drift', min: -0.3, max: 0.3, step: 0.005 },
+      { key: 'sat', label: 'Saturation', min: 0, max: 1, step: 0.01 },
+      { key: 'canvasGlow', label: 'Canvas glow', min: 0, max: 3, step: 0.05 },
+      { key: 'bloom', label: 'Bloom', min: 0, max: 3, step: 0.05 }
+    ];
+    return { id: 'spiral', title: 'Rainbow miniwalls', src: 'spiraling around a glowing white canvas', scene, camera, params, defaults, controls, update, bloomThreshold: 0.2, rebuild() {} };
+  }
+
+  /* ---------------- Scene 2: eye in the sky ---------------- */
+  function makeEye() {
+    const palettes = {
+      blue: ['#1f4dff', '#c9f4ff'],
+      gold: ['#ff5a1a', '#fff0a8'],
+      violet: ['#7a2cff', '#ffc4f2'],
+      green: ['#0f8f6a', '#d8ff9c']
+    };
+    const defaults = { count: 60000, radius: 6, pupil: 1.1, speed: 0.08, curve: 0.55, swirl: 0.12, size: 2.2, lid: 1.6, rainbow: 0, palette: 'blue', bloom: 1.3 };
+    const params = Object.assign({}, defaults, store.get('vs-eye') || {});
+    const scene = new THREE.Scene();
+    scene.add(starfield(900, 70));
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    camera.position.set(0, 0, 16);
+
+    const uniforms = {
+      uTime: { value: 0 }, uR: { value: 6 }, uPupil: { value: 1 }, uSpeed: { value: 0.1 },
+      uCurve: { value: 0.6 }, uSwirl: { value: 0.1 }, uSize: { value: 2 }, uLid: { value: 1.6 },
+      uRainbow: { value: 0 }, uOuter: { value: new THREE.Color() }, uInner: { value: new THREE.Color() },
+      uPR: { value: dpr }
+    };
+    const material = new THREE.ShaderMaterial({
+      uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: `
+        uniform float uTime, uR, uPupil, uSpeed, uCurve, uSwirl, uSize, uLid, uPR;
+        attribute vec3 aSeed;
+        varying float vP; varying float vA; varying float vAng;
+        void main() {
+          float p = fract(aSeed.y + uTime * uSpeed * (0.55 + 0.9 * aSeed.z));
+          float e = pow(p, uCurve);
+          float r = mix(uR, uPupil, e) * (0.97 + 0.06 * aSeed.z);
+          float a = aSeed.x + uSwirl * e * 6.2831853;
+          vec3 pos = vec3(cos(a) * r, sin(a) * r, (aSeed.z - 0.5) * 0.4);
+          float edge = clamp(pos.x / (uR * 1.04), -1.0, 1.0);
+          float lidH = uLid * uR * (1.0 - edge * edge);
+          float mask = smoothstep(0.0, 0.12 * uR, lidH - abs(pos.y));
+          mask = mix(mask, 1.0, step(1.55, uLid));
+          vP = p; vAng = a;
+          vA = smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.9, 1.0, p)) * mask;
+          vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+          gl_PointSize = uSize * uPR * (0.55 + 1.2 * e) * (12.0 / -mv.z);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        uniform vec3 uOuter, uInner; uniform float uRainbow;
+        varying float vP; varying float vA; varying float vAng;
+        vec3 hsv(float h) { vec3 k = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); return k; }
+        void main() {
+          vec2 c = gl_PointCoord - 0.5;
+          float d = length(c);
+          if (d > 0.5) discard;
+          float soft = smoothstep(0.5, 0.0, d);
+          vec3 base = mix(uOuter, uInner, vP);
+          vec3 rb = mix(hsv(vAng / 6.2831853 + vP * 0.35), vec3(1.0), vP * 0.5);
+          vec3 col = mix(base, rb, uRainbow);
+          gl_FragColor = vec4(col * soft * vA * 0.55, 1.0);
+        }`
+    });
+    let points = null;
+    function rebuild() {
+      if (points) { scene.remove(points); points.geometry.dispose(); }
+      const n = Math.round(params.count);
+      const g = new THREE.BufferGeometry();
+      const seed = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        seed[i * 3] = Math.random() * Math.PI * 2;
+        seed[i * 3 + 1] = Math.random();
+        seed[i * 3 + 2] = Math.random();
+      }
+      g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 3));
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 20);
+      points = new THREE.Points(g, material);
+      scene.add(points);
+    }
+    rebuild();
+
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.04, 96), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+    scene.add(ring);
+
+    function update(time) {
+      uniforms.uTime.value = time;
+      uniforms.uR.value = params.radius;
+      uniforms.uPupil.value = params.pupil;
+      uniforms.uSpeed.value = params.speed;
+      uniforms.uCurve.value = params.curve;
+      uniforms.uSwirl.value = params.swirl;
+      uniforms.uSize.value = params.size;
+      uniforms.uLid.value = params.lid;
+      uniforms.uRainbow.value = params.rainbow;
+      const pal = palettes[params.palette] || palettes.blue;
+      uniforms.uOuter.value.set(pal[0]);
+      uniforms.uInner.value.set(pal[1]);
+      ring.scale.setScalar(params.pupil * (1 + 0.04 * Math.sin(time * 2)));
+      ring.material.color.set(pal[1]);
+      bloom.strength = params.bloom;
+    }
+
+    const controls = [
+      { key: 'palette', label: 'Palette', options: Object.keys(palettes) },
+      { key: 'count', label: 'Particles', min: 5000, max: 200000, step: 1000, rebuild: true },
+      { key: 'radius', label: 'Eye radius', min: 2, max: 9, step: 0.1 },
+      { key: 'pupil', label: 'Pupil', min: 0.1, max: 4, step: 0.05 },
+      { key: 'speed', label: 'Rush speed', min: 0, max: 0.6, step: 0.005 },
+      { key: 'curve', label: 'Easing', min: 0.15, max: 2.5, step: 0.01 },
+      { key: 'swirl', label: 'Swirl', min: -1, max: 1, step: 0.01 },
+      { key: 'size', label: 'Particle size', min: 0.3, max: 6, step: 0.05 },
+      { key: 'lid', label: 'Eyelid opening', min: 0.2, max: 1.6, step: 0.01 },
+      { key: 'rainbow', label: 'Rainbow mix', min: 0, max: 1, step: 0.01 },
+      { key: 'bloom', label: 'Bloom', min: 0, max: 3, step: 0.05 }
+    ];
+    return { id: 'eye', title: 'Eye in the sky', src: 'particles rushing from the perimeter to the centroid', scene, camera, params, defaults, controls, update, rebuild, bloomThreshold: 0.05, palettes };
+  }
+
+  const scenes = { spiral: makeSpiral(), eye: makeEye() };
+  let active = null;
+  let orbit = null;
+  let paused = false;
+  let clockTime = 0;
+
+  const controlsEl = document.getElementById('controls');
+  const fmt = (v, step) => step >= 1 ? String(Math.round(v)) : Number(v).toFixed(step < 0.01 ? 3 : 2);
+
+  function buildPanel(s) {
+    document.getElementById('p-title').textContent = s.title;
+    document.getElementById('p-src').textContent = s.src;
+    controlsEl.textContent = '';
+    s.controls.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const id = s.id + '-' + c.key;
+      const label = document.createElement('label');
+      label.htmlFor = id; label.textContent = c.label;
+      row.appendChild(label);
+      if (c.options) {
+        row.appendChild(document.createElement('span'));
+        const sel = document.createElement('select');
+        sel.id = id;
+        c.options.forEach(o => { const op = document.createElement('option'); op.value = o; op.textContent = o; sel.appendChild(op); });
+        sel.value = s.params[c.key];
+        sel.addEventListener('change', () => { s.params[c.key] = sel.value; save(s); });
+        row.appendChild(sel);
+      } else {
+        const out = document.createElement('output');
+        out.htmlFor = id; out.textContent = fmt(s.params[c.key], c.step);
+        const input = document.createElement('input');
+        input.type = 'range'; input.id = id;
+        input.min = c.min; input.max = c.max; input.step = c.step; input.value = s.params[c.key];
+        input.addEventListener('input', () => {
+          s.params[c.key] = parseFloat(input.value);
+          out.textContent = fmt(s.params[c.key], c.step);
+          save(s);
+        });
+        if (c.rebuild) input.addEventListener('change', () => s.rebuild());
+        row.appendChild(out); row.appendChild(input);
+      }
+      controlsEl.appendChild(row);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const mk = (txt, fn, id) => { const b = document.createElement('button'); b.id = id; b.textContent = txt; b.addEventListener('click', fn); actions.appendChild(b); return b; };
+    const pauseBtn = mk(paused ? 'Play' : 'Pause', () => { paused = !paused; pauseBtn.textContent = paused ? 'Play' : 'Pause'; }, 'btn-pause');
+    mk('Randomize', () => randomize(s), 'btn-random');
+    mk('Reset', () => { Object.assign(s.params, s.defaults); save(s); s.rebuild(); buildPanel(s); }, 'btn-reset');
+    controlsEl.appendChild(actions);
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Drag to orbit, scroll or pinch to zoom. Settings are remembered in this browser.';
+    controlsEl.appendChild(hint);
+  }
+
+  function randomize(s) {
+    s.controls.forEach(c => {
+      if (c.options) s.params[c.key] = c.options[Math.floor(Math.random() * c.options.length)];
+      else if (!c.rebuild && c.key !== 'count') {
+        const v = c.min + Math.random() * (c.max - c.min);
+        s.params[c.key] = Math.round(v / c.step) * c.step;
+      }
+    });
+    save(s); buildPanel(s);
+  }
+
+  function save(s) { store.set('vs-' + s.id, s.params); }
+
+  function activate(id) {
+    const s = scenes[id] || scenes.eye;
+    active = s;
+    renderPass.scene = s.scene;
+    renderPass.camera = s.camera;
+    bloom.threshold = s.bloomThreshold;
+    if (orbit) orbit.dispose();
+    orbit = new THREE.OrbitControls(s.camera, canvas);
+    orbit.enableDamping = true;
+    orbit.minDistance = 4; orbit.maxDistance = 60;
+    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.scene === s.id)));
+    buildPanel(s);
+    resize();
+  }
+
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.scene; }));
+  window.addEventListener('hashchange', () => activate(location.hash.slice(1)));
+
+  const panel = document.getElementById('panel');
+  const collapseBtn = document.getElementById('collapse');
+  collapseBtn.addEventListener('click', () => {
+    const c = panel.classList.toggle('collapsed');
+    collapseBtn.textContent = c ? 'Tweak' : 'Hide';
+    collapseBtn.setAttribute('aria-expanded', String(!c));
+  });
+  if (window.matchMedia('(max-width: 640px)').matches) collapseBtn.click();
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    composer.setSize(w, h);
+    bloom.resolution.set(w, h);
+    Object.values(scenes).forEach(s => { s.camera.aspect = w / h; s.camera.updateProjectionMatrix(); });
+  }
+  window.addEventListener('resize', resize);
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!paused) clockTime += dt * (reduceMotion ? 0.3 : 1);
+    active.update(clockTime);
+    orbit.update();
+    composer.render();
+    requestAnimationFrame(frame);
+  }
+
+  activate(location.hash.slice(1) || 'eye');
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

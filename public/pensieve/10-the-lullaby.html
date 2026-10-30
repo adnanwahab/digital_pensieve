@@ -173,6 +173,7 @@ pre{margin:0;background:var(--night-2);border:1px solid var(--line);border-radiu
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 "use strict";
@@ -651,6 +652,15 @@ function finish(){
     verses: Object.fromEntries(played.map((v,i) => [ROMAN[v], +vc[i].toFixed(2)])),
     carryovers: { lullabyTake: "take-" + Date.now().toString(36) }
   };
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'10',
+    game:10,
+    title:'The Lullaby',
+    color:'silver',
+    scores:{clarity:thread.clarity,sync:thread.sync},
+    carryover:thread.carryovers,
+    summaryText:`Verses ${played.map(v=>ROMAN[v]).join(', ')} recovered at ${Math.round(clarity*100)}% clarity.`
+  });
   $("threadJson").textContent = JSON.stringify(thread, null, 2);
   $("endOverlay").hidden = false; $("pads").hidden = true;
   $("againBtn").focus();

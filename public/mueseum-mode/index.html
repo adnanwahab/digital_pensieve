@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mueseum Mode</title>
+  <style>
+    :root{
+      --bg:#6d6d6d;
+      --text:#e8e8e8;
+      --dim:#cfcfcf;
+      --shadow:rgba(0,0,0,.38);
+      --gold-1:#f6df92;
+      --gold-2:#d9b75a;
+      --gold-3:#9d7422;
+      --gold-4:#f3d983;
+    }
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    }
+
+    #stage{position:fixed;inset:0;outline:none}
+
+    .back{
+      position:fixed;
+      top:16px;
+      left:16px;
+      z-index:10;
+      text-decoration:none;
+      color:#ececec;
+      font-size:13px;
+      background:rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.25);
+      padding:7px 10px;
+      border-radius:8px;
+      backdrop-filter:blur(4px);
+      -webkit-backdrop-filter:blur(4px);
+    }
+
+    .controls{
+      position:fixed;
+      left:20px;
+      right:20px;
+      bottom:16px;
+      z-index:10;
+      text-align:left;
+      font-size:52px;
+      letter-spacing:.01em;
+      color:var(--dim);
+      text-shadow:0 2px 7px var(--shadow);
+      pointer-events:none;
+      user-select:none;
+      line-height:1.15;
+      font-weight:500;
+      transform-origin:left bottom;
+      transform:scale(.34);
+      white-space:nowrap;
+    }
+
+    .crosshair{
+      position:fixed;
+      left:50%;
+      top:50%;
+      width:18px;
+      height:18px;
+      transform:translate(-50%,-50%);
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .15s ease;
+      z-index:9;
+    }
+    .crosshair::before,.crosshair::after{
+      content:'';
+      position:absolute;
+      background:rgba(240,240,240,.9);
+      box-shadow:0 0 6px rgba(0,0,0,.55);
+    }
+    .crosshair::before{left:8px;top:0;width:2px;height:18px}
+    .crosshair::after{left:0;top:8px;width:18px;height:2px}
+    body.locked:not(.interact-on) .crosshair{opacity:.9}
+
+    .frame{
+      width:620px;
+      height:400px;
+      box-sizing:border-box;
+      position:relative;
+      padding:16px;
+      background:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 28%,var(--gold-3) 52%,var(--gold-2) 76%,var(--gold-4) 100%);
+      border:8px solid #7c5818;
+      border-radius:6px;
+      box-shadow:
+        0 16px 28px rgba(0,0,0,.36),
+        0 0 0 2px rgba(255,225,146,.34),
+        inset 0 0 0 2px rgba(116,79,18,.65),
+        inset 0 0 22px rgba(255,233,152,.2);
+      overflow:hidden;
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+      transform-style:preserve-3d;
+      will-change:transform;
+    }
+
+    .frame::before{
+      content:'';
+      position:absolute;
+      inset:9px;
+      border:2px solid rgba(255,236,170,.55);
+      border-radius:3px;
+      box-shadow:inset 0 0 0 1px rgba(107,72,15,.6), inset 0 0 18px rgba(71,46,10,.35);
+      pointer-events:none;
+    }
+
+    .frame iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      display:block;
+      background:#090b16;
+      box-shadow:0 0 0 1px rgba(255,236,180,.22);
+      pointer-events:none;
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+      transform:translateZ(0.1px);
+      will-change:transform;
+    }
+
+    body.interact-on .frame iframe{ pointer-events:auto; }
+  </style>
+</head>
+<body>
+  <div id="stage" aria-label="Mueseum mode 3D gallery" tabindex="0"></div>
+  <a class="back" href="/">← Back to pensieve</a>
+  <div class="controls" id="controlsText">click to lock mouse · WASD move · Shift sprint · Space jump · Esc unlock · E toggle page interaction</div>
+  <div class="crosshair" aria-hidden="true"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { CSS3DRenderer, CSS3DObject } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/renderers/CSS3DRenderer.js';
+
+    const stage = document.getElementById('stage');
+    const controlsText = document.getElementById('controlsText');
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 1, 9000);
+
+    const renderer = new CSS3DRenderer();
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.touchAction = 'none';
+    stage.appendChild(renderer.domElement);
+
+    function cssPanel(className, w, h, cssText=''){
+      const el = document.createElement('div');
+      el.className = className;
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      el.style.cssText += cssText;
+      return el;
+    }
+
+    // Multi-room shell
+    const ROOM_COUNT = 3;
+    const ROOM_WIDTH = 4300;
+    const ROOM_DEPTH = 2200;
+    const ROOM_FRONT_Z = 900;
+    const ROOM_SIDE_X = 2140;
+    const DOOR_GAP = 1100;
+
+    function wallMaterial(bg){
+      return `background:${bg}; box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);`;
+    }
+
+    const roomMeta = [];
+
+    for (let i = 0; i < ROOM_COUNT; i++){
+      const frontZ = ROOM_FRONT_Z - i * ROOM_DEPTH;
+      const backZ = frontZ - ROOM_DEPTH;
+      const centerZ = (frontZ + backZ) / 2;
+      roomMeta.push({ frontZ, backZ, centerZ });
+
+      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_DEPTH + 120, 2600, wallMaterial('#9f9f9f')));
+      sideWallL.position.set(-ROOM_SIDE_X, 310, centerZ);
+      sideWallL.rotation.y = Math.PI / 2;
+      scene.add(sideWallL);
+
+      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_DEPTH + 120, 2600, wallMaterial('#a0a0a0')));
+      sideWallR.position.set(ROOM_SIDE_X, 310, centerZ);
+      sideWallR.rotation.y = -Math.PI / 2;
+      scene.add(sideWallR);
+
+      const floor = new CSS3DObject(cssPanel('floor', 4600, ROOM_DEPTH + 160,
+        'background:' +
+        'linear-gradient(90deg, rgba(0,0,0,.26) 2px, transparent 2px) 0 0 / 700px 700px,' +
+        'linear-gradient(0deg, rgba(0,0,0,.24) 2px, transparent 2px) 0 0 / 700px 700px,' +
+        '#4a4d50;'));
+      floor.position.set(0, -260, centerZ);
+      floor.rotation.x = -Math.PI / 2;
+      scene.add(floor);
+
+      const ceiling = new CSS3DObject(cssPanel('ceiling', 4600, ROOM_DEPTH + 160,
+        'background:' +
+        'repeating-linear-gradient(90deg,#525252 0 120px,#707070 120px 170px),' +
+        'repeating-linear-gradient(0deg, rgba(0,0,0,.38) 0 120px, rgba(0,0,0,0) 120px 170px),' +
+        '#595959;'));
+      ceiling.position.set(0, 920, centerZ);
+      ceiling.rotation.x = Math.PI / 2;
+      scene.add(ceiling);
+
+      if (i === ROOM_COUNT - 1){
+        const backWall = new CSS3DObject(cssPanel('wall', ROOM_WIDTH, 2600, wallMaterial('#b4b4b4')));
+        backWall.position.set(0, 310, backZ);
+        scene.add(backWall);
+      } else {
+        const segW = (ROOM_WIDTH - DOOR_GAP) / 2;
+        const leftDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#ababab')));
+        leftDivider.position.set(-(DOOR_GAP / 2 + segW / 2), 310, backZ);
+        scene.add(leftDivider);
+
+        const rightDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#ababab')));
+        rightDivider.position.set(DOOR_GAP / 2 + segW / 2, 310, backZ);
+        scene.add(rightDivider);
+      }
+    }
+
+    const visualizationFiles = [
+      'Giza in Particles.html',
+      'Navy Orbit Field.html',
+      'Neon Cybernetic Queen Portrait.png',
+      'Ocean Jump.html',
+      'Skyfall.html',
+      'The Thinning Room.html',
+      'Thought Exchange.html',
+      'Vision Sketchbook.html',
+      'energy-sphere-impact.html',
+      'energy_sphere_million_particle_impact.html',
+      'globe-painting.html',
+      'globe_three_phase_energy_cycle_fixed.html',
+      'glowing_wheel_of_becoming_threejs.html',
+      'memory_basin_swirl.html',
+      'neon_honey_bear_animated.html',
+      'neuro_probe_memory_voyage_3d.html',
+      'particle-triangle-standalone.html',
+      'particle_city_absorbed_into_light_bow.html',
+      'pensieve_launch_people_by_day_grid.html',
+      'projector-curtain.html',
+      'rainbow-archons.html',
+      'rainbow_particle_yoga_silhouette.html',
+      'tapestry_weaving_from_threads.html',
+      'thousand_minds_shared_picture.html'
+    ];
+
+    const paintings = visualizationFiles.map((file, i) => ({
+      src: encodeURI(`/visualizations/${file}`),
+      title: `Mueseum painting ${i + 1}: ${file}`
+    }));
+
+    const FRAME_W = 680;
+    const FRAME_H = 430;
+    const SURFACE_SPAN = ROOM_DEPTH - 840;
+
+    const paintingSurfaces = roomMeta.flatMap(room => ([
+      { count:0, primary:'z', fixed:-2090, ry: Math.PI / 2,  span: SURFACE_SPAN, center: room.centerZ },
+      { count:0, primary:'z', fixed: 2090, ry:-Math.PI / 2,  span: SURFACE_SPAN, center: room.centerZ }
+    ]));
+
+    const basePerSurface = Math.floor(paintings.length / paintingSurfaces.length);
+    const remainder = paintings.length % paintingSurfaces.length;
+    paintingSurfaces.forEach((surface, i) => {
+      surface.count = basePerSurface + (i < remainder ? 1 : 0);
+    });
+    const rowYs = [660, 150];
+
+    const slots = [];
+    paintingSurfaces.forEach(surface => {
+      const topCount = Math.ceil(surface.count / 2);
+      const bottomCount = surface.count - topCount;
+      [topCount, bottomCount].forEach((n, row) => {
+        if (!n) return;
+        const vals = n === 1
+          ? [surface.center]
+          : Array.from({length:n}, (_, i) => surface.center - surface.span / 2 + (surface.span * i) / (n - 1));
+        vals.forEach(v => {
+          if (surface.primary === 'x') slots.push({ x:v, y:rowYs[row], z:surface.fixed, ry:surface.ry });
+          else slots.push({ x:surface.fixed, y:rowYs[row], z:v, ry:surface.ry });
+        });
+      });
+    });
+
+    const iframeEntries = [];
+    const visibilityFrustum = new THREE.Frustum();
+    const projectionMatrix = new THREE.Matrix4();
+    const frameWorldPos = new THREE.Vector3();
+    const frameBoundsSphere = new THREE.Sphere(new THREE.Vector3(), 430);
+    const MAX_IFRAME_RENDER_DISTANCE_SQ = 9800 * 9800;
+    const KEEP_NEAR_DISTANCE_SQ = 2400 * 2400;
+    const UNMOUNT_GRACE_MS = 1400;
+    const VISIBILITY_CHECK_MS = 80;
+    let nextVisibilityCheck = 0;
+
+    function mountIframe(iframe){
+      if (iframe.dataset.active === '1') return;
+      if (iframe.dataset.src) iframe.src = iframe.dataset.src;
+      iframe.dataset.active = '1';
+    }
+
+    function unmountIframe(iframe){
+      if (iframe.dataset.active !== '1') return;
+      iframe.src = 'about:blank';
+      iframe.dataset.active = '0';
+    }
+
+    function updateIframeVisibility(now){
+      if (now < nextVisibilityCheck) return;
+      nextVisibilityCheck = now + VISIBILITY_CHECK_MS;
+
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+      projectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      visibilityFrustum.setFromProjectionMatrix(projectionMatrix);
+
+      iframeEntries.forEach(entry => {
+        entry.object.getWorldPosition(frameWorldPos);
+        frameBoundsSphere.center.copy(frameWorldPos);
+
+        const distSq = camera.position.distanceToSquared(frameWorldPos);
+        const inFrustum = visibilityFrustum.intersectsSphere(frameBoundsSphere);
+        const nearEnough = distSq < MAX_IFRAME_RENDER_DISTANCE_SQ;
+        const visibleNow = inFrustum && nearEnough;
+
+        if (visibleNow){
+          entry.lastSeenAt = now;
+          mountIframe(entry.iframe);
+          return;
+        }
+
+        const recentlySeen = (now - entry.lastSeenAt) < UNMOUNT_GRACE_MS;
+        const keepNear = distSq < KEEP_NEAR_DISTANCE_SQ;
+        if (recentlySeen || keepNear) mountIframe(entry.iframe);
+        else unmountIframe(entry.iframe);
+      });
+    }
+
+    const iframeObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting && entry.intersectionRatio <= 0) return;
+        const match = iframeEntries.find(item => item.el === entry.target);
+        if (!match) return;
+        match.lastSeenAt = performance.now();
+        mountIframe(match.iframe);
+      });
+    }, {
+      root: null,
+      rootMargin: '220px',
+      threshold: 0
+    });
+
+    paintings.forEach((painting, i) => {
+      const frameEl = cssPanel('frame', FRAME_W, FRAME_H);
+      const iframe = document.createElement('iframe');
+      iframe.dataset.src = painting.src;
+      iframe.dataset.active = '0';
+      iframe.loading = 'lazy';
+      iframe.title = painting.title || `Mueseum painting ${i + 1}`;
+      if (painting.allow) iframe.allow = painting.allow;
+      if (painting.referrerPolicy) iframe.referrerPolicy = painting.referrerPolicy;
+      if (painting.allowFullscreen) iframe.allowFullscreen = true;
+      frameEl.appendChild(iframe);
+
+      const frame = new CSS3DObject(frameEl);
+      const slot = slots[i] || slots[slots.length - 1];
+      frame.position.set(slot.x, slot.y, slot.z);
+      frame.rotation.y = slot.ry;
+      scene.add(frame);
+
+      iframeEntries.push({ el: frameEl, iframe, object: frame, lastSeenAt: -Infinity });
+      iframeObserver.observe(frameEl);
+    });
+
+    // FPS-style controls (WASD + mouse look + jump), with E interaction toggle
+    camera.rotation.order = 'YXZ';
+    const keys = {};
+    const eyeHeight = 200;
+    const pos = new THREE.Vector3(0, eyeHeight, 980);
+    const vel = new THREE.Vector3();
+    let yaw = 0;
+    let pitch = -0.06;
+    let locked = false;
+    let interactOn = false;
+    let grounded = true;
+    let bobT = 0;
+
+    const MOUSE_SENS = 0.0022;
+    const PITCH_MIN = -1.18;
+    const PITCH_MAX = 0.78;
+    const GRAVITY = 1900;
+    const JUMP_V = 700;
+    const WALK_SPEED = 760;
+    const SPRINT_SPEED = 1240;
+    const GROUND_ACCEL = 3800;
+    const AIR_ACCEL = 900;
+    const GROUND_FRICTION = 11;
+    const AIR_DRAG = 0.8;
+    const MOVE_UP = new THREE.Vector3(0, 1, 0);
+    const moveLocalTmp = new THREE.Vector3();
+
+    function updateControlsText(){
+      controlsText.textContent = interactOn
+        ? 'click to lock mouse · WASD move · Shift sprint · Space jump · Esc unlock · E toggle page interaction (ON)'
+        : 'click to lock mouse · WASD move · Shift sprint · Space jump · Esc unlock · E toggle page interaction';
+    }
+
+    function setLocked(v){
+      locked = v;
+      document.body.classList.toggle('locked', locked);
+      if (!locked){
+        keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
+        keys.ArrowUp = keys.ArrowLeft = keys.ArrowDown = keys.ArrowRight = false;
+        keys.ShiftLeft = keys.ShiftRight = false;
+      }
+    }
+
+    renderer.domElement.addEventListener('click', () => {
+      if (stage && stage.focus) stage.focus();
+      if (interactOn || locked) return;
+      if (renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      setLocked(document.pointerLockElement === renderer.domElement);
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!locked || interactOn) return;
+      yaw -= e.movementX * MOUSE_SENS;
+      pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - e.movementY * (MOUSE_SENS * 0.9)));
+    });
+
+    addEventListener('keydown', e => {
+      keys[e.code] = true;
+      if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','Space','KeyE'].includes(e.code)) e.preventDefault();
+
+      if (e.code === 'KeyE'){
+        interactOn = !interactOn;
+        document.body.classList.toggle('interact-on', interactOn);
+        if (interactOn && document.exitPointerLock) document.exitPointerLock();
+        updateControlsText();
+      }
+
+      if (e.code === 'Space' && grounded && locked && !interactOn){
+        vel.y = JUMP_V;
+        grounded = false;
+      }
+    });
+
+    addEventListener('keyup', e => { keys[e.code] = false; });
+
+    function applyFriction(dt, amount){
+      const speed = Math.hypot(vel.x, vel.z);
+      if (speed <= 0.0001) return;
+      const drop = speed * amount * dt;
+      const next = Math.max(0, speed - drop);
+      const scale = next / speed;
+      vel.x *= scale;
+      vel.z *= scale;
+    }
+
+    function accelerate(wishX, wishZ, wishSpeed, accel, dt){
+      if (wishSpeed <= 0) return;
+      const wishDirX = wishX / wishSpeed;
+      const wishDirZ = wishZ / wishSpeed;
+      const currentSpeed = vel.x * wishDirX + vel.z * wishDirZ;
+      const addSpeed = wishSpeed - currentSpeed;
+      if (addSpeed <= 0) return;
+      const accelSpeed = Math.min(addSpeed, accel * dt);
+      vel.x += wishDirX * accelSpeed;
+      vel.z += wishDirZ * accelSpeed;
+    }
+
+    function updateWalk(dt){
+      const canMove = locked && !interactOn;
+      let mx = 0;
+      let mz = 0;
+
+      if (canMove){
+        if (keys.KeyA || keys.ArrowLeft) mx -= 1;
+        if (keys.KeyD || keys.ArrowRight) mx += 1;
+        if (keys.KeyW || keys.ArrowUp) mz += 1;
+        if (keys.KeyS || keys.ArrowDown) mz -= 1;
+      }
+
+      const len = Math.hypot(mx, mz);
+      if (len > 1){
+        mx /= len;
+        mz /= len;
+      }
+
+      const moveSpeed = (keys.ShiftLeft || keys.ShiftRight) ? SPRINT_SPEED : WALK_SPEED;
+      moveLocalTmp.set(mx, 0, -mz).applyAxisAngle(MOVE_UP, yaw);
+      const wishX = moveLocalTmp.x * moveSpeed;
+      const wishZ = moveLocalTmp.z * moveSpeed;
+      const wishSpeed = Math.hypot(wishX, wishZ);
+
+      if (grounded){
+        applyFriction(dt, canMove ? GROUND_FRICTION : GROUND_FRICTION * 2.2);
+        accelerate(wishX, wishZ, wishSpeed, GROUND_ACCEL, dt);
+      } else {
+        applyFriction(dt, AIR_DRAG);
+        accelerate(wishX, wishZ, wishSpeed, AIR_ACCEL, dt);
+      }
+
+      vel.y -= GRAVITY * dt;
+
+      pos.x += vel.x * dt;
+      pos.y += vel.y * dt;
+      pos.z += vel.z * dt;
+
+      if (pos.y <= eyeHeight){
+        pos.y = eyeHeight;
+        vel.y = 0;
+        grounded = true;
+      }
+
+      const minZ = roomMeta[roomMeta.length - 1].backZ + 220;
+      const maxZ = ROOM_FRONT_Z + 280;
+      pos.x = Math.max(-1880, Math.min(1880, pos.x));
+      pos.z = Math.max(minZ, Math.min(maxZ, pos.z));
+
+      const planar = Math.hypot(vel.x, vel.z);
+      if (grounded && planar > 40 && canMove) bobT += dt * ((keys.ShiftLeft || keys.ShiftRight) ? 15 : 10);
+      const bob = grounded ? Math.sin(bobT) * Math.min(6, planar * 0.008) : 0;
+
+      const targetFov = (keys.ShiftLeft || keys.ShiftRight) && planar > 140 ? 55 : 50;
+      camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 8);
+      camera.updateProjectionMatrix();
+
+      camera.position.set(pos.x, pos.y + bob, pos.z);
+      camera.rotation.y = yaw;
+      camera.rotation.x = pitch;
+    }
+
+    function resize(){
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    }
+    addEventListener('resize', resize);
+
+    let last = performance.now();
+    function frame(now){
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      updateWalk(dt);
+      updateIframeVisibility(now);
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+
+    updateControlsText();
+    setLocked(false);
+    camera.position.copy(pos);
+    camera.rotation.set(pitch, yaw, 0);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

@@ -105,7 +105,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
       <div class="g"><b style="color:var(--gold)">Player A</b><span>Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Kneel and place hand: hold <kbd>E</kbd></span></div>
       <div class="b"><b style="color:var(--blue)">Player B</b><span>Move with the arrow keys</span><span>Kneel and place hand: hold <kbd>Enter</kbd></span></div>
     </div>
-    <p class="note">Two players share one keyboard. Plants come from a sample run: gold memories are A's, blue are B's, silver are shared. Brighter plants were cleared with more clarity.</p>
+    <p class="note">Two players share one keyboard. These plants are grown from your saved journey: gold memories are A's, blue are B's, silver are shared. Brighter plants were cleared with more clarity.</p>
     <button id="begin">Enter the garden</button>
   </div>
 </div>
@@ -122,27 +122,62 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 const COLORS = { gold: 0xe9b949, blue: 0x7fb2ff, silver: 0xd3d9e8 };
 const CSS = { gold: '#e9b949', blue: '#7fb2ff', silver: '#d3d9e8' };
 const KEEP = 7;
 
-// Sample session threads (games 1–11 plus Echo Tide's bonus thread)
-const MEMORIES = [
-  { game: 'Echo Tide', text: 'The pier at low tide, a red bucket on the boards.', clarity: .78, sync: .70, color: 'gold' },
-  { game: 'Echo Tide · bonus', text: 'The bucket turned blue in round two, and A noticed.', clarity: .60, sync: .81, color: 'gold' },
-  { game: 'Two Rooms, One Room', text: 'Grandmother’s kitchen, two versions of the same window.', clarity: .64, sync: .58, color: 'silver' },
-  { game: 'Ink Drift', text: 'Rain on a classroom window, laughter down the hall.', clarity: .52, sync: .62, color: 'blue' },
-  { game: 'The Weight of Things', text: 'A brass key: a feather to one of you, an anchor to the other.', clarity: .82, sync: .67, color: 'gold' },
-  { game: 'Lantern Keeper', text: 'A dark house. The oil was in the third drawer.', clarity: .47, sync: .55, color: 'blue' },
-  { game: 'Mirror Walk', text: 'Two mazes, one door, opened in the same half second.', clarity: .71, sync: .88, color: 'silver' },
-  { game: 'Falling Upward', text: 'The library where the stairs ran both ways.', clarity: .58, sync: .74, color: 'gold' },
-  { game: 'The Unspooling', text: 'A vase broke at twelve seconds, then didn’t.', clarity: .66, sync: .60, color: 'blue' },
-  { game: 'Faces in Fog', text: 'A neighbor’s face, recognized on the second showing.', clarity: .89, sync: .77, color: 'gold' },
-  { game: 'The Lullaby', text: 'The last verse, hummed with no notes on screen.', clarity: .93, sync: .91, color: 'silver' },
-  { game: 'The Argument', text: 'A door left open, a phone face-down. Both pressed at peace.', clarity: .40, sync: .52, color: 'blue' },
+const FALLBACK_MEMORIES = [
+  { game: 'Echo Tide', text: 'The basin is waiting for your first thread.', clarity: .62, sync: .58, color: 'silver' },
+  { game: 'Two Rooms, One Room', text: 'Two versions of one room are still learning to overlap.', clarity: .58, sync: .54, color: 'silver' },
+  { game: 'Ink Drift', text: 'Rain blurs a window until someone holds it still.', clarity: .57, sync: .6, color: 'blue' },
+  { game: 'The Weight of Things', text: 'The memory asks what each object weighed to each of you.', clarity: .6, sync: .56, color: 'gold' },
+  { game: 'Lantern Keeper', text: 'A dark house keeps one lit room for your return.', clarity: .55, sync: .52, color: 'blue' },
+  { game: 'Mirror Walk', text: 'Two paths keep trying to arrive together.', clarity: .61, sync: .59, color: 'silver' },
+  { game: 'The Lullaby', text: 'A chorus waits for both voices to find the same beat.', clarity: .63, sync: .62, color: 'silver' },
+  { game: 'The Argument', text: 'Even frayed endings can still be woven in.', clarity: .5, sync: .45, color: 'blue' }
 ];
+
+function toStoryText(thread) {
+  if (thread.summaryText) return thread.summaryText;
+  const carry = thread.carryover || {};
+  if (Array.isArray(carry.glowingObjects) && carry.glowingObjects.length) return `Glowing objects carried forward: ${carry.glowingObjects.join(', ')}.`;
+  if (Array.isArray(carry.hybridRooms) && carry.hybridRooms.length) return `Hybrid rooms remembered: ${carry.hybridRooms.join(' and ')}.`;
+  if (carry.lullabyTake) return 'A lullaby take was kept and carried onward.';
+  if (Array.isArray(carry.memories) && carry.memories.length) return `Anchors recovered: ${carry.memories.length}.`;
+  return 'A thread from this memory still grows in the garden.';
+}
+
+function normalizeMemoryColor(color) {
+  return color === 'gold' || color === 'blue' || color === 'silver' ? color : 'silver';
+}
+
+const CAMPAIGN_THREADS = window.PensieveCampaign?.getAllThreads?.() || [];
+const JOURNEY_FLAGS = {
+  hasHybridRooms: CAMPAIGN_THREADS.some(t => t.chapterId === '02' && Array.isArray(t.carryover?.hybridRooms) && t.carryover.hybridRooms.length),
+  hasLullaby: CAMPAIGN_THREADS.some(t => t.chapterId === '10' && t.carryover?.lullabyTake)
+};
+
+function loadCampaignMemories() {
+  const rows = CAMPAIGN_THREADS
+    .filter(t => t.chapterId !== '12' && t.completed !== false)
+    .map((t, i) => {
+      const clarity = Number.isFinite(t?.scores?.clarity) ? t.scores.clarity : 0.55;
+      const sync = Number.isFinite(t?.scores?.sync) ? t.scores.sync : 0.5;
+      return {
+        game: t.title || t.chapterSlug || window.PensieveCampaign?.chapterTitles?.[t.chapterId] || `Memory ${i + 1}`,
+        text: toStoryText(t),
+        clarity: Math.max(0.2, Math.min(1, clarity)),
+        sync: Math.max(0.2, Math.min(1, sync)),
+        color: normalizeMemoryColor(t.color)
+      };
+    });
+  return rows.length ? rows : FALLBACK_MEMORIES;
+}
+
+const MEMORIES = loadCampaignMemories();
 
 // ---------- renderer & scene ----------
 const canvas = document.getElementById('stage');
@@ -477,16 +512,19 @@ function drawTapestry(kept) {
       for (let k = 0; k < threads; k++) if ((k + r) % 2 === 0) g.fillRect(x0 + k * tw, y - rh * .32, tw, rh * .64);
     });
   }
-  // the lullaby line from game 10, woven across
-  g.strokeStyle = 'rgba(235,230,242,.85)'; g.lineWidth = 3; g.beginPath();
-  for (let x = pad; x <= W - pad; x += 4) { const y = H * .62 + Math.sin(x * .025) * 26 + Math.sin(x * .061) * 10; x === pad ? g.moveTo(x, y) : g.lineTo(x, y); }
-  g.stroke();
-  // the hybrid rooms from game 2: two small woven windows
-  [[.2, .22], [.74, .2]].forEach(([fx, fy]) => {
-    const x = W * fx, y = H * fy, s = 70;
-    g.strokeStyle = 'rgba(233,185,73,.8)'; g.lineWidth = 3; g.strokeRect(x, y, s, s * .8);
-    g.strokeStyle = 'rgba(127,178,255,.8)'; g.strokeRect(x + 10, y + 8, s, s * .8);
-  });
+  // chapter callbacks from your journey
+  if (JOURNEY_FLAGS.hasLullaby) {
+    g.strokeStyle = 'rgba(235,230,242,.85)'; g.lineWidth = 3; g.beginPath();
+    for (let x = pad; x <= W - pad; x += 4) { const y = H * .62 + Math.sin(x * .025) * 26 + Math.sin(x * .061) * 10; x === pad ? g.moveTo(x, y) : g.lineTo(x, y); }
+    g.stroke();
+  }
+  if (JOURNEY_FLAGS.hasHybridRooms) {
+    [[.2, .22], [.74, .2]].forEach(([fx, fy]) => {
+      const x = W * fx, y = H * fy, s = 70;
+      g.strokeStyle = 'rgba(233,185,73,.8)'; g.lineWidth = 3; g.strokeRect(x, y, s, s * .8);
+      g.strokeStyle = 'rgba(127,178,255,.8)'; g.strokeRect(x + 10, y + 8, s, s * .8);
+    });
+  }
   // fringe
   g.strokeStyle = 'rgba(211,217,232,.4)'; g.lineWidth = 2;
   for (let x = pad; x <= W - pad; x += 12) { g.beginPath(); g.moveTo(x, H - pad); g.lineTo(x + 3, H - pad + 26); g.stroke(); }
@@ -496,9 +534,22 @@ function showEnding() {
   const kept = plants.filter(p => p.alive);
   drawTapestry(kept);
   document.getElementById('keptList').innerHTML = kept.map(p => `<li><i style="background:${CSS[p.mem.color]}"></i><span>${p.mem.game} · ${Math.round(p.mem.clarity * 100)}%</span></li>`).join('');
-  const avg = kept.reduce((s, p) => s + p.mem.clarity, 0) / kept.length;
+  const avg = kept.reduce((s, p) => s + p.mem.clarity, 0) / Math.max(1, kept.length);
   const gone = plants.filter(p => !p.alive).map(p => p.mem.game);
-  document.getElementById('endNote').textContent = `Average clarity of what you kept: ${Math.round(avg * 100)}%. Let go: ${gone.join(', ')}. The kitchen and bus rooms from Two Rooms, One Room hang in the weave, and your lullaby runs through it.`;
+  const motifs = [];
+  if (JOURNEY_FLAGS.hasHybridRooms) motifs.push('your hybrid rooms');
+  if (JOURNEY_FLAGS.hasLullaby) motifs.push('your lullaby line');
+  const motifText = motifs.length ? ` The weave still carries ${motifs.join(' and ')}.` : '';
+  document.getElementById('endNote').textContent = `Average clarity of what you kept: ${Math.round(avg * 100)}%. Let go: ${gone.length ? gone.join(', ') : 'nothing'}.${motifText}`;
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'12',
+    game:12,
+    title:'The Forgetting Garden',
+    color:'silver',
+    scores:{clarity:+avg.toFixed(2),sync:+(kept.reduce((s,p)=>s+p.mem.sync,0)/Math.max(1,kept.length)).toFixed(2)},
+    carryover:{kept:kept.map(p=>p.mem.game),letGo:gone},
+    summaryText:`Kept ${kept.length} memories in the final weave.`
+  });
   document.getElementById('ending').hidden = false;
   chime([523, 659, 784, 1047, 784], 3.5, .06);
   document.getElementById('again').focus();

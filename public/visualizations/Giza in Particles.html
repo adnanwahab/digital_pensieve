@@ -1,0 +1,400 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Giza in Particles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed night-desert canvas; title top-left, build ledger + timeline docked at the bottom */
+:root {
+  --night: #0b0a10;
+  --dusk: #17141f;
+  --sand: #e3b873;
+  --electrum: #f6e7b8;
+  --dust: #8c7a66;
+  --ink: #efe6d6;
+  --muted: #a39887;
+  --rule: rgba(227,184,115,.18);
+  --display: "Marcellus", "Trajan Pro", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+.hud {
+  position: fixed; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(18px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.head { display: flex; flex-direction: column; gap: 6px; max-width: 34rem; }
+.eyebrow { font-family: var(--data); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--sand); }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(28px, 5vw, 46px); line-height: 1.05; letter-spacing: .02em; text-wrap: balance; text-shadow: 0 0 24px rgba(227,184,115,.25); }
+.sub { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 30rem; }
+
+.dock { display: flex; flex-direction: column; gap: 14px; pointer-events: auto; max-width: 720px; }
+.ledger { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.row { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--rule); min-width: 0; }
+.row .name { font-family: var(--display); font-size: 17px; }
+.row .meta { font-family: var(--data); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .h { font-family: var(--data); font-size: 12px; color: var(--sand); font-variant-numeric: tabular-nums; }
+.bar { height: 2px; background: var(--rule); position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--sand); }
+.row.done .bar i { background: var(--electrum); box-shadow: 0 0 8px var(--electrum); }
+
+.controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+button {
+  font-family: var(--data); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--night); background: var(--sand); border: 0; border-radius: 2px;
+  padding: 9px 14px; cursor: pointer;
+}
+button.ghost { background: transparent; color: var(--sand); box-shadow: inset 0 0 0 1px var(--rule); }
+button[aria-pressed="true"] { background: var(--sand); color: var(--night); }
+button:hover { filter: brightness(1.08); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--electrum); outline-offset: 2px; }
+.scrub { flex: 1 1 200px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.scrub label { font-family: var(--data); font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 9ch; }
+input[type=range] { flex: 1; min-width: 0; accent-color: var(--sand); }
+.hint { font-family: var(--data); font-size: 10.5px; color: var(--muted); letter-spacing: .04em; }
+
+.hud { transition: opacity .4s ease; }
+.hud.off { opacity: 0; }
+.hud.off .dock { pointer-events: none; }
+#ui-toggle {
+  position: fixed; z-index: 5;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--rule);
+  padding: 6px 10px; font-size: 10.5px; opacity: .35; transition: opacity .3s;
+}
+#ui-toggle:hover, #ui-toggle:focus-visible { opacity: 1; }
+
+@media (max-width: 560px) {
+  .ledger { grid-template-columns: 1fr; gap: 6px; }
+  .row { flex-direction: row; align-items: baseline; flex-wrap: wrap; column-gap: 10px; row-gap: 4px; padding-top: 6px; }
+  .row .bar { flex-basis: 100%; }
+  .row .name { font-size: 15px; }
+  .sub { display: none; }
+}
+</style>
+
+<div id="stage"></div>
+
+<button id="ui-toggle" type="button" aria-pressed="false">Show UI</button>
+
+<div class="hud off" id="hud">
+  <header class="head">
+    <span class="eyebrow">Giza plateau · 4th Dynasty</span>
+    <h1>Giza in Particles</h1>
+    <p class="sub">Khufu, Khafre and Menkaure in polished limestone grains, at their original heights and to scale on the plateau. Rebuild them from drifting sand with the timeline.</p>
+  </header>
+
+  <div class="dock">
+    <div class="ledger" id="ledger"></div>
+    <div class="controls">
+      <button id="play" type="button">Rebuild</button>
+      <button id="fly" class="ghost" type="button" aria-pressed="true">Camera flight</button>
+      <div class="scrub">
+        <input id="time" type="range" min="0" max="1000" value="1000" aria-label="Build timeline">
+        <label for="time" id="pct">100% built</label>
+      </div>
+    </div>
+    <span class="hint">Drag to orbit · scroll or pinch to zoom · the flight resumes when you let go</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+(() => {
+  // Original dimensions in metres. Scene unit = 10 m.
+  const PYRAMIDS = [
+    { name: 'Khufu',    era: 'c. 2560 BCE', base: 230.3, height: 146.6, pos: [0, 0, 0],    start: 2.0,  span: 11.0 },
+    { name: 'Khafre',   era: 'c. 2530 BCE', base: 215.3, height: 143.5, pos: [-32, 0, 37], start: 11.5, span: 9.0  },
+    { name: 'Menkaure', era: 'c. 2510 BCE', base: 102.2, height: 65.0,  pos: [-58, 0, 78], start: 19.0, span: 5.5  },
+  ];
+  const CENTER = new THREE.Vector3(-26, 0, 36);
+  const DUR = 2.6;
+  const T_END = 19.0 + 5.5 + 0.6 + DUR + 0.5;
+  const STEPS = 60;
+  const mobile = Math.min(innerWidth, innerHeight) < 600;
+  const TOTAL = mobile ? 140000 : 260000;
+  const DUNE = mobile ? 12000 : 22000;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- renderer / scene ----------
+  const stage = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
+  renderer.setClearColor(0x0b0a10, 1);
+  stage.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 3000);
+  camera.position.set(110, 45, 120);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.copy(CENTER).setY(6);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.minDistance = 25; controls.maxDistance = 360;
+
+  // sun low in the west-southwest, for glints
+  const SUN = new THREE.Vector3(-0.55, 0.42, 0.72).normalize();
+
+  // ---------- sample pyramid surfaces ----------
+  const areas = PYRAMIDS.map(p => { const b = p.base / 10, h = p.height / 10; return 2 * b * Math.hypot(b / 2, h); });
+  const areaSum = areas.reduce((a, b) => a + b, 0);
+  const counts = areas.map(a => Math.round(TOTAL * a / areaSum));
+  const N = counts.reduce((a, b) => a + b, 0);
+
+  const aStart = new Float32Array(N * 3), aTarget = new Float32Array(N * 3), aNormal = new Float32Array(N * 3);
+  const aDelay = new Float32Array(N), aSeed = new Float32Array(N), aTip = new Float32Array(N);
+  let k = 0;
+  PYRAMIDS.forEach((p, pi) => {
+    const B = p.base / 10, H = p.height / 10, step = H / STEPS;
+    for (let n = 0; n < counts[pi]; n++, k++) {
+      const y = H * (1 - Math.sqrt(Math.random()));
+      const course = Math.min(STEPS - 1, Math.floor(y / step));
+      const tread = Math.random() < 0.4;
+      const half = (B / 2) * (1 - (course + 1) / STEPS);
+      const halfOut = (B / 2) * (1 - course / STEPS);
+      let r, yy;
+      if (tread) { r = half + Math.random() * (halfOut - half); yy = (course + 1) * step; }
+      else       { r = half + (halfOut - half) * 0.15 * Math.random(); yy = course * step + Math.random() * step; }
+      const side = Math.floor(Math.random() * 4), t = (Math.random() * 2 - 1) * r;
+      let x, z, nx = 0, nz = 0;
+      if (side === 0) { x = r; z = t; nx = 1; } else if (side === 1) { x = -r; z = t; nx = -1; }
+      else if (side === 2) { x = t; z = r; nz = 1; } else { x = t; z = -r; nz = -1; }
+      aTarget.set([x + p.pos[0], yy, z + p.pos[2]], k * 3);
+      // face normal of the sloped side (treads lean upward)
+      const nv = new THREE.Vector3(nx * H, B / 2, nz * H).normalize();
+      if (tread) nv.lerp(new THREE.Vector3(0, 1, 0), 0.6).normalize();
+      aNormal.set([nv.x, nv.y, nv.z], k * 3);
+
+      const ang = Math.random() * Math.PI * 2, rad = 40 + Math.random() * 130;
+      aStart.set([CENTER.x + Math.cos(ang) * rad, 4 + Math.random() * 65, CENTER.z + Math.sin(ang) * rad], k * 3);
+      aDelay[k] = p.start + (yy / H) * p.span + Math.random() * 0.6;
+      aSeed[k] = Math.random();
+      aTip[k] = yy / H;
+    }
+  });
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(aTarget, 3));
+  geo.setAttribute('aStart', new THREE.BufferAttribute(aStart, 3));
+  geo.setAttribute('aNormal', new THREE.BufferAttribute(aNormal, 3));
+  geo.setAttribute('aDelay', new THREE.BufferAttribute(aDelay, 1));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(aSeed, 1));
+  geo.setAttribute('aTip', new THREE.BufferAttribute(aTip, 1));
+
+  const uniforms = {
+    uTime: { value: 0 }, uClock: { value: 0 }, uDur: { value: DUR },
+    uPixel: { value: renderer.getPixelRatio() }, uSize: { value: mobile ? 0.42 : 0.36 },
+    uSun: { value: SUN },
+    uDust: { value: new THREE.Color(0x7d6b58) }, uSand: { value: new THREE.Color(0xe0b06a) },
+    uCap: { value: new THREE.Color(0xfff4d0) }, uGlint: { value: new THREE.Color(0xfff8e6) },
+    uCenter: { value: new THREE.Vector2(CENTER.x, CENTER.z) },
+  };
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      attribute vec3 aStart; attribute vec3 aNormal; attribute float aDelay; attribute float aSeed; attribute float aTip;
+      uniform float uTime, uClock, uDur, uPixel, uSize; uniform vec3 uSun; uniform vec2 uCenter;
+      varying float vE; varying float vTip; varying float vSeed; varying float vLight; varying float vGlint;
+      vec3 rotY(vec3 v, float a){ float c=cos(a), s=sin(a); vec2 d=v.xz-uCenter; return vec3(uCenter.x+d.x*c-d.y*s, v.y, uCenter.y+d.x*s+d.y*c); }
+      void main(){
+        float p = clamp((uTime - aDelay) / uDur, 0., 1.);
+        float e = p < .5 ? 4.*p*p*p : 1. - pow(-2.*p + 2., 3.) / 2.;
+        vec3 s = rotY(aStart, uClock * (0.04 + aSeed * 0.07));
+        s.y += sin(uClock * 0.6 + aSeed * 40.) * 1.5;
+        vec3 pos = mix(s, position, e);
+        pos.y += sin(p * 3.14159) * (4. + aSeed * 10.);
+
+        // lighting on the assembled surface
+        vec3 n = normalize(aNormal);
+        vec3 V = normalize(cameraPosition - pos);
+        vec3 Hh = normalize(uSun + V);
+        float diff = max(dot(n, uSun), 0.);
+        float spec = pow(max(dot(n, Hh), 0.), 28.);
+        float tw = pow(0.5 + 0.5 * sin(uClock * (1.5 + aSeed * 4.) + aSeed * 90.), 6.);
+        float glint = step(0.93, fract(aSeed * 13.7)) * tw * (0.35 + spec * 3.);
+        vLight = (0.35 + 0.75 * diff + 1.4 * spec) * e;
+        vGlint = glint * e;
+
+        vec4 mv = modelViewMatrix * vec4(pos, 1.);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uSize * uPixel * (1. + (1. - e) * 0.9 + vGlint * 2.2) * (300. / -mv.z);
+        vE = e; vTip = aTip; vSeed = aSeed;
+      }`,
+    fragmentShader: `
+      uniform vec3 uDust, uSand, uCap, uGlint;
+      varying float vE; varying float vTip; varying float vSeed; varying float vLight; varying float vGlint;
+      void main(){
+        vec2 c = gl_PointCoord - .5;
+        float d = length(c);
+        if (d > .5) discard;
+        float a = smoothstep(.5, .08, d);
+        // four-point star for glinting grains
+        float star = vGlint * (exp(-abs(c.x) * 40.) + exp(-abs(c.y) * 40.)) * smoothstep(.5, .0, d);
+        vec3 built = mix(uSand * (0.8 + vSeed * 0.3), uCap, smoothstep(.88, 1., vTip)) * vLight;
+        vec3 col = mix(uDust * 0.9, built, vE) + uGlint * (star + vGlint * a) * 1.6;
+        float alpha = mix(0.16, 0.42, vE) * a + star * 0.8;
+        gl_FragColor = vec4(col * alpha, alpha);
+      }`,
+  });
+  scene.add(new THREE.Points(geo, mat));
+
+  // ---------- desert floor ----------
+  const dune = new Float32Array(DUNE * 3);
+  for (let i = 0; i < DUNE; i++) {
+    const x = CENTER.x + (Math.random() * 2 - 1) * 200, z = CENTER.z + (Math.random() * 2 - 1) * 200;
+    const y = Math.sin(x * 0.05) * 0.6 + Math.cos(z * 0.07 + x * 0.02) * 0.5 - 0.6;
+    dune.set([x, y, z], i * 3);
+  }
+  const dGeo = new THREE.BufferGeometry();
+  dGeo.setAttribute('position', new THREE.BufferAttribute(dune, 3));
+  scene.add(new THREE.Points(dGeo, new THREE.PointsMaterial({
+    color: 0x5e4f40, size: 0.32, sizeAttenuation: true, transparent: true, opacity: 0.6, depthWrite: false,
+  })));
+
+  // ---------- night sky ----------
+  const STARS = 2500, sky = new Float32Array(STARS * 3);
+  for (let i = 0; i < STARS; i++) {
+    const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.95);
+    sky.set([CENTER.x + 900 * Math.sin(ph) * Math.cos(th), 900 * Math.cos(ph) + 20, CENTER.z + 900 * Math.sin(ph) * Math.sin(th)], i * 3);
+  }
+  const sGeo = new THREE.BufferGeometry();
+  sGeo.setAttribute('position', new THREE.BufferAttribute(sky, 3));
+  scene.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xcfc6e8, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.7, depthWrite: false })));
+
+  // ---------- bloom ----------
+  let composer = null, bloom = null;
+  if (THREE.EffectComposer && THREE.UnrealBloomPass) {
+    composer = new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.85, 0.55, 0.32);
+    composer.addPass(bloom);
+  }
+
+  // ---------- ledger UI ----------
+  const ledger = document.getElementById('ledger');
+  const rows = PYRAMIDS.map((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'row';
+    el.innerHTML = `<span class="name">${p.name}</span>
+      <span class="meta">${p.era} · base ${p.base.toFixed(1)} m</span>
+      <span class="h"></span>
+      <div class="bar"><i></i></div>`;
+    ledger.appendChild(el);
+    return { el, h: el.querySelector('.h'), bar: el.querySelector('.bar i'), p, n: counts[i] };
+  });
+
+  const range = document.getElementById('time');
+  const pct = document.getElementById('pct');
+  const playBtn = document.getElementById('play');
+  const flyBtn = document.getElementById('fly');
+  const hud = document.getElementById('hud'), uiBtn = document.getElementById('ui-toggle');
+  function setUI(show) {
+    hud.classList.toggle('off', !show);
+    uiBtn.textContent = show ? 'Hide UI' : 'Show UI';
+    uiBtn.setAttribute('aria-pressed', String(show));
+  }
+  uiBtn.addEventListener('click', () => setUI(hud.classList.contains('off')));
+  addEventListener('keydown', e => { if (e.key === 'h' || e.key === 'H') setUI(hud.classList.contains('off')); });
+  let t = T_END, playing = false, scrubbing = false;
+
+  function updateUI() {
+    let built = 0;
+    rows.forEach(r => {
+      const f = Math.min(1, Math.max(0, (t - r.p.start - DUR * 0.6) / r.p.span));
+      built += f * r.n;
+      r.h.textContent = `${(f * r.p.height).toFixed(1)} / ${r.p.height.toFixed(1)} m`;
+      r.bar.style.width = (f * 100) + '%';
+      r.el.classList.toggle('done', f >= 1);
+    });
+    pct.textContent = (t >= T_END ? 100 : Math.floor(100 * built / N)) + '% built';
+    if (!scrubbing) range.value = Math.round(1000 * t / T_END);
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (playing) { playing = false; playBtn.textContent = 'Play'; return; }
+    if (t >= T_END) t = 0;
+    playing = true; playBtn.textContent = 'Pause';
+  });
+  range.addEventListener('input', () => { scrubbing = true; t = (range.value / 1000) * T_END; });
+  range.addEventListener('change', () => { scrubbing = false; });
+
+  // ---------- cinematic camera flight ----------
+  let flying = !reduce, userHolding = false, resumeAt = 0, blend = 0, theta = 0.75, clock = 0, wasActive = false;
+  flyBtn.setAttribute('aria-pressed', String(flying));
+  flyBtn.addEventListener('click', () => {
+    flying = !flying; flyBtn.setAttribute('aria-pressed', String(flying));
+  });
+  controls.addEventListener('start', () => { userHolding = true; });
+  controls.addEventListener('end', () => { userHolding = false; resumeAt = clock + 4; });
+  function syncTheta() { const d = camera.position.clone().sub(CENTER); theta = Math.atan2(d.z, d.x); }
+
+  const tmpPos = new THREE.Vector3(), tmpTgt = new THREE.Vector3();
+  function flightPose(th, out, tgt) {
+    const R = (mobile ? 170 : 135) + 35 * Math.sin(th * 1.7);
+    const y = 26 + 22 * (0.5 + 0.5 * Math.sin(th * 1.3 + 1.0));
+    out.set(CENTER.x + Math.cos(th) * R, y, CENTER.z + Math.sin(th) * R);
+    // the gaze drifts between the three pyramids
+    const w = 0.5 + 0.5 * Math.sin(th * 0.9);
+    tgt.set(-6 + (-50 + 6) * w, 7 + 3 * Math.sin(th * 1.1), 6 + (68 - 6) * w);
+  }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (composer) {
+      composer.setPixelRatio(renderer.getPixelRatio());
+      composer.setSize(w, h);
+      bloom.resolution.set(w, h);
+    }
+  }
+  addEventListener('resize', resize); resize();
+
+  const timer = new THREE.Clock();
+  function frame() {
+    const dt = Math.min(timer.getDelta(), 0.05);
+    clock += dt;
+    if (playing && !scrubbing) {
+      t += dt;
+      if (t >= T_END) { t = T_END; playing = false; playBtn.textContent = 'Rebuild'; }
+    }
+    uniforms.uTime.value = t;
+    uniforms.uClock.value = clock;
+    updateUI();
+
+    const active = flying && !userHolding && clock >= resumeAt;
+    if (active) {
+      if (!wasActive) { syncTheta(); blend = 0; }
+      theta += dt * 0.07;
+      blend = Math.min(1, blend + dt * 0.35);
+      flightPose(theta, tmpPos, tmpTgt);
+      const f = 0.015 + 0.985 * Math.pow(blend, 4);
+      camera.position.lerp(tmpPos, f);
+      controls.target.lerp(tmpTgt, f);
+    }
+    wasActive = active;
+    controls.update();
+    if (composer) composer.render(); else renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+
+</body></html>

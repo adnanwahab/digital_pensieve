@@ -1,0 +1,319 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Thinning Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  /* Layout: one full-bleed WebGL canvas, a quiet caption in the lower-left corner */
+  :root {
+    --void: #03050c;
+    --ink: #cfe0ff;
+    --dim: #6f86b8;
+    --glow: #4fa3ff;
+    --display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { background: var(--void); color: var(--ink); overflow: hidden; }
+  canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+  .caption {
+    position: fixed;
+    left: max(20px, env(safe-area-inset-left, 0px));
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    right: max(20px, env(safe-area-inset-right, 0px));
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;
+    pointer-events: none;
+  }
+  .caption h1 {
+    margin: 0; font: italic 400 clamp(22px, 3.2vw, 34px)/1.1 var(--display);
+    letter-spacing: 0.01em; text-shadow: 0 0 18px rgba(79,163,255,0.35);
+  }
+  .caption p { margin: 4px 0 0; font: 400 11px/1.4 var(--mono); color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .controls { display: flex; gap: 8px; pointer-events: auto; }
+  .controls button {
+    font: 400 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink); background: rgba(10,20,45,0.55); border: 1px solid rgba(79,163,255,0.3);
+    padding: 9px 12px; border-radius: 2px; cursor: pointer; backdrop-filter: blur(6px);
+  }
+  .controls button:hover { border-color: var(--glow); }
+  .controls button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+  .controls button[aria-pressed="true"] { background: rgba(79,163,255,0.22); }
+</style>
+
+<canvas id="c"></canvas>
+<div class="caption">
+  <div>
+    <h1>The Thinning Room</h1>
+    <p>Patches of the blue beyond open and close · drag to look around</p>
+  </div>
+  <div class="controls">
+    <button id="calm" type="button" aria-pressed="false">Thin the walls</button>
+    <button id="pause" type="button" aria-pressed="false">Pause</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x03050c);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05070f, 0.035);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 100);
+
+  // ---------- shared noise + energy-world GLSL ----------
+  const NOISE = `
+  vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+  vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+  vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+  float snoise(vec3 v){
+    const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
+    vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
+    vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
+    vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy;
+    i=mod289(i);
+    vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+    float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;
+    vec4 j=p-49.0*floor(p*ns.z*ns.z); vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
+    vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
+    vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
+    vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
+    vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+    vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
+    vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+    p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+    vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
+    return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+  }
+  float fbm(vec3 p){ float a=0.5, s=0.0; for(int i=0;i<5;i++){ s+=a*snoise(p); p*=2.03; a*=0.5; } return s; }
+
+  // Look "through" the surface along the view ray into an endless swirling field.
+  vec3 energyWorld(vec3 dir, float t){
+    vec3 col = vec3(0.0);
+    for(int k=0;k<4;k++){
+      float depth = 1.0 + float(k)*1.7;
+      vec3 p = dir*depth*2.2;
+      // rotate each layer around the ray's up axis so the depths swirl against each other
+      float ang = t*(0.06 + 0.03*float(k)) * (mod(float(k),2.0)<1.0 ? 1.0 : -1.0);
+      float c=cos(ang), s=sin(ang);
+      p.xz = mat2(c,-s,s,c)*p.xz;
+      vec3 q = vec3(fbm(p + vec3(0.0,0.0,t*0.1)), fbm(p + vec3(5.2,1.3,-t*0.12)), 0.0);
+      float f = fbm(p + 2.6*q + vec3(0.0, t*0.05, 0.0));
+      float filament = pow(1.0 - abs(f), 7.0);
+      float fade = 1.0/(1.0 + float(k)*0.75);
+      col += fade*( vec3(0.05,0.18,0.55)*(0.5+0.5*f) + vec3(0.35,0.75,1.0)*filament*1.4 );
+    }
+    // pinpoint stars deep in the field
+    float st = snoise(dir*90.0 + t*0.02);
+    col += vec3(0.8,0.9,1.0)*smoothstep(0.82,0.95,st)*0.9;
+    return col;
+  }
+  `;
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uLamp: { value: new THREE.Vector3(2.6, 2.3, -1.6) },
+    uThin: { value: 0 }, // 0 = rare patches, 1 = walls mostly gone
+  };
+
+  // ---------- room surfaces: ordinary plaster that keeps tearing open ----------
+  const roomMat = new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uBase: { value: new THREE.Color(0x8b8577) } }, uniforms),
+    side: THREE.BackSide,
+    vertexShader: `
+      varying vec3 vWorld; varying vec3 vNormal;
+      void main(){
+        vec4 w = modelMatrix*vec4(position,1.0);
+        vWorld = w.xyz; vNormal = normalize(mat3(modelMatrix)*normal);
+        gl_Position = projectionMatrix*viewMatrix*w;
+      }`,
+    fragmentShader: NOISE + `
+      uniform float uTime; uniform vec3 uLamp; uniform vec3 uBase; uniform float uThin;
+      varying vec3 vWorld; varying vec3 vNormal;
+      void main(){
+        vec3 n = -normalize(vNormal);
+        // room shading: one warm lamp, soft falloff, faint plaster grain
+        vec3 L = uLamp - vWorld; float d = length(L); L/=d;
+        float diff = max(dot(n,L),0.0) / (1.0 + 0.09*d*d);
+        float grain = 0.92 + 0.08*snoise(vWorld*6.0);
+        vec3 room = uBase*grain*(0.05 + 1.5*diff*vec3(1.0,0.82,0.6));
+        // baseboard line
+        room *= mix(0.55, 1.0, smoothstep(0.18,0.2, vWorld.y + 0.0));
+
+        // patch mask: slow 3D noise that drifts through time, so patches bloom and close
+        float m = snoise(vWorld*0.32 + vec3(0.0, uTime*0.05, uTime*0.07));
+        m += 0.35*snoise(vWorld*0.9 - vec3(uTime*0.11));
+        float thr = mix(0.62, 0.05, uThin);
+        float open = smoothstep(thr, thr+0.12, m);
+        float rim = smoothstep(thr-0.08, thr, m) * (1.0 - smoothstep(thr, thr+0.1, m));
+
+        vec3 dir = normalize(vWorld - cameraPosition);
+        vec3 world = energyWorld(dir, uTime);
+
+        vec3 col = mix(room, world, open);
+        col += vec3(0.3,0.65,1.0)*rim*1.8;
+        // blue spill on plaster near open patches
+        col += vec3(0.03,0.08,0.2)*smoothstep(thr-0.35, thr, m)*(1.0-open);
+        gl_FragColor = vec4(col,1.0);
+      }`
+  });
+
+  const room = new THREE.Mesh(new THREE.BoxGeometry(10, 5.2, 10, 1, 1, 1), roomMat);
+  room.position.y = 2.6;
+  scene.add(room);
+
+  // ---------- lighting for the solid objects ----------
+  scene.add(new THREE.AmbientLight(0x1a2236, 0.9));
+  const lampLight = new THREE.PointLight(0xffc98a, 1.6, 14, 2);
+  lampLight.position.copy(uniforms.uLamp.value);
+  scene.add(lampLight);
+  const blueSpill = new THREE.PointLight(0x4fa3ff, 0.0, 12, 2);
+  blueSpill.position.set(-2, 2.5, 1);
+  scene.add(blueSpill);
+
+  const mat = (c, r = 0.85) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0.0 });
+
+  // ---------- furniture ----------
+  const wood = mat(0x4a3424, 0.7);
+  const chair = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.07, 0.6), wood); seat.position.y = 0.5; chair.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.7, 0.06), wood); back.position.set(0, 0.88, -0.28); chair.add(back);
+  [[-0.27,-0.26],[0.27,-0.26],[-0.27,0.26],[0.27,0.26]].forEach(([x,z]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.05), wood); leg.position.set(x, 0.25, z); chair.add(leg);
+  });
+  chair.position.set(0, 0, 0);
+  chair.rotation.y = 0.35;
+  scene.add(chair);
+
+  // floor lamp
+  const lamp = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.0, 8), mat(0x222222, 0.4)); pole.position.y = 1.0; lamp.add(pole);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.04, 20), mat(0x222222, 0.4)); base.position.y = 0.02; lamp.add(base);
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 0.32, 24, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xffd9a0, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+  shade.position.y = 2.1; lamp.add(shade);
+  lamp.position.set(uniforms.uLamp.value.x, 0, uniforms.uLamp.value.z);
+  scene.add(lamp);
+
+  // small rug
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(1.4, 48), mat(0x3b2a33, 1.0));
+  rug.rotation.x = -Math.PI / 2; rug.position.y = 0.005;
+  scene.add(rug);
+
+  // ---------- the seated person ----------
+  const skin = mat(0xc69b7b, 0.6), shirt = mat(0x2f3d55, 0.9), pants = mat(0x1d1f26, 0.9);
+  const limb = (r, len, m) => {
+    const g = new THREE.Group();
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 14), m); cyl.position.y = -len / 2; g.add(cyl);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), m); cap.position.y = -len; g.add(cap);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), m); g.add(top);
+    return g;
+  };
+  const person = new THREE.Group();
+  const torso = new THREE.Group(); torso.position.set(0, 0.62, -0.05); person.add(torso);
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.56, 18), shirt); chest.position.y = 0.3; torso.add(chest);
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.17, 18, 12), shirt); shoulders.scale.set(1.25, 0.6, 0.85); shoulders.position.y = 0.56; torso.add(shoulders);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 10), skin); neck.position.y = 0.66; torso.add(neck);
+  const head = new THREE.Group(); head.position.y = 0.8; torso.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 24, 18), skin); skull.scale.set(1, 1.15, 1.05); head.add(skull);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.125, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(0x17120f, 1)); hair.position.set(0, 0.02, -0.01); hair.scale.set(1.02, 1.15, 1.08); head.add(hair);
+  torso.rotation.x = 0.12; head.rotation.x = 0.2;
+
+  // legs: thighs forward along +z, shins down
+  [-0.1, 0.1].forEach((x, i) => {
+    const thigh = limb(0.075, 0.42, pants); thigh.position.set(x, 0.6, -0.02); thigh.rotation.x = -Math.PI / 2 + 0.05; person.add(thigh);
+    const shin = limb(0.062, 0.48, pants); shin.position.set(x, 0.58, 0.4); shin.rotation.x = 0.08; person.add(shin);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.24), mat(0x111111, 0.6)); foot.position.set(x, 0.04, 0.5); person.add(foot);
+  });
+  // arms resting on thighs
+  [-1, 1].forEach(side => {
+    const upper = limb(0.055, 0.3, shirt); upper.position.set(side * 0.21, 0.55, 0); upper.rotation.set(-0.5, 0, side * 0.12); torso.add(upper);
+    const fore = limb(0.048, 0.28, shirt); fore.position.set(side * 0.18, 0.67, 0.14); fore.rotation.set(-1.45, 0, side * -0.25); person.add(fore);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), skin); hand.scale.set(1, 0.6, 1.3); hand.position.set(side * 0.11, 0.66, 0.42); person.add(hand);
+  });
+  person.rotation.y = 0.35;
+  scene.add(person);
+
+  // ---------- drifting motes that catch the blue ----------
+  const MOTES = 260;
+  const mg = new THREE.BufferGeometry();
+  const mp = new Float32Array(MOTES * 3);
+  for (let i = 0; i < MOTES; i++) { mp[i*3] = (Math.random()-0.5)*9; mp[i*3+1] = Math.random()*5; mp[i*3+2] = (Math.random()-0.5)*9; }
+  mg.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+  const motes = new THREE.Points(mg, new THREE.PointsMaterial({ color: 0x8fc4ff, size: 0.03, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(motes);
+
+  // ---------- camera: slow orbit + drag ----------
+  let yaw = -0.6, pitch = 0.18, targetYaw = yaw, targetPitch = pitch, dragging = false, lx = 0, ly = 0;
+  const onDown = e => { dragging = true; lx = e.clientX; ly = e.clientY; };
+  const onMove = e => {
+    if (!dragging) return;
+    targetYaw -= (e.clientX - lx) * 0.005; targetPitch += (e.clientY - ly) * 0.003;
+    targetPitch = Math.max(-0.1, Math.min(0.6, targetPitch)); lx = e.clientX; ly = e.clientY;
+  };
+  canvas.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', () => dragging = false);
+
+  // ---------- controls ----------
+  let paused = false, thinTarget = 0;
+  const pauseBtn = document.getElementById('pause'), calmBtn = document.getElementById('calm');
+  pauseBtn.addEventListener('click', () => { paused = !paused; pauseBtn.setAttribute('aria-pressed', paused); pauseBtn.textContent = paused ? 'Resume' : 'Pause'; });
+  calmBtn.addEventListener('click', () => { thinTarget = thinTarget ? 0 : 1; calmBtn.setAttribute('aria-pressed', !!thinTarget); });
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const speed = reduce ? 0.35 : 1;
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < h ? 68 : 50;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize); resize();
+
+  const clock = new THREE.Clock();
+  let t = 0;
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05);
+    if (!paused) t += dt * speed;
+    uniforms.uTime.value = t;
+    uniforms.uThin.value += (thinTarget - uniforms.uThin.value) * 0.02;
+
+    if (!dragging && !paused) targetYaw += dt * 0.025 * speed;
+    yaw += (targetYaw - yaw) * 0.06; pitch += (targetPitch - pitch) * 0.06;
+    const r = 3.6;
+    camera.position.set(Math.sin(yaw) * r * Math.cos(pitch), 1.35 + Math.sin(pitch) * r, Math.cos(yaw) * r * Math.cos(pitch));
+    camera.lookAt(0, 0.95, 0.1);
+
+    // breathing and a slow, wondering head turn
+    torso.scale.y = 1 + Math.sin(t * 1.3) * 0.008;
+    head.rotation.y = Math.sin(t * 0.21) * 0.45;
+    head.rotation.x = 0.15 + Math.sin(t * 0.17) * 0.12;
+
+    // blue light pulses as patches open nearby
+    blueSpill.intensity = 0.6 + 0.6 * (0.5 + 0.5 * Math.sin(t * 0.4)) + uniforms.uThin.value * 1.4;
+    blueSpill.position.set(Math.sin(t * 0.13) * 3, 2.4, Math.cos(t * 0.11) * 3);
+    lampLight.intensity = 1.6 - uniforms.uThin.value * 0.7 + Math.sin(t * 7.0) * 0.015;
+
+    const pos = mg.attributes.position.array;
+    for (let i = 0; i < MOTES; i++) {
+      pos[i*3+1] += Math.sin(t * 0.5 + i) * 0.0008 + 0.0012 * speed * (paused ? 0 : 1);
+      if (pos[i*3+1] > 5) pos[i*3+1] = 0;
+    }
+    mg.attributes.position.needsUpdate = true;
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+
+</body></html>

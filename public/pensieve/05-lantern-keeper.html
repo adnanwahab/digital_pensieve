@@ -208,6 +208,7 @@ pre.thread { margin: 0; font-family: var(--mono); font-size: 12px; color: #c8c1b
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 'use strict';
@@ -612,7 +613,17 @@ function showEnding() {
   for (let x = 10; x <= len; x += 6) d += ` L${x} ${35 + Math.sin(x / 22) * 14 * (0.4 + sync)}`;
   const alpha = (0.35 + clarity / 160).toFixed(2);
   document.getElementById('threadSvg').innerHTML = `<path d="${d}" fill="none" stroke="rgba(240,179,90,${alpha})" stroke-width="3" stroke-linecap="round"/><circle cx="${len}" cy="${35 + Math.sin(len / 22) * 14 * (0.4 + sync)}" r="4" fill="#ffe7a3"/>`;
-  document.getElementById('threadJson').textContent = JSON.stringify({ game: 5, clarity: +(clarity / 100).toFixed(2), sync, color: 'gold' }, null, 2);
+  const thread = { game: 5, clarity: +(clarity / 100).toFixed(2), sync, color: 'gold' };
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'05',
+    game:5,
+    title:'Lantern Keeper',
+    color:'gold',
+    scores:{clarity:thread.clarity,sync:thread.sync},
+    carryover:{floorsCleared:floors,oilLeft:Math.round(G.oil),starsVisited:G.starsVisited,starsPlaced:G.starsPlaced},
+    summaryText:`Cleared ${floors}/3 floors with ${Math.round(G.oil)} oil left.`
+  });
+  document.getElementById('threadJson').textContent = JSON.stringify(thread, null, 2);
   document.getElementById('ending').hidden = false;
 }
 

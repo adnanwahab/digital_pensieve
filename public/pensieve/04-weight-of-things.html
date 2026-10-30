@@ -102,6 +102,7 @@ pre{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--mist);backgrou
 <div id="cover" hidden><div class="inner" id="coverInner"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (function(){
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -300,7 +301,7 @@ function tick(){
 }
 
 /* ---------- game state ---------- */
-const S = {owner:'silver', round:0, results:[], phase:'intro', first:'A', draft:{}};
+const S = {owner:'silver', round:0, results:[], phase:'intro', first:'A', draft:{}, savedThreadId:null};
 const panel=document.getElementById('panel'), cover=document.getElementById('cover'), coverInner=document.getElementById('coverInner');
 const meter=document.getElementById('meter');
 
@@ -460,6 +461,18 @@ function growThread(){
 
 function renderSummary(){
   const st=sessionThread(), t=st.thread;
+  if(!S.savedThreadId){
+    const saved = window.PensieveCampaign?.saveChapterResult({
+      chapterId:'04',
+      game:4,
+      title:'The Weight of Things',
+      color:t.color,
+      scores:{clarity:t.clarity,sync:t.sync},
+      carryover:st.carryovers,
+      summaryText:`${st.carryovers.glowingObjects.length} objects stayed glowing in the basin.`
+    });
+    if(saved?.threadId) S.savedThreadId = saved.threadId;
+  }
   const rows=S.results.map((r,i)=>`<span class="n">${cap1(OBJECTS[i].name)}</span>
     <span style="color:var(--gold)">${r.A.weight} <span style="color:var(--dim)">/ ${r.A.guess}</span></span>
     <span style="color:var(--blue)">${r.B.weight} <span style="color:var(--dim)">/ ${r.B.guess}</span></span>
@@ -484,7 +497,7 @@ function renderSummary(){
 function restart(){
   shelf.splice(0).forEach(o=>scene.remove(o)); if(threadMesh){ scene.remove(threadMesh); threadMesh=null; }
   if(current){ scene.remove(current); current=null; }
-  resetScale(); Object.assign(S,{round:0, results:[], phase:'intro', first:'A', draft:{}}); render();
+  resetScale(); Object.assign(S,{round:0, results:[], phase:'intro', first:'A', draft:{}, savedThreadId:null}); render();
 }
 
 /* keep progress if the page is updated while open */

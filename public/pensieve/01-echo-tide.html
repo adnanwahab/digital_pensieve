@@ -205,6 +205,7 @@ pre.json{background:var(--stone);border:1px solid var(--line);border-radius:8px;
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="common.js"></script>
 <script>
 (() => {
 const RAD = 5.5, ROUND_SEC = 90, TOL_D = 0.9, TOL_S = 0.25, ROUNDS = 3;
@@ -551,7 +552,16 @@ function finish(){
   const clarity=lockedCount()/12,sync=S.syncSamples.length?S.syncSamples.reduce((a,b)=>a+b,0)/S.syncSamples.length:0;
   $('rClar').textContent=Math.round(clarity*100)+'%';$('rSync').textContent=Math.round(sync*100)+'%';$('rBonus').textContent=S.bonus;
   $('resultLine').textContent=`You rebuilt ${lockedCount()} of 12 objects. Sync is the share of pieces on the water at each overlay that truly belonged to the memory.`;
-  const rec={game:1,clarity:+clarity.toFixed(2),sync:+sync.toFixed(2),color:'gold',bonusThreads:S.bonus};
+  const rec={game:1,clarity:+clarity.toFixed(2),sync:+sync.toFixed(2),color:'gold',bonusThreads:S.bonus,carryovers:{lockedObjects:S.placements.filter(p=>p.locked).map(p=>p.type)}};
+  window.PensieveCampaign?.saveChapterResult({
+    chapterId:'01',
+    game:1,
+    title:'Echo Tide',
+    color:'gold',
+    scores:{clarity:rec.clarity,sync:rec.sync},
+    carryover:{bonusThreads:S.bonus,lockedObjects:rec.carryovers.lockedObjects},
+    summaryText:`You rebuilt ${lockedCount()} of 12 objects and found ${S.bonus} bonus thread${S.bonus===1?'':'s'}.`
+  });
   $('json').textContent=JSON.stringify(rec,null,2);
   $('results').hidden=false;drawThread(clarity,sync);
   tone(659.25,2.4,.08);setTimeout(()=>tone(987.77,2.4,.07),220);

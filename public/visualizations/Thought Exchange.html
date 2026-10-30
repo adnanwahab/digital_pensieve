@@ -1,0 +1,320 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Thought Exchange</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: a telephone exchange seen from above — 100 callers on a ring, silver threads into a central jack board, amber patch cords where the operator reroutes a day. */
+:root{
+  --paper:#EDEFF1;--surface:#F8F9FA;--ink:#15181D;--muted:#58606C;--rule:#CDD2D8;
+  --line:#97A0AC;--panel:#DCE0E5;--jack:#2B3038;--cord:#B8741A;--live:#0E8478;--cord-soft:#F3E3CB;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0F1216;--surface:#171B21;--ink:#E7EAEE;--muted:#9AA3AF;--rule:#2A313A;
+  --line:#6B7583;--panel:#1D232B;--jack:#07090C;--cord:#E3A440;--live:#45C3B5;--cord-soft:#3A2C17;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0F1216;--surface:#171B21;--ink:#E7EAEE;--muted:#9AA3AF;--rule:#2A313A;
+  --line:#6B7583;--panel:#1D232B;--jack:#07090C;--cord:#E3A440;--live:#45C3B5;--cord-soft:#3A2C17;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:1px solid var(--rule);padding-bottom:12px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,6vw,56px);line-height:.9;margin:0;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--muted);max-width:56ch}
+.clock{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.clock b{display:block;font-family:var(--f-display);font-size:30px;letter-spacing:.02em;color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,.seg{font:500 13px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--live);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.seg{display:inline-flex;padding:2px;gap:2px}
+.seg button{border:0;padding:5px 10px;border-radius:4px;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+@media (max-width:880px){main{grid-template-columns:minmax(0,1fr)}}
+.board{position:relative;min-width:0}
+svg#ex{width:100%;height:auto;display:block;max-width:100%}
+.thread{fill:none;stroke:var(--line);stroke-width:.7;opacity:.55;transition:opacity .2s}
+.thread.patched{stroke:var(--cord);opacity:.5}
+.cord{fill:none;stroke:var(--cord);stroke-width:2.2;stroke-linecap:round}
+.focus .thread{opacity:.12}.focus .cord{opacity:.15}
+.focus .thread.hot{opacity:1;stroke-width:1.6;stroke:var(--live)}
+.focus .cord.hot{opacity:1}
+.person{cursor:pointer}
+.person .dot{fill:var(--surface);stroke:var(--line);stroke-width:1}
+.person.patched .dot{stroke:var(--cord);stroke-width:1.6}
+.person.sel .dot{stroke:var(--live);stroke-width:2.4}
+.person.armed .dot{stroke:var(--cord);stroke-width:2.4;stroke-dasharray:3 2}
+.person text{font-size:12px;pointer-events:none}
+.pulse{fill:var(--line)}.pulse.patched{fill:var(--cord)}
+.jack{fill:var(--jack)}.jack.on{fill:var(--cord)}.jack.hot{fill:var(--live)}
+.plabel{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;width:280px;max-width:calc(100% - 8px);box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:5}
+.tip h3{margin:0 0 6px;font-size:14px;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);border-radius:999px;padding:2px 9px 2px 7px;font-size:13px;background:var(--paper);line-height:1.5}
+.chip small{font-family:var(--f-mono);font-size:10px;color:var(--muted)}
+.chip.via{border-color:var(--cord);background:var(--cord-soft)}
+.chip.now{outline:2px solid var(--live);outline-offset:1px}
+.chips.emoji .chip .w{display:none}.chips.words .chip .e{display:none}
+.chips.emoji .chip{font-size:17px;padding:1px 8px}
+aside{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:14px 16px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1;margin:0 0 4px;letter-spacing:.01em}
+.meta{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin:0 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hint{font-size:13px;color:var(--muted);margin:10px 0 0}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.log li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;border-top:1px solid var(--rule);padding-top:6px}
+.log li:first-child{border-top:0;padding-top:0}
+.log time{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:0;border-top:2px solid var(--line)}.sw.c{border-color:var(--cord)}.sw.l{border-color:var(--live)}
+@media (prefers-reduced-motion: reduce){.pulse{display:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Thought Exchange</h1>
+      <p class="sub">A hundred people, one train of thought each. Every silver thread runs into the operator's board, and every amber cord is a moment the operator rerouted the rest of someone's day.</p>
+    </div>
+    <div class="clock">Exchange clock<b id="clock">7 am</b></div>
+  </header>
+
+  <div class="controls">
+    <button id="auto" aria-pressed="true">Operator auto-routing</button>
+    <span class="seg" role="group" aria-label="Show thoughts as">
+      <button data-mode="both" aria-pressed="true">Both</button>
+      <button data-mode="words" aria-pressed="false">Words</button>
+      <button data-mode="emoji" aria-pressed="false">Emoji</button>
+    </span>
+    <button id="reset">Unplug all cords</button>
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw"></i>Own thread</span>
+      <span><i class="sw c"></i>Patch cord</span>
+      <span><i class="sw l"></i>Selected</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="board" id="board">
+      <svg id="ex" viewBox="0 0 800 800" role="img" aria-label="Ring of 100 people with threads running into a central switchboard; amber cords show rerouted thoughts.">
+        <g id="threads"></g>
+        <g id="pulses"></g>
+        <g id="switch"></g>
+        <g id="cords"></g>
+        <g id="people"></g>
+      </svg>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+
+    <aside>
+      <section class="card" aria-live="polite">
+        <p class="eyebrow" id="selEyebrow">Caller</p>
+        <h2 id="selName">—</h2>
+        <p class="meta" id="selMeta"></p>
+        <ul class="chips" id="selChips"></ul>
+        <div class="row">
+          <button id="patchBtn">Patch with…</button>
+        </div>
+        <p class="hint" id="hint">Hover anyone on the ring to read their thoughts. Click to select, then use Patch with… and click a second person to splice the rest of their days.</p>
+      </section>
+      <section class="card">
+        <p class="eyebrow">Operator log</p>
+        <ul class="log" id="log"></ul>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function(){
+let seed=20261030;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const pick=a=>a[Math.floor(rnd()*a.length)];
+const NAMES=["Ada","Ravi","Mei","Tomás","Zainab","Kofi","Ingrid","Arjun","Lucía","Omar","Hana","Felix","Amara","Yusuf","Noor","Priya","Diego","Sora","Leila","Mateo","Chen","Nadia","Emeka","Freya","Kai","Imani","Pablo","Aiko","Samir","Elena","Tariq","Rosa","Jonah","Mira","Bilal","Greta","Ines","Kwame","Lena","Hugo","Asha","Viktor","Yara","Theo","Nia","Rafael","Selin","Malik","Ophelia","Jun"];
+const INIT="ABCDEFGHJKLMNPRSTVWZ";
+const THEMES={
+ work:[["💻","code review"],["📧","inbox"],["📊","metrics"],["🗓️","standup"],["🧩","a stubborn bug"],["📝","notes"],["🤝","meeting"]],
+ home:[["☕","coffee"],["🍳","breakfast"],["🧺","laundry"],["🐕","walk the dog"],["🌱","water plants"],["🛒","groceries"],["🍝","dinner"]],
+ feeling:[["😌","calm"],["😟","worry"],["😂","a joke"],["💭","daydream"],["😴","tired"],["🔥","motivated"],["🥲","nostalgia"]],
+ people:[["📞","call mom"],["💬","text a friend"],["👶","the kids"],["❤️","partner"],["🎂","a birthday"],["👋","old coworker"]],
+ world:[["🌧️","rain"],["📰","news"],["🚗","traffic"],["🎵","song stuck in head"],["🌅","sunset"],["🌙","the moon"]],
+ ideas:[["💡","new idea"],["🎮","game design"],["📚","a book"],["✈️","trip plan"],["🧠","old memory"],["🏃","go for a run"]]
+};
+const TK=Object.keys(THEMES);
+const N=100,CX=400,CY=400,R=352;
+const fmtH=h=>{h=((h%24)+24)%24;return (h%12||12)+(h<12?" am":" pm")};
+
+// Jack board: 10x10 grid centred, assigned by angle so threads fan in cleanly
+const SP=17,GX=CX-SP*4.5,GY=CY-SP*4.5+10;
+let jacks=[];
+for(let r=0;r<10;r++)for(let c=0;c<10;c++){const x=GX+c*SP,y=GY+r*SP;jacks.push({r,c,x,y,a:Math.atan2(y-CY,x-CX)})}
+jacks.sort((p,q)=>p.a-q.a);
+
+const people=d3.range(N).map(i=>{
+  const a=-Math.PI+(i+.5)/N*2*Math.PI;
+  const favs=[pick(TK),pick(TK)];
+  const pool=d3.range(7,23);for(let k=pool.length-1;k>0;k--){const m=Math.floor(rnd()*(k+1));[pool[k],pool[m]]=[pool[m],pool[k]]}
+  const hours=pool.slice(0,10).sort((x,y)=>x-y);
+  const thoughts=hours.map(h=>{const t=pick(THEMES[rnd()<.72?pick(favs):pick(TK)]);return{e:t[0],w:t[1],h,from:i}});
+  const j=jacks[i];
+  return{id:i,name:NAMES[i%50]+" "+INIT[(i*7)%20]+".",a,x:CX+R*Math.cos(a),y:CY+R*Math.sin(a),
+    jx:j.x,jy:j.y,jack:"ABCDEFGHIJ"[j.r]+(j.c+1),thoughts,orig:thoughts.map(t=>({...t})),
+    period:3200+rnd()*3800,phase:rnd(),patched:false};
+});
+
+const svg=d3.select("#ex");
+const gT=d3.select("#threads"),gP=d3.select("#pulses"),gS=d3.select("#switch"),gC=d3.select("#cords"),gN=d3.select("#people");
+
+// Switchboard
+gS.append("rect").attr("x",GX-22).attr("y",GY-40).attr("width",SP*9+44).attr("height",SP*9+62).attr("rx",8)
+  .attr("fill","var(--panel)").attr("stroke","var(--rule)");
+gS.append("text").attr("class","plabel").attr("x",CX).attr("y",GY-20).attr("text-anchor","middle").text("OPERATOR");
+const jackSel=gS.selectAll("circle.jack").data(people).join("circle").attr("class","jack").attr("r",3.6).attr("cx",d=>d.jx).attr("cy",d=>d.jy);
+
+const threadPath=d=>{const cx=CX+R*.5*Math.cos(d.a),cy=CY+R*.5*Math.sin(d.a);return`M${d.x},${d.y}Q${cx},${cy} ${d.jx},${d.jy}`};
+const threadSel=gT.selectAll("path").data(people).join("path").attr("class","thread").attr("d",threadPath);
+threadSel.each(function(d){d.el=this;d.len=this.getTotalLength()});
+const pulseSel=gP.selectAll("circle").data(people).join("circle").attr("class","pulse").attr("r",1.8);
+
+const nodeSel=gN.selectAll("g").data(people).join("g").attr("class","person").attr("tabindex",0)
+  .attr("role","button").attr("aria-label",d=>d.name)
+  .attr("transform",d=>`translate(${d.x},${d.y})`);
+nodeSel.append("circle").attr("class","dot").attr("r",11);
+nodeSel.append("text").attr("text-anchor","middle").attr("dominant-baseline","central").attr("dy",1);
+
+// State
+let hourF=7,clockHour=7,mode="both",selected=0,armed=false,auto=true,patches=[],log=[],hover=null,nextAuto=0;
+
+function currentThought(p){let t=p.thoughts[0];for(const x of p.thoughts)if(x.h<=clockHour)t=x;return t}
+function refreshNodes(){
+  nodeSel.select("text").text(d=>currentThought(d).e);
+  nodeSel.classed("patched",d=>d.patched).classed("sel",d=>d.id===selected).classed("armed",d=>armed&&d.id===selected);
+  threadSel.classed("patched",d=>d.patched);
+  pulseSel.classed("patched",d=>d.patched);
+  jackSel.classed("on",d=>d.patched);
+}
+function cordPath(p){const a=people[p.a],b=people[p.b];const mx=(a.jx+b.jx)/2,my=(a.jy+b.jy)/2;const d=Math.hypot(a.jx-b.jx,a.jy-b.jy);return`M${a.jx},${a.jy}Q${mx},${my+18+d*.35} ${b.jx},${b.jy}`}
+function drawCords(){
+  const shown=patches.slice(-18);
+  gC.selectAll("path").data(shown,d=>d.k).join(
+    en=>en.append("path").attr("class","cord").attr("d",cordPath).attr("stroke-dasharray",function(){return this.getTotalLength()}).attr("stroke-dashoffset",function(){return this.getTotalLength()})
+      .call(s=>s.transition().duration(matchMedia("(prefers-reduced-motion: reduce)").matches?0:700).attr("stroke-dashoffset",0)),
+    up=>up,ex=>ex.remove()
+  ).attr("opacity",(d,i)=>.35+.65*(i+1)/shown.length);
+  applyFocus();
+}
+function applyFocus(){
+  const f=hover!==null?hover:(selected!==null?selected:null);
+  svg.classed("focus",f!==null);
+  threadSel.classed("hot",d=>d.id===f);
+  gC.selectAll("path").classed("hot",d=>d.a===f||d.b===f);
+  jackSel.classed("hot",d=>d.id===f);
+}
+function chipsHTML(p){
+  const now=currentThought(p);
+  return p.thoughts.map(t=>{
+    const via=t.from!==p.id;
+    return `<li class="chip${via?" via":""}${t===now?" now":""}" title="${fmtH(t.h)}${via?" — via "+people[t.from].name:""}"><span class="e">${t.e}</span><span class="w">${t.w}</span><small>${fmtH(t.h).replace(" ","")}${via?" · via "+people[t.from].name.split(" ")[0]:""}</small></li>`;
+  }).join("");
+}
+function renderPanel(){
+  const p=people[selected];
+  document.getElementById("selName").textContent=p.name;
+  const own=p.thoughts.filter(t=>t.from===p.id).length;
+  document.getElementById("selMeta").textContent=`Jack ${p.jack} · ${own} of ${p.thoughts.length} thoughts are their own`;
+  const ul=document.getElementById("selChips");ul.className="chips "+mode;ul.innerHTML=chipsHTML(p);
+  const btn=document.getElementById("patchBtn");btn.setAttribute("aria-pressed",armed);btn.textContent=armed?"Pick a second person…":"Patch with…";
+  document.getElementById("selEyebrow").textContent=armed?"Patching from":"Caller";
+}
+const tip=document.getElementById("tip"),board=document.getElementById("board");
+function showTip(p,ev){
+  tip.innerHTML=`<h3>${p.name} <span style="color:var(--muted);font:400 11px var(--f-mono)">jack ${p.jack}</span></h3><ul class="chips ${mode}">${chipsHTML(p)}</ul>`;
+  tip.hidden=false;
+  const br=board.getBoundingClientRect();
+  let x,y;
+  if(ev&&ev.clientX!==undefined&&ev.clientX!==0){x=ev.clientX-br.left;y=ev.clientY-br.top}
+  else{const s=br.width/800;x=p.x*s;y=p.y*s}
+  const w=tip.offsetWidth,h=tip.offsetHeight;
+  let lx=x+16,ly=y+16;
+  if(lx+w>br.width)lx=x-w-16; if(lx<0)lx=Math.max(4,(br.width-w)/2);
+  if(ly+h>br.height)ly=y-h-16; if(ly<0)ly=4;
+  tip.style.left=lx+"px";tip.style.top=ly+"px";
+}
+function hideTip(){tip.hidden=true}
+
+function patch(a,b,byOperator){
+  if(a===b)return;
+  const A=people[a],B=people[b];
+  let H=clockHour;
+  if(!A.thoughts.some(t=>t.h>H)||!B.thoughts.some(t=>t.h>H))H=9+Math.floor(rnd()*9);
+  const aHead=A.thoughts.filter(t=>t.h<=H),aTail=A.thoughts.filter(t=>t.h>H);
+  const bHead=B.thoughts.filter(t=>t.h<=H),bTail=B.thoughts.filter(t=>t.h>H);
+  A.thoughts=aHead.concat(bTail).sort((x,y)=>x.h-y.h);
+  B.thoughts=bHead.concat(aTail).sort((x,y)=>x.h-y.h);
+  A.patched=B.patched=true;
+  patches.push({a,b,H,k:patches.length+":"+a+"-"+b});
+  const lead=bTail[0]?`${bTail[0].e} ${bTail[0].w}`:"quiet";
+  log.unshift({t:fmtH(clockHour),msg:`${byOperator?"Operator patched":"You patched"} ${A.name} ↔ ${B.name} after ${fmtH(H)}. ${A.name.split(" ")[0]} now drifts to ${lead}.`});
+  log=log.slice(0,8);
+  renderLog();drawCords();refreshNodes();
+  if(selected===a||selected===b)renderPanel();
+}
+function renderLog(){
+  const el=document.getElementById("log");
+  el.innerHTML=log.length?log.map(l=>`<li><time>${l.t}</time><span>${l.msg}</span></li>`).join(""):`<li><time>—</time><span>No cords plugged in. Turn on auto-routing or patch two people yourself.</span></li>`;
+}
+
+nodeSel.on("mouseenter",(ev,d)=>{hover=d.id;applyFocus();showTip(d,ev)})
+  .on("mousemove",(ev,d)=>showTip(d,ev))
+  .on("mouseleave",()=>{hover=null;applyFocus();hideTip()})
+  .on("focus",(ev,d)=>{hover=d.id;applyFocus();showTip(d)})
+  .on("blur",()=>{hover=null;applyFocus();hideTip()})
+  .on("click",(ev,d)=>choose(d.id))
+  .on("keydown",(ev,d)=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();choose(d.id)}});
+function choose(id){
+  if(armed&&id!==selected){const from=selected;armed=false;patch(from,id,false);selected=id}
+  else{armed=false;selected=id}
+  refreshNodes();renderPanel();applyFocus();
+}
+document.getElementById("patchBtn").onclick=()=>{armed=!armed;refreshNodes();renderPanel()};
+const autoBtn=document.getElementById("auto");
+autoBtn.onclick=()=>{auto=!auto;autoBtn.setAttribute("aria-pressed",auto)};
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  mode=b.dataset.mode;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  renderPanel();if(!tip.hidden&&hover!==null)showTip(people[hover]);
+});
+document.getElementById("reset").onclick=()=>{
+  people.forEach(p=>{p.thoughts=p.orig.map(t=>({...t}));p.patched=false});
+  patches=[];log=[];armed=false;drawCords();refreshNodes();renderPanel();renderLog();
+};
+
+// Opening state: a few cords already in
+for(let i=0;i<7;i++){const a=Math.floor(rnd()*N);let b=Math.floor(rnd()*N);if(b===a)b=(a+37)%N;clockHour=8+i;patch(a,b,true)}
+clockHour=7;
+refreshNodes();renderPanel();renderLog();applyFocus();
+
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clockEl=document.getElementById("clock");
+d3.timer(t=>{
+  hourF=7+((t/2400)%16);
+  const h=Math.floor(hourF);
+  if(h!==clockHour){clockHour=h;clockEl.textContent=fmtH(h);refreshNodes();if(selected!==null)renderPanel();if(!tip.hidden&&hover!==null)showTip(people[hover]);}
+  if(auto&&t>nextAuto){nextAuto=t+1700;const a=Math.floor(Math.random()*N);let b=Math.floor(Math.random()*N);if(b===a)b=(a+1)%N;patch(a,b,true)}
+  if(!reduce){
+    pulseSel.each(function(d){const u=((t/d.period)+d.phase)%1;const pt=d.el.getPointAtLength(u*d.len);this.setAttribute("cx",pt.x);this.setAttribute("cy",pt.y)});
+  }
+});
+})();
+</script>
+
+</body></html>
