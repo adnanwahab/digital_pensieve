@@ -1,0 +1,39 @@
+:root{
+  --bg:#0f1020;
+  --card:#1a1d35;
+  --line:#3a3f66;
+  --text:#eef0ff;
+  --muted:#aeb4df;
+  --accent:#8be9ff;
+  --gold:#ffd37a;
+  --ok:#82f2b3;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at 30% -20%,#2a2f59,var(--bg));color:var(--text)}
+main{max-width:980px;margin:72px auto 40px;padding:0 16px;display:grid;gap:14px}
+h1{margin:0 0 6px;font-size:30px;line-height:1.1}
+h2{margin:0 0 8px;font-size:17px}
+p{margin:0}
+.card{background:color-mix(in oklab,var(--card) 90%,black);border:1px solid var(--line);border-radius:14px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.meta{color:var(--muted);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,input,select{font:inherit}
+button{background:#23284b;border:1px solid #49508a;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+button.primary{background:#3553f5;border-color:#6f86ff}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input[type='range']{width:100%}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:12px;color:var(--muted)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:13px}
+.kv div:nth-child(odd){color:var(--muted)}
+.bar{height:10px;border-radius:999px;background:#11142a;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--ok));transition:width .25s ease}
+.hub-btn{position:fixed;top:12px;left:12px;z-index:10;background:rgba(14,16,34,.88);border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:999px;text-decoration:none;font-size:12px}
+.hub-btn:hover{border-color:#8ea0ff}
+.small{font-size:12px;color:var(--muted)}
+.list{margin:0;padding-left:18px}
+.list li{margin:2px 0}
+.good{color:var(--ok)}
+.warn{color:var(--gold)}

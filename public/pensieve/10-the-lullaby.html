@@ -1,0 +1,817 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Lullaby</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital,wght@0,500;1,400;1,600&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-bleed 3D basin under a thin edge HUD; overlays sit in one narrow card at centre. Single deliberate night look. */
+:root{
+  --night:#151a34;
+  --night-2:#20284c;
+  --veil:rgba(14,18,40,.78);
+  --ink:#ece8f4;
+  --muted:#a6a5c3;
+  --gold:#ebb862;
+  --blue:#8aabee;
+  --silver:#d2d4e2;
+  --line:rgba(210,212,226,.18);
+  --display:"Cormorant Infant","Cormorant Garamond",Georgia,serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;overflow:hidden;-webkit-tap-highlight-color:transparent}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%}
+
+.hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.hud h1{font-family:var(--display);font-style:italic;font-weight:600;font-size:1.9rem;line-height:1;margin:0;letter-spacing:.01em}
+.eyebrow{font-size:.7rem;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:0 0 4px}
+.verse{font-size:.85rem;color:var(--muted);margin-top:6px}
+.meter{min-width:9.5rem;text-align:right}
+.meter .val{font-family:var(--display);font-size:1.9rem;line-height:1;font-variant-numeric:tabular-nums}
+.bar{height:3px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--silver),var(--blue));transition:width .3s}
+
+.banner{position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:min(34rem,calc(100% - 32px));opacity:0;transition:opacity .6s}
+.banner.show{opacity:1}
+.banner .big{font-family:var(--display);font-style:italic;font-size:clamp(2.2rem,7vw,3.6rem);line-height:1.05;text-wrap:balance}
+.banner .small{color:var(--muted);margin-top:8px;text-wrap:balance}
+
+.together{position:fixed;left:50%;bottom:30%;transform:translateX(-50%);font-family:var(--display);font-style:italic;font-size:1.5rem;color:var(--silver);opacity:0;pointer-events:none;transition:opacity .5s}
+.together.show{opacity:1;transition:opacity .05s}
+
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:var(--veil);
+  padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-y:auto}
+.card{width:100%;max-width:31rem;display:flex;flex-direction:column;gap:18px}
+.card h2{font-family:var(--display);font-style:italic;font-weight:600;font-size:clamp(2.6rem,9vw,3.6rem);line-height:.95;margin:0;text-wrap:balance}
+.card p{margin:0;color:var(--muted);max-width:62ch}
+.card p.lead{color:var(--ink)}
+.parts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.part{border-top:2px solid var(--gold);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.part.b{border-color:var(--blue)}
+.part strong{font-weight:600}
+.keys{display:flex;gap:5px;flex-wrap:wrap}
+kbd{font-family:var(--body);font-size:.8rem;min-width:1.7rem;text-align:center;padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;color:var(--ink)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+button,select{font:inherit}
+.btn{flex:1 1 12rem;padding:12px 16px;border-radius:999px;border:1px solid var(--silver);background:transparent;color:var(--ink);cursor:pointer;font-weight:500}
+.btn.primary{background:var(--silver);color:var(--night)}
+.btn:hover{border-color:var(--ink)}
+.btn.primary:hover{background:var(--ink)}
+.btn:focus-visible,select:focus-visible,.pad:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.opts{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.9rem}
+select{background:var(--night-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.stat .v{font-family:var(--display);font-size:1.7rem;line-height:1;font-variant-numeric:tabular-nums}
+.thread svg{width:100%;height:46px;display:block}
+pre{margin:0;background:var(--night-2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:.78rem;overflow-x:auto;color:var(--silver)}
+.copyrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.link{background:none;border:0;color:var(--gold);cursor:pointer;padding:4px 0;font-size:.85rem}
+
+.pads{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:12px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));padding-top:0;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.padset{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;flex:1;max-width:15rem}
+.pad{height:56px;border-radius:10px;border:1px solid var(--gold);background:rgba(235,184,98,.08);color:var(--ink);touch-action:none}
+.padset.b .pad{border-color:var(--blue);background:rgba(138,171,238,.08)}
+.pad.on{background:rgba(255,255,255,.25)}
+@media (max-width:520px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .hud h1{font-size:1.5rem}
+  .meter .val{font-size:1.5rem}
+  .meter{min-width:7rem}
+}
+@media (prefers-reduced-motion:reduce){.banner,.together,.bar i{transition:none}}
+</style>
+
+<div id="stage"></div>
+
+<div class="hud">
+  <div>
+    <p class="eyebrow">Memory 10 · The Core</p>
+    <h1>The Lullaby</h1>
+    <div class="verse" id="verseLabel">Before the song</div>
+  </div>
+  <div class="meter">
+    <p class="eyebrow">Clarity</p>
+    <div class="val" id="clarityVal">—</div>
+    <div class="bar"><i id="clarityBar"></i></div>
+  </div>
+</div>
+
+<div class="banner" id="banner"><div class="big" id="bannerBig"></div><div class="small" id="bannerSmall"></div></div>
+<div class="together" id="together">together</div>
+
+<div class="pads" id="pads" hidden>
+  <div class="padset a" id="padsA"></div>
+  <div class="padset b" id="padsB"></div>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="card">
+    <div>
+      <p class="eyebrow">Act III · Memory 10 of 12</p>
+      <h2>The Lullaby</h2>
+    </div>
+    <p class="lead">A half-remembered song. One of you holds the melody, the other holds the harmony. Play together and the nursery fills with color. Drift apart and it fades to gray. Nothing fails.</p>
+    <div class="parts">
+      <div class="part">
+        <strong>Melody · gold</strong>
+        <div class="keys"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd></div>
+      </div>
+      <div class="part b">
+        <strong>Harmony · blue</strong>
+        <div class="keys"><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><kbd>;</kbd></div>
+      </div>
+    </div>
+    <p>Tap the lane as each light reaches its ring. Three verses of about a minute. In the last verse the notes disappear: improvise, and the song listens for whether you move together.</p>
+    <div class="row">
+      <button class="btn primary" id="startTwo">Two players, one keyboard</button>
+      <button class="btn" id="startBot">Melody with a bot partner</button>
+    </div>
+    <label class="opts" for="startVerse">Begin at
+      <select id="startVerse">
+        <option value="0">Verse I</option>
+        <option value="1">Verse II</option>
+        <option value="2">Verse III (no notes)</option>
+      </select>
+    </label>
+  </div>
+</div>
+
+<div class="overlay" id="endOverlay" hidden>
+  <div class="card">
+    <div>
+      <p class="eyebrow">The memory clears</p>
+      <h2 id="endTitle">The song comes back.</h2>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Clarity</span><span class="v" id="sClarity">0%</span></div>
+      <div class="stat"><span class="k">In sync</span><span class="v" id="sSync">0%</span></div>
+      <div class="stat"><span class="k">Verses</span><span class="v" id="sVerses">—</span></div>
+      <div class="stat"><span class="k">Together</span><span class="v" id="sPairs">0</span></div>
+    </div>
+    <div class="thread">
+      <p class="eyebrow">Thread released</p>
+      <svg id="threadSvg" viewBox="0 0 300 46" preserveAspectRatio="none" aria-label="Silver thread, length set by clarity"></svg>
+    </div>
+    <div>
+      <div class="copyrow"><p class="eyebrow" style="margin:0">Session thread</p><button class="link" id="copyBtn">Copy JSON</button></div>
+      <pre id="threadJson"></pre>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="againBtn">Play again</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ───────── Song ───────── */
+const BPM = 84, BEAT = 60 / BPM;
+const LEAD_BEATS = 6, VERSE_BEATS = 72, GAP_BEATS = 6;
+const verseStartBeat = v => LEAD_BEATS + v * (VERSE_BEATS + GAP_BEATS);
+const SONG_END_BEAT = verseStartBeat(2) + VERSE_BEATS + 4;
+const WIN = 0.18;          // judging window, seconds
+const SYNC_TIGHT = 0.08;   // both players within this of each other = "together"
+
+// [midi, beats] — original waltz in C, three phrases per verse
+const MEL_A  = [[79,2],[76,1],[77,1],[76,1],[74,1],[72,2],[76,1],[74,3],[76,2],[79,1],[81,1],[79,1],[77,1],[76,1],[74,1],[71,1],[72,3]];
+const MEL_B  = [[81,2],[79,1],[77,2],[81,1],[79,1],[76,1],[72,1],[74,3],[76,2],[77,1],[79,1],[81,1],[79,1],[77,1],[74,1],[71,1],[72,3]];
+const MEL_A2 = [[79,2],[76,1],[77,1],[76,1],[74,1],[72,2],[76,1],[74,3],[76,1],[77,1],[79,1],[81,2],[77,1],[76,1],[74,1],[71,1],[72,3]];
+const MELODY = [...MEL_A, ...MEL_B, ...MEL_A2];
+const CHORDS = ["C","G","C","G","C","F","G","C", "F","F","C","G","Am","C","G","C", "C","G","C","G","C","F","G","C"];
+const CH = { C:{r:60,t:64,f:55}, F:{r:65,t:57,f:60}, G:{r:55,t:59,f:62}, Am:{r:57,t:60,f:64} };
+const melLane = m => m <= 72 ? 0 : m <= 74 ? 1 : m <= 77 ? 2 : 3;
+const harLane = m => m <= 57 ? 0 : m <= 60 ? 1 : m <= 64 ? 2 : 3;
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function chordAtBeat(beat){
+  for (let v = 0; v < 3; v++){
+    const s = verseStartBeat(v);
+    if (beat >= s && beat < s + VERSE_BEATS) return CHORDS[Math.floor((beat - s) / 3)];
+  }
+  return "C";
+}
+function verseAtTime(t){
+  const b = t / BEAT;
+  for (let v = 0; v < 3; v++){
+    const s = verseStartBeat(v);
+    if (b >= s - 0.6 && b < s + VERSE_BEATS + 0.6) return v;
+  }
+  return -1;
+}
+
+function buildNotes(){
+  const notes = [];
+  for (let v = 0; v < 2; v++){
+    let b = verseStartBeat(v);
+    for (const [m, d] of MELODY){ notes.push({p:0, v, beat:b, dur:d, midi:m, lane:melLane(m)}); b += d; }
+    for (let bar = 0; bar < 24; bar++){
+      const c = CH[CHORDS[bar]], bs = verseStartBeat(v) + bar * 3;
+      const a = bar % 2 ? c.f : c.t, z = bar % 2 ? c.t : c.r;
+      if (bar % 4 === 3){
+        notes.push({p:1, v, beat:bs+1, dur:1, midi:a, lane:harLane(a)});
+        notes.push({p:1, v, beat:bs+2, dur:1, midi:z, lane:harLane(z)});
+      } else {
+        notes.push({p:1, v, beat:bs,   dur:2, midi:a, lane:harLane(a)});
+        notes.push({p:1, v, beat:bs+2, dur:1, midi:z, lane:harLane(z)});
+      }
+    }
+  }
+  notes.forEach((n, i) => { n.id = i; n.t = n.beat * BEAT; });
+  return notes;
+}
+
+/* ───────── Audio ───────── */
+let ctx, master, rev;
+function impulse(sec){
+  const len = Math.floor(ctx.sampleRate * sec), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++){
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.4);
+  }
+  return buf;
+}
+function initAudio(){
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ctx.createDynamicsCompressor();
+  master = ctx.createGain(); master.gain.value = .85;
+  master.connect(comp); comp.connect(ctx.destination);
+  rev = ctx.createConvolver(); rev.buffer = impulse(2.8);
+  const rg = ctx.createGain(); rg.gain.value = .32; rev.connect(rg); rg.connect(master);
+}
+function voice(midi, when, dur, type, vol, detune = 0, cutoff = 0, attack = .012){
+  const o = ctx.createOscillator(); o.type = type; o.frequency.value = mtof(midi); o.detune.value = detune;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(vol, when + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  let node = o;
+  if (cutoff){ const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = cutoff; o.connect(f); node = f; }
+  node.connect(g); g.connect(master); g.connect(rev);
+  o.start(when); o.stop(when + dur + .05);
+}
+function playMelody(midi){ const t = ctx.currentTime; voice(midi, t, 1.7, "sine", .22); voice(midi+12, t, .45, "triangle", .045); }
+function playHarmony(midi){ const t = ctx.currentTime; voice(midi, t, 2.0, "triangle", .15, 0, 1400); voice(midi+12, t, 1.2, "sine", .05); }
+function playStray(p){ const t = ctx.currentTime; voice(p ? 50 : 86, t, .12, "sine", .03); }
+function scheduleBar(beat, when){
+  const c = CH[chordAtBeat(beat)], warp = (1 - state.bloom) * 28, dur = 3 * BEAT + .5;
+  for (const m of [c.r - 12, c.t - 12, c.f]){
+    const d = (Math.random() < .5 ? -1 : 1) * warp;
+    voice(m, when, dur, "sawtooth", .018, d, 520 + state.bloom * 500, .45);
+    voice(m, when, dur, "sawtooth", .014, -d + 7, 520 + state.bloom * 500, .45);
+  }
+  voice(c.r - 24, when, 1.4, "sine", .16);
+  voice(c.f + 12, when + BEAT, .25, "sine", .022);
+  voice(c.t + 12, when + 2*BEAT, .25, "sine", .022);
+}
+
+/* ───────── State ───────── */
+const state = {
+  running:false, mode:"two", startVerse:0, bloom:.35, bloomTarget:.35,
+  notes:[], laneNotes:[[[],[],[],[]],[[],[],[],[]]], moments:new Map(),
+  verseScores:[[],[],[]], recent:[], shared:0, synced:0,
+  improv:{presses:[[],[]], pairs:0, lastBeatChecked:-1}, botQueue:[],
+  a0:0, p0:0, lat:0, offset:0, nextBar:0, lastVerseShown:-2, finished:false, litStars:0
+};
+const nowPerf = () => performance.now() / 1000;
+const songTimeAt = perfSec => perfSec - state.p0 - state.lat + state.offset;
+const songNow = () => songTimeAt(nowPerf());
+const audioTimeFor = t => state.a0 + (t - state.offset);
+
+/* ───────── Three.js scene ───────── */
+const stage = document.getElementById("stage");
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 200);
+const BG_GRAY = new THREE.Color("#34363f"), BG_COL = new THREE.Color("#172056"), bgNow = new THREE.Color();
+scene.fog = new THREE.FogExp2(0x172056, .022);
+
+const GOLD = new THREE.Color("#ebb862"), BLUE = new THREE.Color("#8aabee"), SILVER = new THREE.Color("#d9dbe8");
+const PCOL = [GOLD, BLUE];
+const HIT_Z = 3, SPEED = 9, SPAWN = 36;
+const LANE_X = [[-4.6,-3.5,-2.4,-1.3],[1.3,2.4,3.5,4.6]];
+const tinted = [];  // {mat, base} — colors desaturate with bloom
+const gray = c => { const l = c.r*.3 + c.g*.59 + c.b*.11; return new THREE.Color(l, l, l); };
+function tint(mat, base, prop = "color"){ tinted.push({mat, base, g:gray(base), prop}); return mat; }
+
+function glowTexture(){
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d"), r = g.createRadialGradient(32,32,0,32,32,32);
+  r.addColorStop(0,"rgba(255,255,255,1)"); r.addColorStop(.25,"rgba(255,255,255,.5)"); r.addColorStop(1,"rgba(255,255,255,0)");
+  g.fillStyle = r; g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+const GLOW = glowTexture();
+
+function textSprite(txt, color){
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.font = "600 34px Figtree, system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = color; g.fillText(txt, 32, 34);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false}));
+  s.scale.set(.5,.5,.5); return s;
+}
+
+// Water
+const waterMat = new THREE.ShaderMaterial({
+  uniforms:{ uTime:{value:0}, uBloom:{value:.35}, uDeep:{value:new THREE.Color("#141c48")}, uGlow:{value:new THREE.Color("#b9c4ff")} },
+  vertexShader:`varying vec3 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.); vP = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader:`uniform float uTime,uBloom; uniform vec3 uDeep,uGlow; varying vec3 vP;
+    void main(){
+      vec2 p = vP.xz; float d = length(p - vec2(0.,-4.));
+      float rip = sin(d*1.5 - uTime*1.1)*.5+.5;
+      float streak = exp(-abs(p.x - 6.)*.45) * smoothstep(10.,-45.,p.y) * (.55+.45*sin(p.y*2.4+uTime*1.7+p.x));
+      vec3 col = mix(uDeep, uGlow, rip*.06 + streak*.32);
+      col *= smoothstep(75.,6.,d)*.85+.15;
+      float l = dot(col, vec3(.3,.59,.11));
+      gl_FragColor = vec4(mix(vec3(l)*.9, col, uBloom), 1.);
+    }`
+});
+const water = new THREE.Mesh(new THREE.PlaneGeometry(160,160,1,1), waterMat);
+water.rotation.x = -Math.PI/2; water.position.y = -.4; scene.add(water);
+
+// Moon (crescent sprite)
+(() => {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d");
+  const r = g.createRadialGradient(128,128,40,128,128,128); r.addColorStop(0,"rgba(255,240,210,.35)"); r.addColorStop(1,"rgba(255,240,210,0)");
+  g.fillStyle = r; g.fillRect(0,0,256,256);
+  g.fillStyle = "#fff4dc"; g.beginPath(); g.arc(128,128,62,0,Math.PI*2); g.fill();
+  g.globalCompositeOperation = "destination-out"; g.beginPath(); g.arc(158,108,58,0,Math.PI*2); g.fill();
+  const m = new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, fog:false});
+  tint(m, new THREE.Color("#fff4dc"));
+  const s = new THREE.Sprite(m); s.position.set(7, 11, -42); s.scale.set(12,12,1); scene.add(s);
+})();
+
+// Lanes, rings, key labels
+const rings = [[],[]];
+const KEYS = [["A","S","D","F"],["J","K","L",";"]];
+for (let p = 0; p < 2; p++){
+  for (let l = 0; l < 4; l++){
+    const x = LANE_X[p][l];
+    const lm = tint(new THREE.MeshBasicMaterial({transparent:true, opacity:.22, depthWrite:false}), PCOL[p]);
+    const lane = new THREE.Mesh(new THREE.PlaneGeometry(.05, SPAWN + 2), lm);
+    lane.rotation.x = -Math.PI/2; lane.position.set(x, -.3, HIT_Z - SPAWN/2 + 1); scene.add(lane);
+    const rm = tint(new THREE.MeshBasicMaterial({transparent:true, opacity:.55, depthWrite:false}), PCOL[p]);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.38,.035,8,40), rm);
+    ring.rotation.x = -Math.PI/2; ring.position.set(x, -.2, HIT_Z); ring.userData.flash = 0; scene.add(ring);
+    rings[p].push(ring);
+    const k = textSprite(KEYS[p][l], p ? "#8aabee" : "#ebb862"); k.position.set(x, -.05, HIT_Z + 1.05); scene.add(k);
+  }
+}
+
+// Notes
+const sphereGeo = new THREE.SphereGeometry(.24, 18, 12);
+function makeNoteObj(n){
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({transparent:true});
+  const core = new THREE.Mesh(sphereGeo, mat);
+  const gm = new THREE.SpriteMaterial({map:GLOW, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending});
+  const glow = new THREE.Sprite(gm); glow.scale.set(1.3,1.3,1);
+  const len = Math.max(.1, n.dur*BEAT*SPEED*.8 - .3);
+  const tm = new THREE.MeshBasicMaterial({transparent:true, opacity:.35, depthWrite:false});
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(.09,.03,len), tm); tail.position.z = -len/2 - .2;
+  grp.add(tail, glow, core); grp.visible = false;
+  grp.position.set(LANE_X[n.p][n.lane], 0, 0);
+  scene.add(grp);
+  n.obj = {grp, mat, gm, tm, core, glow};
+}
+
+// Star mobile
+const stars = [];
+const mobile = new THREE.Group(); mobile.position.set(0, 9.5, -16); scene.add(mobile);
+const tiers = [];
+[[2.6,6],[4.6,8],[6.6,10]].forEach(([r, count], ti) => {
+  const tier = new THREE.Group(); mobile.add(tier); tiers.push(tier);
+  for (let i = 0; i < count; i++){
+    const a = i / count * Math.PI*2 + ti*.3, x = Math.cos(a)*r, z = Math.sin(a)*r, drop = 1.2 + ((i*7+ti*3)%4)*.55;
+    const lineM = new THREE.LineBasicMaterial({color:0x8a8ca8, transparent:true, opacity:.35});
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,1.5,z), new THREE.Vector3(x,-drop,z)]), lineM);
+    const sm = new THREE.MeshBasicMaterial({color:0x8b8d9e});
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(.24), sm); star.position.set(x,-drop-.24,z);
+    const gm = new THREE.SpriteMaterial({map:GLOW, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:0});
+    const glow = new THREE.Sprite(gm); glow.scale.set(1.6,1.6,1); star.add(glow);
+    tier.add(line, star);
+    stars.push({star, sm, gm, lit:0, col: (stars.length % 3 === 2) ? SILVER : PCOL[stars.length % 2]});
+  }
+});
+// Light order shuffled so the mobile fills evenly
+const starOrder = stars.map((_, i) => i).sort((a,b) => ((a*37)%stars.length) - ((b*37)%stars.length));
+
+// Motes
+const MOTES = reduceMotion ? 120 : 380;
+const moteGeo = new THREE.BufferGeometry(), motePos = new Float32Array(MOTES*3);
+for (let i = 0; i < MOTES; i++){ motePos[i*3] = (Math.random()-.5)*44; motePos[i*3+1] = Math.random()*14; motePos[i*3+2] = -Math.random()*46 + 6; }
+moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3));
+const moteMat = tint(new THREE.PointsMaterial({size:.16, map:GLOW, transparent:true, opacity:.6, depthWrite:false, blending:THREE.AdditiveBlending}), new THREE.Color("#ffe3b0"));
+scene.add(new THREE.Points(moteGeo, moteMat));
+
+// Petal bursts
+const PET = 700;
+const petGeo = new THREE.BufferGeometry(), petPos = new Float32Array(PET*3), petCol = new Float32Array(PET*3);
+const petVel = new Float32Array(PET*3), petLife = new Float32Array(PET), petBase = new Float32Array(PET*3);
+petGeo.setAttribute("position", new THREE.BufferAttribute(petPos,3));
+petGeo.setAttribute("color", new THREE.BufferAttribute(petCol,3));
+scene.add(new THREE.Points(petGeo, new THREE.PointsMaterial({size:.22, map:GLOW, vertexColors:true, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending})));
+let petHead = 0;
+function burst(x, z, count, colors){
+  if (reduceMotion) count = Math.floor(count/3);
+  for (let k = 0; k < count; k++){
+    const i = petHead; petHead = (petHead + 1) % PET;
+    petPos[i*3] = x + (Math.random()-.5)*.6; petPos[i*3+1] = 0; petPos[i*3+2] = z + (Math.random()-.5)*.6;
+    const a = Math.random()*Math.PI*2, s = 1 + Math.random()*2.5;
+    petVel[i*3] = Math.cos(a)*s; petVel[i*3+1] = 2.5 + Math.random()*4; petVel[i*3+2] = Math.sin(a)*s - 1.5;
+    const c = colors[k % colors.length]; petBase[i*3] = c.r; petBase[i*3+1] = c.g; petBase[i*3+2] = c.b;
+    petLife[i] = 1;
+  }
+}
+
+// Water ripples
+const ripples = [];
+for (let i = 0; i < 28; i++){
+  const m = new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide});
+  const r = new THREE.Mesh(new THREE.RingGeometry(.32,.38,48), m); r.rotation.x = -Math.PI/2; r.position.y = -.36; r.visible = false;
+  r.userData.life = 0; scene.add(r); ripples.push(r);
+}
+let ripHead = 0;
+function ripple(x, z, col){
+  const r = ripples[ripHead]; ripHead = (ripHead + 1) % ripples.length;
+  r.position.x = x; r.position.z = z; r.material.color.copy(col); r.userData.life = 1; r.visible = true;
+}
+
+function resize(){
+  const w = stage.clientWidth, h = stage.clientHeight, asp = w / h;
+  renderer.setSize(w, h, false);
+  camera.aspect = asp;
+  camera.fov = asp < .8 ? 78 : asp < 1.2 ? 64 : 50;
+  camera.position.set(0, asp < .8 ? 7.2 : 5.4, asp < .8 ? 12.5 : 9.8);
+  camera.lookAt(0, 0, -7);
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+
+/* ───────── HUD ───────── */
+const $ = id => document.getElementById(id);
+const ROMAN = ["I","II","III"];
+let bannerTimer = 0;
+function showBanner(big, small, ms = 3200){
+  $("bannerBig").textContent = big; $("bannerSmall").textContent = small;
+  $("banner").classList.add("show"); clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => $("banner").classList.remove("show"), ms);
+}
+let togetherTimer = 0;
+function flashTogether(){
+  const el = $("together"); el.classList.add("show"); clearTimeout(togetherTimer);
+  togetherTimer = setTimeout(() => el.classList.remove("show"), 380);
+}
+function runningClarity(){
+  const all = [...state.verseScores[0], ...state.verseScores[1], ...state.verseScores[2]];
+  return all.length ? all.reduce((a,b) => a+b, 0) / all.length : null;
+}
+function updateHud(){
+  const c = runningClarity();
+  $("clarityVal").textContent = c == null ? "—" : Math.round(c*100) + "%";
+  $("clarityBar").style.width = (c == null ? 0 : c*100) + "%";
+}
+
+/* ───────── Judging ───────── */
+function pushRecent(s){ state.recent.push(s); if (state.recent.length > 6) state.recent.shift(); state.bloomTarget = state.recent.reduce((a,b)=>a+b,0)/state.recent.length; }
+
+function lightStar(){
+  const s = stars[starOrder[state.litStars % stars.length]]; state.litStars++;
+  s.lit = 1.6;
+}
+function syncEffect(){
+  lightStar(); flashTogether();
+  burst(0, HIT_Z - .5, 26, [GOLD, BLUE, SILVER]);
+}
+
+function judge(n, hit, off){
+  n.judged = true; n.hit = hit; n.off = off;
+  if (hit){ n.hitAt = songNow(); ripple(LANE_X[n.p][n.lane], HIT_Z, PCOL[n.p]); burst(LANE_X[n.p][n.lane], HIT_Z, 7, [PCOL[n.p]]); }
+  const m = state.moments.get(n.beat);
+  if (m.notes.every(x => x.judged)) scoreMoment(m);
+}
+function scoreMoment(m){
+  if (m.skip) return;
+  let s;
+  if (m.notes.length === 1){
+    const n = m.notes[0]; s = n.hit ? 1 - Math.abs(n.off)/WIN*.4 : 0;
+  } else {
+    const [a, b] = m.notes; state.shared++;
+    if (a.hit && b.hit){
+      const gap = Math.abs(a.off - b.off);
+      s = 1 - Math.min(1, gap/WIN)*.5;
+      if (gap < SYNC_TIGHT){ state.synced++; syncEffect(); }
+    } else s = (a.hit || b.hit) ? .25 : 0;
+  }
+  state.verseScores[m.v].push(s); pushRecent(s); updateHud();
+}
+
+function press(p, lane, t){
+  if (!state.running) return;
+  rings[p][lane].userData.flash = 1;
+  const v = verseAtTime(t);
+  if (v === 2){ improvPress(p, lane, t); return; }
+  let best = null, bd = WIN;
+  for (const n of state.laneNotes[p][lane]){
+    if (n.judged) continue;
+    const d = Math.abs(t - n.t);
+    if (d < bd){ bd = d; best = n; }
+    if (n.t - t > WIN) break;
+  }
+  if (best){ judge(best, true, t - best.t); (p ? playHarmony : playMelody)(best.midi); }
+  else playStray(p);
+}
+
+function improvPress(p, lane, t){
+  const imp = state.improv, mine = imp.presses[p], theirs = imp.presses[1-p];
+  const c = CH[chordAtBeat(t / BEAT)];
+  const tones = p ? [c.f, c.r, c.t, c.f + 12].map(m => m <= 67 ? m : m - 12) : [c.r + 12, c.t + 12, c.f + 24, c.r + 24];
+  const midi = tones[lane]; (p ? playHarmony : playMelody)(midi);
+  ripple(LANE_X[p][lane], HIT_Z, PCOL[p]);
+  const me = {t, paired:false}; mine.push(me);
+  for (let i = theirs.length - 1; i >= 0 && t - theirs[i].t < .16; i--){
+    if (!theirs[i].paired && Math.abs(t - theirs[i].t) < .16){
+      theirs[i].paired = me.paired = true; imp.pairs++;
+      syncEffect(); pushRecent(1);
+      state.bloomTarget = Math.min(1, state.bloomTarget + .05);
+      break;
+    }
+  }
+  if (state.mode === "bot" && p === 0 && Math.random() < .82){
+    state.botQueue.push({t: t + .03 + Math.random()*.1, lane: (lane + 1 + Math.floor(Math.random()*2)) % 4});
+  }
+}
+function improvScore(){
+  const imp = state.improv, total = imp.presses[0].length + imp.presses[1].length;
+  if (!total) return 0;
+  return Math.min(1, (2*imp.pairs/total) * Math.min(1, total/16));
+}
+
+/* ───────── Input ───────── */
+const KEYMAP = {KeyA:[0,0],KeyS:[0,1],KeyD:[0,2],KeyF:[0,3],KeyJ:[1,0],KeyK:[1,1],KeyL:[1,2],Semicolon:[1,3]};
+addEventListener("keydown", e => {
+  const k = KEYMAP[e.code]; if (!k || e.repeat || !state.running) return;
+  if (state.mode === "bot" && k[0] === 1) return;
+  e.preventDefault();
+  press(k[0], k[1], songTimeAt(e.timeStamp / 1000));
+});
+function buildPads(){
+  [["padsA",0],["padsB",1]].forEach(([id, p]) => {
+    const box = $(id); box.innerHTML = "";
+    for (let l = 0; l < 4; l++){
+      const b = document.createElement("button"); b.className = "pad"; b.id = `pad-${p}-${l}`;
+      b.setAttribute("aria-label", `${p ? "Harmony" : "Melody"} lane ${l+1}`);
+      b.addEventListener("pointerdown", e => { e.preventDefault(); b.classList.add("on"); press(p, l, songTimeAt(e.timeStamp/1000)); });
+      const off = () => b.classList.remove("on");
+      b.addEventListener("pointerup", off); b.addEventListener("pointerleave", off);
+      box.appendChild(b);
+    }
+  });
+}
+buildPads();
+
+/* ───────── Game flow ───────── */
+function reset(){
+  for (const n of state.notes) if (n.obj){ scene.remove(n.obj.grp); }
+  state.notes = buildNotes();
+  state.laneNotes = [[[],[],[],[]],[[],[],[],[]]];
+  state.moments = new Map();
+  for (const n of state.notes){
+    makeNoteObj(n);
+    state.laneNotes[n.p][n.lane].push(n);
+    if (!state.moments.has(n.beat)) state.moments.set(n.beat, {v:n.v, notes:[]});
+    state.moments.get(n.beat).notes.push(n);
+    n.botErr = (Math.random() + Math.random() + Math.random() - 1.5) * .05;
+    n.botMiss = Math.random() < .08;
+  }
+  for (const l of state.laneNotes) for (const arr of l) arr.sort((a,b) => a.t - b.t);
+  state.verseScores = [[],[],[]]; state.recent = []; state.shared = 0; state.synced = 0;
+  state.improv = {presses:[[],[]], pairs:0, lastBeatChecked:-1};
+  state.botQueue = []; state.bloom = state.bloomTarget = .35; state.lastVerseShown = -2; state.finished = false;
+  state.litStars = 0; stars.forEach(s => s.lit = 0);
+}
+
+function start(mode){
+  initAudio(); if (ctx.state === "suspended") ctx.resume();
+  state.mode = mode;
+  state.startVerse = +$("startVerse").value;
+  reset();
+  state.offset = (verseStartBeat(state.startVerse) - LEAD_BEATS) * BEAT;
+  // Skip notes from verses before the start verse
+  for (const n of state.notes) if (n.v < state.startVerse){ n.judged = true; n.skipped = true; }
+  for (const m of state.moments.values()) if (m.v < state.startVerse) m.skip = true;
+  state.a0 = ctx.currentTime + .2; state.p0 = nowPerf() + .2;
+  state.lat = ctx.outputLatency || ctx.baseLatency || 0;
+  state.nextBar = verseStartBeat(state.startVerse) - LEAD_BEATS;
+  state.running = true;
+  $("startOverlay").hidden = true; $("endOverlay").hidden = true;
+  $("pads").hidden = !matchMedia("(pointer: coarse)").matches;
+  $("padsB").style.visibility = mode === "bot" ? "hidden" : "visible";
+  updateHud();
+}
+
+function finish(){
+  state.running = false; state.finished = true;
+  const played = [0,1,2].filter(v => v >= state.startVerse);
+  const vc = played.map(v => v === 2 ? improvScore() : (state.verseScores[v].length ? state.verseScores[v].reduce((a,b)=>a+b,0)/state.verseScores[v].length : 0));
+  const clarity = vc.reduce((a,b)=>a+b,0) / vc.length;
+  const syncParts = [];
+  if (state.shared) syncParts.push(state.synced / state.shared);
+  if (played.includes(2)){
+    const imp = state.improv, tot = imp.presses[0].length + imp.presses[1].length;
+    syncParts.push(tot ? 2*imp.pairs/tot : 0);
+  }
+  const sync = syncParts.length ? syncParts.reduce((a,b)=>a+b,0)/syncParts.length : 0;
+  $("sClarity").textContent = Math.round(clarity*100) + "%";
+  $("sSync").textContent = Math.round(sync*100) + "%";
+  $("sVerses").textContent = played.map((v,i) => Math.round(vc[i]*100)).join(" · ");
+  $("sPairs").textContent = state.synced + state.improv.pairs;
+  $("endTitle").textContent = clarity > .75 ? "The song comes back whole." : clarity > .45 ? "Most of the song comes back." : "A few notes come back.";
+  drawThread(clarity, sync);
+  const thread = {
+    game: 10, clarity: +clarity.toFixed(2), sync: +sync.toFixed(2), color: "silver",
+    verses: Object.fromEntries(played.map((v,i) => [ROMAN[v], +vc[i].toFixed(2)])),
+    carryovers: { lullabyTake: "take-" + Date.now().toString(36) }
+  };
+  $("threadJson").textContent = JSON.stringify(thread, null, 2);
+  $("endOverlay").hidden = false; $("pads").hidden = true;
+  $("againBtn").focus();
+}
+
+function drawThread(clarity, sync){
+  const svg = $("threadSvg"), len = 20 + 270*clarity, wob = 4 + (1 - sync)*10;
+  let d = "M 6 23";
+  for (let x = 6; x <= 6 + len; x += 6) d += ` L ${x.toFixed(1)} ${(23 + Math.sin(x*.11)*wob*Math.sin(x*.023+1)).toFixed(1)}`;
+  svg.innerHTML = `<path d="M 6 23 L 294 23" stroke="var(--line)" stroke-width="1" fill="none" stroke-dasharray="2 5"/>` +
+    `<path d="${d}" stroke="var(--silver)" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+}
+
+$("startTwo").addEventListener("click", () => start("two"));
+$("startBot").addEventListener("click", () => start("bot"));
+$("againBtn").addEventListener("click", () => { $("endOverlay").hidden = true; $("startOverlay").hidden = false; $("startTwo").focus(); });
+$("copyBtn").addEventListener("click", () => {
+  const txt = $("threadJson").textContent, btn = $("copyBtn");
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents($("threadJson")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected, press Ctrl+C"; };
+  try { navigator.clipboard.writeText(txt).then(() => { btn.textContent = "Copied"; setTimeout(() => btn.textContent = "Copy JSON", 1500); }, fallback); }
+  catch (_) { fallback(); }
+});
+
+/* ───────── Loop ───────── */
+const clock = new THREE.Clock();
+let elapsed = 0;
+function tick(){
+  const dt = Math.min(.05, clock.getDelta()); elapsed += dt;
+  const t = state.running ? songNow() : -99;
+
+  if (state.running){
+    // Schedule pad bars ahead
+    const audioNow = ctx.currentTime;
+    while (state.nextBar < SONG_END_BEAT - 3 && audioTimeFor(state.nextBar*BEAT) < audioNow + .35){
+      const when = audioTimeFor(state.nextBar*BEAT);
+      if (when > audioNow - .05) scheduleBar(state.nextBar, Math.max(when, audioNow));
+      state.nextBar += 3;
+    }
+    // Verse banners
+    for (let v = state.startVerse; v < 3; v++){
+      const s = verseStartBeat(v)*BEAT;
+      if (state.lastVerseShown < v && t > s - LEAD_BEATS*BEAT + .2){
+        state.lastVerseShown = v;
+        $("verseLabel").textContent = `Verse ${ROMAN[v]} of III`;
+        if (v === 2) showBanner("Verse III", "No notes now. Play anything, and listen for each other.", 4600);
+        else showBanner(`Verse ${ROMAN[v]}`, v === 0 ? "Gold holds the melody. Blue holds the harmony." : "The song is coming back.", 3400);
+      }
+    }
+    // Misses and bot
+    for (const n of state.notes){
+      if (n.judged) continue;
+      if (state.mode === "bot" && n.p === 1 && !n.botMiss && t >= n.t + n.botErr){
+        rings[1][n.lane].userData.flash = 1; judge(n, true, n.botErr); playHarmony(n.midi); continue;
+      }
+      if (t > n.t + WIN) judge(n, false, 0);
+    }
+    // Bot in improvisation
+    if (state.mode === "bot"){
+      for (let i = state.botQueue.length - 1; i >= 0; i--){
+        const q = state.botQueue[i];
+        if (t >= q.t){ state.botQueue.splice(i,1); rings[1][q.lane].userData.flash = 1; improvPress(1, q.lane, q.t); }
+      }
+    }
+    // Improv drift check, once per beat
+    if (verseAtTime(t) === 2){
+      const b = Math.floor(t / BEAT);
+      if (b !== state.improv.lastBeatChecked){
+        state.improv.lastBeatChecked = b;
+        const imp = state.improv, win = t - BEAT*2;
+        const recent = [...imp.presses[0], ...imp.presses[1]].filter(x => x.t > win);
+        if (recent.length && !recent.some(x => x.paired)) pushRecent(.15);
+        if (state.mode === "bot" && b % 6 === 0 && !imp.presses[0].some(x => x.t > t - BEAT*6) && Math.random() < .6)
+          state.botQueue.push({t: t + .02, lane: Math.floor(Math.random()*4)});
+        const sc = improvScore(); state.verseScores[2] = [sc]; updateHud();
+      }
+    }
+    if (t > SONG_END_BEAT*BEAT) finish();
+  } else if (!state.finished){
+    state.bloomTarget = .55 + Math.sin(elapsed*.4)*.15; // idle breathing on the title screen
+  }
+
+  // Bloom
+  state.bloom += (state.bloomTarget - state.bloom) * Math.min(1, dt*1.6);
+  const B = state.bloom;
+  bgNow.copy(BG_GRAY).lerp(BG_COL, B); scene.background = bgNow; scene.fog.color.copy(bgNow);
+  waterMat.uniforms.uBloom.value = B; waterMat.uniforms.uTime.value = elapsed;
+  for (const x of tinted) x.mat[x.prop].copy(x.g).lerp(x.base, B);
+
+  // Notes
+  const v3 = verseAtTime(t) === 2;
+  for (const n of state.notes){
+    const o = n.obj; if (!o) continue;
+    if (n.skipped || !state.running && !state.finished){ o.grp.visible = false; continue; }
+    const z = HIT_Z - (n.t - t)*SPEED;
+    const visible = !v3 && z > HIT_Z - SPAWN && z < HIT_Z + 3 && !(n.hit && t - n.hitAt > .3);
+    o.grp.visible = visible; if (!visible) continue;
+    o.grp.position.z = n.hit ? HIT_Z : z;
+    const fadeIn = Math.min(1, (z - (HIT_Z - SPAWN)) / 6);
+    const base = PCOL[n.p];
+    if (n.hit){
+      const k = (t - n.hitAt) / .3; o.grp.scale.setScalar(1 + k*1.4);
+      o.mat.color.copy(base); o.mat.opacity = 1 - k; o.gm.opacity = (1-k)*.9; o.tm.opacity = 0; o.gm.color.copy(base);
+    } else if (n.judged){
+      o.grp.scale.setScalar(.8); o.mat.color.setRGB(.42,.43,.48); o.mat.opacity = .4; o.gm.opacity = 0; o.tm.opacity = .1;
+    } else {
+      o.grp.scale.setScalar(1);
+      o.mat.color.copy(gray(base)).lerp(base, .45 + B*.55); o.mat.opacity = fadeIn;
+      o.gm.color.copy(o.mat.color); o.gm.opacity = fadeIn*(.45 + B*.4);
+      o.tm.color.copy(o.mat.color); o.tm.opacity = fadeIn*.35;
+      o.grp.position.y = Math.sin(elapsed*2 + n.id)*.04;
+    }
+  }
+
+  // Rings
+  for (let p = 0; p < 2; p++) for (const r of rings[p]){
+    r.userData.flash = Math.max(0, r.userData.flash - dt*5);
+    const f = r.userData.flash; r.scale.setScalar(1 + f*.45); r.material.opacity = .45 + f*.55;
+  }
+  // Ripples
+  for (const r of ripples){
+    if (!r.visible) continue;
+    r.userData.life -= dt*.9; if (r.userData.life <= 0){ r.visible = false; continue; }
+    const l = r.userData.life; r.scale.setScalar(1 + (1-l)*6); r.material.opacity = l*.6;
+  }
+  // Stars and mobile
+  tiers.forEach((tr, i) => tr.rotation.y += dt*(i % 2 ? -.05 : .07) * (reduceMotion ? .3 : 1));
+  for (const s of stars){
+    const target = s.lit > 0 ? 1 : 0;
+    if (s.lit > 1) s.lit = Math.max(1, s.lit - dt);
+    s.sm.color.setRGB(.55,.55,.62).lerp(s.col, target ? Math.min(1, .3 + B) : 0);
+    s.gm.color.copy(s.col); s.gm.opacity = target ? (s.lit - .2)*.8 * (.4 + B*.6) : 0;
+    s.star.rotation.y += dt*.6;
+  }
+  // Motes
+  if (!reduceMotion){
+    for (let i = 0; i < MOTES; i++){ motePos[i*3+1] += dt*.18; if (motePos[i*3+1] > 14) motePos[i*3+1] = 0; }
+    moteGeo.attributes.position.needsUpdate = true;
+  }
+  moteMat.opacity = .25 + B*.5;
+  // Petals
+  for (let i = 0; i < PET; i++){
+    if (petLife[i] <= 0){ petCol[i*3] = petCol[i*3+1] = petCol[i*3+2] = 0; continue; }
+    petLife[i] -= dt*.55;
+    petVel[i*3+1] -= dt*2.2;
+    petPos[i*3] += petVel[i*3]*dt; petPos[i*3+1] = Math.max(-.3, petPos[i*3+1] + petVel[i*3+1]*dt); petPos[i*3+2] += petVel[i*3+2]*dt;
+    const l = Math.max(0, petLife[i]);
+    petCol[i*3] = petBase[i*3]*l; petCol[i*3+1] = petBase[i*3+1]*l; petCol[i*3+2] = petBase[i*3+2]*l;
+  }
+  petGeo.attributes.position.needsUpdate = true; petGeo.attributes.color.needsUpdate = true;
+
+  // Gentle camera sway
+  if (!reduceMotion){
+    camera.position.x = Math.sin(elapsed*.21)*.25;
+    camera.lookAt(0, 0, -7);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+reset();
+requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>

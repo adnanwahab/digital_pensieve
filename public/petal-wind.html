@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Petal Wind</title>
+<meta name="description" content="Steer a gust of petals over dusk hills and wake the meadow into color.">
+<meta name="theme-color" content="#3d4a63">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="modulepreload" href="vendor/three.module.js">
+</head>
+<body>
+<div class="hud" aria-live="polite">
+  <div class="name">Petal Wind</div>
+  <div class="count"><span id="c">0</span> / <span id="n">0</span> in bloom</div>
+</div>
+<div class="hint" id="hint">Press and hold to ride the wind · steer with the pointer<br>Arrow keys and space work too</div>
+<button id="snd" type="button" aria-pressed="true">Sound on</button>
+<div class="end" id="end" hidden>Every hill is in color<small>Keep drifting as long as you like</small></div>
+<noscript><div class="end">Petal Wind needs JavaScript and WebGL to run.</div></noscript>
+<script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,901 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Lantern Keeper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  /* Split stage: lantern-lit house on the left, cyanotype floor plan on the right. Single dark look by choice. */
+  --night: #07080b;
+  --panel: #0d0f14;
+  --ink: #ebe4d4;
+  --muted: #8f8a80;
+  --line: #22252d;
+  --amber: #f0b35a;
+  --amber-deep: #6e4b1f;
+  --cyan: #163a5f;
+  --chalk: #dbe7f3;
+  --star: #ffe7a3;
+  --display: "IM Fell English", Georgia, "Times New Roman", serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--night); color: var(--ink); font-family: var(--body); font-size: 14px; }
+.app {
+  height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+}
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.brand h1 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; line-height: 1; letter-spacing: .01em; }
+.brand p { margin: 4px 0 0; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.status { display: flex; gap: 20px; align-items: baseline; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stat b { font-family: var(--mono); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stat b.warn { color: var(--amber); }
+.stage { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+.panel { position: relative; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.panel canvas { display: block; width: 100%; height: 100%; }
+.tag { position: absolute; top: 10px; left: 12px; z-index: 2; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+.tag strong { color: var(--ink); font-weight: 700; margin-right: 6px; }
+#keeperCanvas { transition: filter .4s; }
+.hud { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; pointer-events: none; }
+.oil { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+.oil-label { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.oil-label b { font-family: var(--mono); color: var(--amber); font-weight: 500; letter-spacing: 0; }
+.oil-track { height: 6px; background: #1a1610; border: 1px solid var(--amber-deep); border-radius: 3px; overflow: hidden; }
+.oil-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--amber-deep), var(--amber)); transition: width .2s linear; }
+.keys { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+kbd { font-family: var(--mono); font-size: 11px; border: 1px solid #3a3d47; border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--ink); }
+.prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); z-index: 2; font-size: 13px; color: var(--amber); background: rgba(10,8,5,.7); border: 1px solid var(--amber-deep); padding: 4px 10px; border-radius: 3px; pointer-events: none; white-space: nowrap; }
+.reader { background: var(--cyan); }
+.reader .tag { color: rgba(219,231,243,.6); }
+.reader .tag strong { color: var(--chalk); }
+#mapCanvas { cursor: crosshair; transition: filter .25s; }
+.reader.shielded:not(:hover) #mapCanvas { filter: blur(16px) brightness(.45); }
+.shield-hint { position: absolute; inset: 0; display: none; place-items: center; z-index: 3; color: var(--chalk); font-family: var(--display); font-style: italic; font-size: 20px; pointer-events: none; }
+.reader.shielded:not(:hover) .shield-hint { display: grid; }
+.titleblock { position: absolute; right: 10px; bottom: 10px; z-index: 2; border: 1px solid rgba(219,231,243,.45); color: var(--chalk); font-size: 11px; display: grid; grid-template-columns: auto auto; pointer-events: none; background: rgba(22,58,95,.85); }
+.titleblock div { padding: 4px 8px; border-right: 1px solid rgba(219,231,243,.3); border-bottom: 1px solid rgba(219,231,243,.3); }
+.titleblock .name { grid-column: 1 / -1; font-family: var(--display); font-size: 16px; }
+.titleblock .note { grid-column: 1 / -1; font-style: italic; opacity: .75; border-bottom: 0; }
+.reader-bar { position: absolute; top: 8px; right: 10px; z-index: 4; display: flex; gap: 10px; align-items: center; color: var(--chalk); font-size: 12px; }
+.starcount { font-family: var(--mono); letter-spacing: .1em; color: var(--star); }
+.reader-bar label { display: flex; gap: 6px; align-items: center; cursor: pointer; opacity: .85; }
+.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(4,5,7,.86); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; overflow-y: auto; }
+.card { max-width: 620px; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.card h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; line-height: 1.05; text-wrap: balance; }
+.card .lede { font-family: var(--display); font-style: italic; font-size: 19px; color: #cfc6b4; margin: 0; }
+.roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role { border-top: 2px solid var(--amber); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.role.r { border-top-color: var(--chalk); }
+.role h3 { margin: 0; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.role p { margin: 0; color: #c8c1b2; line-height: 1.5; }
+.card .fine { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0; }
+button.go { align-self: flex-start; font: inherit; font-weight: 700; font-size: 15px; color: #1a1206; background: var(--amber); border: 0; border-radius: 3px; padding: 10px 22px; cursor: pointer; }
+button.go:focus-visible, .pad button:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
+.result { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.result div { display: flex; flex-direction: column; gap: 2px; }
+.result span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.result b { font-family: var(--mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+pre.thread { margin: 0; font-family: var(--mono); font-size: 12px; color: #c8c1b2; background: #0f1116; border: 1px solid var(--line); padding: 10px; overflow-x: auto; }
+.pad { display: none; position: absolute; left: 12px; bottom: 56px; z-index: 3; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; }
+.pad button { font: inherit; color: var(--ink); background: rgba(30,28,24,.8); border: 1px solid #3a3530; border-radius: 4px; touch-action: none; }
+.pad .up { grid-column: 2; grid-row: 1; }
+.pad .left { grid-column: 1; grid-row: 2; }
+.pad .down { grid-column: 2; grid-row: 2; }
+.pad .right { grid-column: 3; grid-row: 2; }
+.pad2 { display: none; position: absolute; right: 12px; bottom: 56px; z-index: 3; gap: 6px; flex-direction: column; }
+.pad2 button { font: inherit; font-size: 12px; color: var(--amber); background: rgba(30,24,14,.85); border: 1px solid var(--amber-deep); border-radius: 4px; padding: 10px 12px; touch-action: none; }
+@media (pointer: coarse) { .pad { display: grid; } .pad2 { display: flex; } .keys { display: none; } }
+@media (max-width: 820px) {
+  .app { height: auto; min-height: 100%; }
+  .stage { grid-template-columns: 1fr; }
+  .keeper { height: 62vh; min-height: 320px; }
+  .reader { aspect-ratio: 27 / 23; max-width: 100%; }
+  .roles, .result { grid-template-columns: 1fr; }
+  .titleblock { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { #keeperCanvas, #mapCanvas, .oil-fill { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>Lantern Keeper</h1>
+      <p>Pensieve · Memory 5 · The Depths</p>
+    </div>
+    <div class="status">
+      <div class="stat"><span>Floor</span><b id="floorStat">1 / 3</b></div>
+      <div class="stat"><span>Time on floor</span><b id="timeStat">5:00</b></div>
+      <div class="stat"><span>Floors cleared</span><b id="clearStat">0</b></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <section class="panel keeper" aria-label="Keeper view">
+      <div class="tag"><strong>Keeper</strong>keyboard · holds the only light</div>
+      <canvas id="keeperCanvas"></canvas>
+      <div class="prompt" id="prompt" hidden></div>
+      <div class="pad" aria-label="Movement">
+        <button class="up" data-key="w" aria-label="Up">▲</button>
+        <button class="left" data-key="a" aria-label="Left">◀</button>
+        <button class="down" data-key="s" aria-label="Down">▼</button>
+        <button class="right" data-key="d" aria-label="Right">▶</button>
+      </div>
+      <div class="pad2">
+        <button id="tRaise">Raise / lower</button>
+        <button id="tOpen">Open drawer</button>
+      </div>
+      <div class="hud">
+        <div class="oil">
+          <div class="oil-label"><span id="lanternState">Lantern lowered</span><b id="oilNum">100</b></div>
+          <div class="oil-track"><div class="oil-fill" id="oilFill"></div></div>
+        </div>
+        <div class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk · <kbd>Space</kbd> raise lantern · <kbd>E</kbd> open drawer · <kbd>P</kbd> pause</div>
+      </div>
+    </section>
+
+    <section class="panel reader" id="readerPanel" aria-label="Reader map">
+      <div class="tag"><strong>Reader</strong>mouse · holds the map</div>
+      <div class="reader-bar">
+        <span class="starcount" id="starCount">★★★</span>
+        <label><input type="checkbox" id="shieldToggle"> Shield map</label>
+      </div>
+      <canvas id="mapCanvas"></canvas>
+      <div class="shield-hint">Reader: hover to read the map</div>
+      <div class="titleblock">
+        <div class="name" id="tbName">Third floor</div>
+        <div id="tbSheet">Sheet 1 of 3</div>
+        <div>Drawn from memory</div>
+        <div class="note">Ink fades where the lantern hasn't been. Click to drop a star.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="overlay" id="intro">
+  <div class="card">
+    <h2>Lantern Keeper</h2>
+    <p class="lede">One of you has the light. The other has the map. The house moves when no one is looking.</p>
+    <div class="roles">
+      <div class="role">
+        <h3>Keeper · keyboard</h3>
+        <p>Walk the dark house with <kbd>WASD</kbd>. <kbd>Space</kbd> raises the lantern: more light, faster drain. <kbd>E</kbd> opens a dresser for oil. You never see the map.</p>
+      </div>
+      <div class="role r">
+        <h3>Reader · mouse</h3>
+        <p>You see the floor plan and the stairs. Click to drop up to 3 stars; they show as faint lights for the Keeper. Your map only updates where the lantern shines.</p>
+      </div>
+    </div>
+    <p class="fine">Three floors, five minutes each. Furniture in unlit rooms slowly rearranges itself, so old ink on the map may be wrong. Nothing ends in a loss: run out of oil and the lantern shrinks to an ember; run out of time and the floor dissolves beneath you. Clarity comes from floors cleared and oil left. Talk to each other. If you share one screen, the Reader can tick “Shield map”.</p>
+    <button class="go" id="beginBtn">Dive into the memory</button>
+  </div>
+</div>
+
+<div class="overlay" id="between" hidden>
+  <div class="card">
+    <h2 id="betweenTitle">You find the stairs.</h2>
+    <p class="lede" id="betweenText">The lantern swings as you go down.</p>
+  </div>
+</div>
+
+<div class="overlay" id="paused" hidden>
+  <div class="card">
+    <h2>Paused</h2>
+    <p class="lede">The house holds its breath.</p>
+    <button class="go" id="resumeBtn">Resume</button>
+  </div>
+</div>
+
+<div class="overlay" id="ending" hidden>
+  <div class="card">
+    <h2 id="endTitle">The memory clears.</h2>
+    <p class="lede" id="endText"></p>
+    <div class="result">
+      <div><span>Clarity</span><b id="rClarity">0%</b></div>
+      <div><span>Floors cleared</span><b id="rFloors">0 / 3</b></div>
+      <div><span>Oil left</span><b id="rOil">0</b></div>
+    </div>
+    <svg id="threadSvg" viewBox="0 0 600 70" width="100%" height="70" aria-label="Thread released"></svg>
+    <pre class="thread" id="threadJson"></pre>
+    <button class="go" id="againBtn">Dive again</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const W = 27, H = 21;
+const FLOOR_TIME = 300;
+const FLOOR_NAMES = ['Third floor', 'Second floor', 'Ground floor'];
+const SEEDS = [9137, 4421, 77013];
+
+// ---------- RNG ----------
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, rng) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+// ---------- Floor generation ----------
+const DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+function genFloor(seed, floorIdx) {
+  const rng = mulberry32(seed);
+  const grid = [...Array(H)].map(() => Array(W).fill(1));
+  const room = [...Array(H)].map(() => Array(W).fill(-1));
+  const isDoor = [...Array(H)].map(() => Array(W).fill(false));
+  const rooms = [], splits = [];
+  (function bsp(x0, y0, x1, y1, d) {
+    const w = x1 - x0, h = y1 - y0;
+    const canV = w >= 8, canH = h >= 8;
+    const stop = (!canV && !canH) || (d >= 2 && w * h < 72 && rng() < 0.5);
+    if (stop) {
+      const id = rooms.length;
+      rooms.push({ id, x0: x0 + 1, y0: y0 + 1, x1: x1 - 1, y1: y1 - 1 });
+      for (let y = y0 + 1; y <= y1 - 1; y++) for (let x = x0 + 1; x <= x1 - 1; x++) { grid[y][x] = 0; room[y][x] = id; }
+      return;
+    }
+    const vert = canV && (!canH || w > h || (w === h && rng() < 0.5));
+    if (vert) {
+      const s = x0 + 4 + Math.floor(rng() * (w - 7));
+      splits.push({ v: true, at: s, a: y0 + 1, b: y1 - 1 });
+      bsp(x0, y0, s, y1, d + 1); bsp(s, y0, x1, y1, d + 1);
+    } else {
+      const s = y0 + 4 + Math.floor(rng() * (h - 7));
+      splits.push({ v: false, at: s, a: x0 + 1, b: x1 - 1 });
+      bsp(x0, y0, x1, s, d + 1); bsp(x0, s, x1, y1, d + 1);
+    }
+  })(0, 0, W - 1, H - 1, 0);
+
+  const doors = [];
+  for (const sp of splits) {
+    const c = [];
+    for (let t = sp.a; t <= sp.b; t++) {
+      if (sp.v) { if (grid[t][sp.at] === 1 && grid[t][sp.at - 1] === 0 && grid[t][sp.at + 1] === 0) c.push([sp.at, t]); }
+      else { if (grid[sp.at][t] === 1 && grid[sp.at - 1][t] === 0 && grid[sp.at + 1][t] === 0) c.push([t, sp.at]); }
+    }
+    shuffle(c, rng);
+    const pick = c.slice(0, 1);
+    if (c.length > 5 && rng() < 0.3) {
+      const far = c.find(p => Math.abs(p[0] - pick[0][0]) + Math.abs(p[1] - pick[0][1]) >= 4);
+      if (far) pick.push(far);
+    }
+    for (const [x, y] of pick) { grid[y][x] = 0; isDoor[y][x] = true; doors.push({ x, y }); }
+  }
+
+  for (const r of rooms) {
+    r.cx = Math.floor((r.x0 + r.x1) / 2); r.cy = Math.floor((r.y0 + r.y1) / 2);
+    r.area = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1);
+  }
+  const startRoom = rooms.reduce((a, b) => (b.cx + b.cy * 1.2 < a.cx + a.cy * 1.2 ? b : a));
+  const start = { x: startRoom.cx, y: startRoom.cy };
+  // farthest room by path distance
+  const dist = bfsDist(grid, null, start);
+  let exitRoom = rooms[0], best = -1;
+  for (const r of rooms) { const d = dist[r.cy * W + r.cx]; if (r !== startRoom && d > best) { best = d; exitRoom = r; } }
+  const exit = { x: exitRoom.cx, y: exitRoom.cy };
+
+  // edge cells per room (along walls, away from doors, not start/exit)
+  for (const r of rooms) {
+    r.edge = [];
+    for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
+      let wallN = false, doorN = false;
+      for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy; if (grid[ny][nx] === 1) wallN = true; if (isDoor[ny][nx]) doorN = true; }
+      if (!wallN || doorN) continue;
+      if ((x === start.x && y === start.y) || (x === exit.x && y === exit.y)) continue;
+      r.edge.push({ x, y });
+    }
+  }
+
+  const occ = [...Array(H)].map(() => Array(W).fill(-1));
+  const furn = [];
+  const TYPES = ['dresser', 'table', 'chair', 'bookcase', 'clock'];
+  const fl = { grid, room, isDoor, rooms, doors, start, exit, occ, furn, floorIdx };
+  for (const r of rooms) {
+    const n = Math.max(1, Math.min(4, Math.floor(r.area / 8)));
+    for (let i = 0; i < n; i++) {
+      const cands = shuffle(r.edge.filter(c => occ[c.y][c.x] < 0), rng);
+      for (const c of cands.slice(0, 8)) {
+        occ[c.y][c.x] = furn.length;
+        if (connected(fl, start)) {
+          const type = rng() < 0.32 ? 'dresser' : TYPES[1 + Math.floor(rng() * 4)];
+          furn.push({ id: furn.length, type, room: r.id, x: c.x, y: c.y, rot: facing(grid, c.x, c.y), oil: false, from: null, t: 1 });
+          break;
+        }
+        occ[c.y][c.x] = -1;
+      }
+    }
+  }
+  let dressers = furn.filter(f => f.type === 'dresser');
+  const others = shuffle(furn.filter(f => f.type !== 'dresser'), rng);
+  while (dressers.length < 4 && others.length) { const f = others.pop(); f.type = 'dresser'; dressers.push(f); }
+  for (const f of dressers) f.oil = true;
+  return fl;
+}
+
+function facing(grid, x, y) {
+  if (grid[y - 1][x] === 1) return 0;            // wall to north, face south (+z)
+  if (grid[y + 1][x] === 1) return Math.PI;
+  if (grid[y][x - 1] === 1) return Math.PI / 2;  // wall west, face east
+  if (grid[y][x + 1] === 1) return -Math.PI / 2;
+  return 0;
+}
+
+function bfsDist(grid, occ, from) {
+  const dist = new Int32Array(W * H).fill(-1);
+  const q = [from.y * W + from.x]; dist[q[0]] = 0;
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], x = c % W, y = (c / W) | 0;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy, n = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || dist[n] >= 0) continue;
+      if (grid[ny][nx] !== 0 || (occ && occ[ny][nx] >= 0)) continue;
+      dist[n] = dist[c] + 1; q.push(n);
+    }
+  }
+  return dist;
+}
+function connected(fl, from) {
+  const d = bfsDist(fl.grid, fl.occ, from);
+  if (d[fl.exit.y * W + fl.exit.x] < 0) return false;
+  for (const dr of fl.doors) if (d[dr.y * W + dr.x] < 0) return false;
+  return true;
+}
+
+// ---------- Three.js setup ----------
+const kCanvas = document.getElementById('keeperCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas: kCanvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.setClearColor(0x050608);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+scene.add(new THREE.AmbientLight(0x2a3a55, 0.035));
+
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  t.anisotropy = 4; return t;
+}
+const plankTex = canvasTex(256, 256, (g, w, h) => {
+  const r = mulberry32(5);
+  for (let i = 0; i < 8; i++) {
+    const l = 30 + r() * 14; g.fillStyle = `hsl(28, 34%, ${l}%)`; g.fillRect(0, i * 32, w, 32);
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, i * 32, w, 2);
+    const cut = r() * w; g.fillRect(cut, i * 32, 2, 32);
+    for (let k = 0; k < 18; k++) { g.fillStyle = `rgba(40,20,5,${r() * .12})`; g.fillRect(0, i * 32 + r() * 32, w, 1); }
+  }
+}, [W / 2, H / 2]);
+const paperTex = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = '#7d6a5a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(60,40,30,.35)';
+  for (let x = 0; x < w; x += 16) for (let y = 0; y < h; y += 16) { g.beginPath(); g.arc(x + 8, y + 8, 2.2, 0, 7); g.fill(); }
+  g.fillStyle = 'rgba(255,240,220,.06)'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 2, h);
+});
+const glowTex = canvasTex(64, 64, (g, w, h) => {
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+
+const M = {
+  floor: new THREE.MeshStandardMaterial({ map: plankTex, roughness: .85 }),
+  wall: new THREE.MeshStandardMaterial({ map: paperTex, roughness: .95 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: .7 }),
+  darkwood: new THREE.MeshStandardMaterial({ color: 0x3a261a, roughness: .75 }),
+  cloth: new THREE.MeshStandardMaterial({ color: 0x6d4f5a, roughness: .9 }),
+  face: new THREE.MeshStandardMaterial({ color: 0xe8dcc4, roughness: .6 }),
+  void: new THREE.MeshBasicMaterial({ color: 0x000000 }),
+  pale: new THREE.MeshStandardMaterial({ color: 0xcfc7b6, roughness: .8 }),
+  robe: new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: .8 }),
+};
+function knobMat(on) { return new THREE.MeshStandardMaterial({ color: 0xb08a3a, metalness: .6, roughness: .35, emissive: 0xffb050, emissiveIntensity: on ? .35 : 0 }); }
+
+function box(w, h, d, mat, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m; }
+
+function makeFurniture(f) {
+  const g = new THREE.Group();
+  if (f.type === 'dresser') {
+    g.add(box(.82, .85, .44, M.wood, 0, .43, -.24));
+    for (let i = 0; i < 3; i++) g.add(box(.74, .02, .02, M.darkwood, 0, .2 + i * .25, -.01));
+    f.knobs = knobMat(f.oil);
+    for (let i = 0; i < 3; i++) { const k = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 8), f.knobs); k.position.set(0, .32 + i * .25 - .12, 0); g.add(k); }
+  } else if (f.type === 'table') {
+    g.add(box(.78, .06, .78, M.wood, 0, .68, 0));
+    for (const [x, z] of [[-.32, -.32], [.32, -.32], [-.32, .32], [.32, .32]]) g.add(box(.06, .66, .06, M.darkwood, x, .33, z));
+    g.add(box(.12, .18, .12, M.pale, .1, .8, -.05));
+  } else if (f.type === 'chair') {
+    g.add(box(.42, .06, .42, M.cloth, 0, .42, 0));
+    g.add(box(.42, .5, .06, M.darkwood, 0, .7, -.2));
+    for (const [x, z] of [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]]) g.add(box(.05, .4, .05, M.darkwood, x, .2, z));
+    g.rotation.y = 0;
+  } else if (f.type === 'bookcase') {
+    g.add(box(.9, 1.5, .3, M.darkwood, 0, .75, -.33));
+    for (let i = 0; i < 4; i++) g.add(box(.8, .26, .2, i % 2 ? M.cloth : M.pale, 0, .2 + i * .34, -.25));
+  } else if (f.type === 'clock') {
+    g.add(box(.36, 1.75, .3, M.wood, 0, .88, -.32));
+    const face = new THREE.Mesh(new THREE.CircleGeometry(.13, 20), M.face); face.position.set(0, 1.45, -.165); g.add(face);
+  }
+  g.position.set(f.x + .5, 0, f.y + .5);
+  g.rotation.y = f.rot;
+  return g;
+}
+
+// keeper avatar + lantern
+const keeper = new THREE.Group();
+const body = new THREE.Mesh(new THREE.CylinderGeometry(.14, .26, .72, 14), M.robe); body.position.y = .36; body.castShadow = false; keeper.add(body);
+const head = new THREE.Mesh(new THREE.SphereGeometry(.14, 14, 12), M.robe); head.position.y = .84; keeper.add(head);
+const lanternMesh = new THREE.Mesh(new THREE.BoxGeometry(.12, .16, .12), new THREE.MeshStandardMaterial({ color: 0x332211, emissive: 0xffb050, emissiveIntensity: 1.6 }));
+lanternMesh.position.set(.26, .55, .1); keeper.add(lanternMesh);
+scene.add(keeper);
+const lantern = new THREE.PointLight(0xffb45c, 2.4, 6, 2);
+lantern.castShadow = true; lantern.shadow.mapSize.set(512, 512); lantern.shadow.camera.near = .1; lantern.shadow.camera.far = 9; lantern.shadow.bias = -.004;
+scene.add(lantern);
+
+// stars (pool of 3)
+const starPool = [0, 1, 2].map(() => {
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xbad6ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  sprite.scale.set(.9, .9, 1); sprite.visible = false; scene.add(sprite);
+  const light = new THREE.PointLight(0x9ec9ff, 0, 2.8, 2); scene.add(light);
+  return { sprite, light, active: false, x: 0, y: 0, visited: false };
+});
+
+let levelGroup = null;
+function buildLevel(fl) {
+  if (levelGroup) { scene.remove(levelGroup); levelGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  levelGroup = new THREE.Group();
+  const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), M.floor);
+  floorMesh.rotation.x = -Math.PI / 2; floorMesh.position.set(W / 2, 0, H / 2); floorMesh.receiveShadow = true;
+  levelGroup.add(floorMesh);
+  let walls = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fl.grid[y][x] === 1) walls++;
+  const wallH = 1.05;
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, wallH, 1), M.wall, walls);
+  const mtx = new THREE.Matrix4(); let i = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fl.grid[y][x] === 1) { mtx.makeTranslation(x + .5, wallH / 2, y + .5); im.setMatrixAt(i++, mtx); }
+  im.castShadow = true; im.receiveShadow = true; levelGroup.add(im);
+  for (const f of fl.furn) { f.mesh = makeFurniture(f); levelGroup.add(f.mesh); }
+  // exit: doorway with a dark opening
+  const ex = new THREE.Group();
+  ex.add(box(.08, 1.4, .08, M.wood, -.38, .7, 0), box(.08, 1.4, .08, M.wood, .38, .7, 0), box(.84, .1, .1, M.wood, 0, 1.43, 0));
+  const opening = new THREE.Mesh(new THREE.PlaneGeometry(.68, 1.38), M.void); opening.position.set(0, .69, 0); ex.add(opening);
+  const back = opening.clone(); back.rotation.y = Math.PI; ex.add(back);
+  ex.add(box(.8, .04, .3, M.pale, 0, .02, 0));
+  ex.position.set(fl.exit.x + .5, 0, fl.exit.y + .5);
+  levelGroup.add(ex);
+  scene.add(levelGroup);
+}
+
+// ---------- Game state ----------
+const G = {
+  state: 'intro', floorIdx: 0, fl: null, oil: 100, raised: false, timeLeft: FLOOR_TIME,
+  cleared: [false, false, false], starsPlaced: 0, starsVisited: 0, now: 0,
+  kx: 0, kz: 0, heading: 0, lit: new Map(), touched: new Set(), snap: [], litTimer: 0,
+};
+const keys = {};
+
+function startFloor(idx) {
+  G.floorIdx = idx;
+  G.fl = genFloor(SEEDS[idx], idx);
+  buildLevel(G.fl);
+  G.kx = G.fl.start.x + .5; G.kz = G.fl.start.y + .5;
+  G.timeLeft = FLOOR_TIME;
+  for (const r of G.fl.rooms) r.nextMove = G.now + 4 + Math.random() * 8;
+  G.snap = G.fl.rooms.map(r => ({ seen: G.now, items: snapItems(r.id) }));
+  for (const s of starPool) { s.active = false; s.sprite.visible = false; s.light.intensity = 0; }
+  computeLit();
+  camera.position.set(G.kx, 12, G.kz + 4.6);
+  document.getElementById('tbName').textContent = FLOOR_NAMES[idx];
+  document.getElementById('tbSheet').textContent = `Sheet ${idx + 1} of 3`;
+  updateStars();
+}
+function snapItems(roomId) { return G.fl.furn.filter(f => f.room === roomId).map(f => ({ type: f.type, x: f.x, y: f.y, rot: f.rot, oil: f.oil })); }
+
+function radius() { if (G.oil <= 0) return 1.5; return G.raised ? 6 : 3.4; }
+
+function los(ax, az, bx, bz) {
+  const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / .2);
+  for (let i = 1; i < n; i++) { const t = i / n; const cx = Math.floor(ax + (bx - ax) * t), cy = Math.floor(az + (bz - az) * t); if (G.fl.grid[cy][cx] === 1) return false; }
+  return true;
+}
+function computeLit() {
+  const fl = G.fl, r = radius();
+  G.lit.clear(); G.touched.clear();
+  const x0 = Math.max(0, Math.floor(G.kx - r)), x1 = Math.min(W - 1, Math.floor(G.kx + r));
+  const y0 = Math.max(0, Math.floor(G.kz - r)), y1 = Math.min(H - 1, Math.floor(G.kz + r));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (fl.grid[y][x] !== 0) continue;
+    const d = Math.hypot(x + .5 - G.kx, y + .5 - G.kz);
+    if (d > r || !los(G.kx, G.kz, x + .5, y + .5)) continue;
+    G.lit.set(y * W + x, d / r);
+    if (fl.room[y][x] >= 0) G.touched.add(fl.room[y][x]);
+  }
+  for (const id of G.touched) G.snap[id] = { seen: G.now, items: snapItems(id) };
+}
+
+function solid(cx, cy) {
+  if (cx < 0 || cy < 0 || cx >= W || cy >= H) return true;
+  return G.fl.grid[cy][cx] === 1 || G.fl.occ[cy][cx] >= 0;
+}
+function blocked(px, pz) {
+  const r = .24;
+  for (const [dx, dz] of [[-r, -r], [r, -r], [-r, r], [r, r]]) if (solid(Math.floor(px + dx), Math.floor(pz + dz))) return true;
+  return false;
+}
+
+function tryRearrange(room) {
+  const fl = G.fl;
+  const items = fl.furn.filter(f => f.room === room.id && f.t >= 1);
+  if (!items.length) return;
+  const f = items[Math.floor(Math.random() * items.length)];
+  const kc = { x: Math.floor(G.kx), y: Math.floor(G.kz) };
+  const cands = room.edge.filter(c => fl.occ[c.y][c.x] < 0 && !(c.x === kc.x && c.y === kc.y));
+  for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+  for (const c of cands.slice(0, 6)) {
+    fl.occ[f.y][f.x] = -1; fl.occ[c.y][c.x] = f.id;
+    if (connected(fl, kc)) {
+      f.from = { x: f.x, y: f.y, rot: f.rot };
+      f.x = c.x; f.y = c.y; f.rot = facing(fl.grid, c.x, c.y); f.t = 0;
+      return;
+    }
+    fl.occ[c.y][c.x] = -1; fl.occ[f.y][f.x] = f.id;
+  }
+}
+
+function nearestDresser() {
+  let best = null, bd = 1.3;
+  for (const f of G.fl.furn) {
+    if (f.type !== 'dresser' || !f.oil || f.t < 1) continue;
+    const d = Math.hypot(f.x + .5 - G.kx, f.y + .5 - G.kz);
+    if (d < bd) { bd = d; best = f; }
+  }
+  return best;
+}
+function openDrawer() {
+  if (G.state !== 'play') return;
+  const f = nearestDresser(); if (!f) return;
+  f.oil = false; f.knobs.emissiveIntensity = 0;
+  G.oil = Math.min(100, G.oil + 35);
+  chime([660, 880, 1320]);
+}
+function toggleLantern() { if (G.state === 'play') G.raised = !G.raised; }
+
+// ---------- Audio ----------
+let AC = null;
+function chime(notes) {
+  if (!AC) return;
+  const t = AC.currentTime;
+  notes.forEach((f, i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    const s = t + i * .09;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(.1, s + .02); g.gain.exponentialRampToValueAtTime(.001, s + 1.2);
+    o.connect(g).connect(AC.destination); o.start(s); o.stop(s + 1.3);
+  });
+}
+
+// ---------- Floor transitions ----------
+const betweenEl = document.getElementById('between');
+function endFloor(cleared) {
+  G.cleared[G.floorIdx] = cleared;
+  G.state = 'between';
+  const last = G.floorIdx === 2;
+  document.getElementById('betweenTitle').textContent = cleared ? (last ? 'The front door gives.' : 'You find the stairs.') : 'The floor dissolves.';
+  document.getElementById('betweenText').textContent = cleared
+    ? (last ? 'Night air, and the house behind you lets go.' : `The lantern swings as you go down to the ${FLOOR_NAMES[G.floorIdx + 1].toLowerCase()}.`)
+    : (last ? 'The house fades before you reach the door.' : `You wake a floor lower, on the ${FLOOR_NAMES[G.floorIdx + 1].toLowerCase()}, without having found the way.`);
+  betweenEl.hidden = false;
+  if (cleared) chime([392, 523, 659, 784]); else chime([330, 311, 294]);
+  setTimeout(() => {
+    betweenEl.hidden = true;
+    if (last) showEnding(); else { startFloor(G.floorIdx + 1); G.state = 'play'; }
+  }, 2600);
+}
+
+function showEnding() {
+  G.state = 'end';
+  const floors = G.cleared.filter(Boolean).length;
+  const clarity = Math.round((0.6 * floors / 3 + 0.4 * G.oil / 100) * 100);
+  const sync = G.starsPlaced ? +(G.starsVisited / G.starsPlaced).toFixed(2) : 0;
+  document.getElementById('rClarity').textContent = clarity + '%';
+  document.getElementById('rFloors').textContent = `${floors} / 3`;
+  document.getElementById('rOil').textContent = Math.round(G.oil);
+  document.getElementById('endTitle').textContent = clarity >= 70 ? 'The memory clears.' : clarity >= 40 ? 'The memory half-clears.' : 'The memory stays blurred.';
+  document.getElementById('endText').textContent = `A gold thread rises from the basin. ${G.starsPlaced ? `The Keeper reached ${G.starsVisited} of the ${G.starsPlaced} stars the Reader dropped.` : 'The Reader never dropped a star.'}`;
+  const len = 80 + clarity * 5;
+  let d = 'M10 35';
+  for (let x = 10; x <= len; x += 6) d += ` L${x} ${35 + Math.sin(x / 22) * 14 * (0.4 + sync)}`;
+  const alpha = (0.35 + clarity / 160).toFixed(2);
+  document.getElementById('threadSvg').innerHTML = `<path d="${d}" fill="none" stroke="rgba(240,179,90,${alpha})" stroke-width="3" stroke-linecap="round"/><circle cx="${len}" cy="${35 + Math.sin(len / 22) * 14 * (0.4 + sync)}" r="4" fill="#ffe7a3"/>`;
+  document.getElementById('threadJson').textContent = JSON.stringify({ game: 5, clarity: +(clarity / 100).toFixed(2), sync, color: 'gold' }, null, 2);
+  document.getElementById('ending').hidden = false;
+}
+
+function resetRun() {
+  G.oil = 100; G.raised = false; G.cleared = [false, false, false]; G.starsPlaced = 0; G.starsVisited = 0;
+  startFloor(0); G.state = 'play';
+}
+
+// ---------- Stars (Reader) ----------
+function updateStars() {
+  const used = starPool.filter(s => s.active).length;
+  document.getElementById('starCount').textContent = '★'.repeat(3 - used) + '☆'.repeat(used);
+}
+function toggleStar(x, y) {
+  if (G.state !== 'play') return;
+  const existing = starPool.find(s => s.active && s.x === x && s.y === y);
+  if (existing) { existing.active = false; existing.sprite.visible = false; existing.light.intensity = 0; updateStars(); return; }
+  const free = starPool.find(s => !s.active); if (!free) return;
+  free.active = true; free.x = x; free.y = y; free.visited = false;
+  free.sprite.position.set(x + .5, 1.35, y + .5); free.sprite.visible = true;
+  free.light.position.set(x + .5, 1.2, y + .5); free.light.intensity = .9;
+  G.starsPlaced++;
+  chime([1046]);
+  updateStars();
+}
+
+// ---------- Map (Reader) ----------
+const mCanvas = document.getElementById('mapCanvas');
+const mctx = mCanvas.getContext('2d');
+let mapGeom = { s: 10, ox: 0, oy: 0 };
+let hover = null;
+const grain = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'); const r = mulberry32(3);
+  for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(${r() < .5 ? '255,255,255' : '0,10,30'},${r() * .07})`; g.fillRect(r() * 160, r() * 160, 1 + r() * 2, 1); }
+  return c;
+})();
+let grainPattern = null;
+
+function sizeMap() {
+  const rect = mCanvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+  mCanvas.width = Math.max(1, rect.width * dpr); mCanvas.height = Math.max(1, rect.height * dpr);
+  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const padTop = 34, padBot = 74;
+  const s = Math.max(4, Math.min((rect.width - 24) / W, (rect.height - padTop - padBot) / H));
+  mapGeom = { s, ox: (rect.width - s * W) / 2, oy: padTop + (rect.height - padTop - padBot - s * H) / 2, w: rect.width, h: rect.height };
+  grainPattern = mctx.createPattern(grain, 'repeat');
+}
+
+function drawItem(g, it, s, alpha) {
+  g.save();
+  g.translate((it.x + .5) * s, (it.y + .5) * s); g.rotate(-it.rot);
+  g.strokeStyle = `rgba(219,231,243,${alpha})`; g.fillStyle = `rgba(219,231,243,${alpha * .18})`; g.lineWidth = 1.3;
+  const r = (x, y, w, h) => { g.fillRect(x * s, y * s, w * s, h * s); g.strokeRect(x * s, y * s, w * s, h * s); };
+  if (it.type === 'dresser') {
+    r(-.41, -.46, .82, .44);
+    g.beginPath(); g.moveTo(-.3 * s, -.2 * s); g.lineTo(.3 * s, -.2 * s); g.moveTo(-.3 * s, -.32 * s); g.lineTo(.3 * s, -.32 * s); g.stroke();
+    if (it.oil) { g.fillStyle = `rgba(255,231,163,${Math.min(1, alpha + .1)})`; g.beginPath(); g.arc(0, -.1 * s, Math.max(1.5, .07 * s), 0, 7); g.fill(); }
+  } else if (it.type === 'table') {
+    g.beginPath(); g.arc(0, 0, .36 * s, 0, 7); g.fill(); g.stroke();
+  } else if (it.type === 'chair') {
+    r(-.2, -.2, .4, .4); g.beginPath(); g.moveTo(-.2 * s, -.26 * s); g.lineTo(.2 * s, -.26 * s); g.stroke();
+  } else if (it.type === 'bookcase') {
+    r(-.45, -.48, .9, .3);
+    g.beginPath(); for (let k = -.35; k <= .36; k += .14) { g.moveTo(k * s, -.48 * s); g.lineTo(k * s, -.18 * s); } g.stroke();
+  } else if (it.type === 'clock') {
+    r(-.18, -.47, .36, .3); g.beginPath(); g.arc(0, -.32 * s, .08 * s, 0, 7); g.stroke();
+  }
+  g.restore();
+}
+
+function drawStar(g, cx, cy, rad, color) {
+  g.fillStyle = color; g.beginPath();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 - Math.PI / 2, rr = i % 2 ? rad * .38 : rad; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+  g.closePath(); g.fill();
+}
+
+function drawMap() {
+  const g = mctx, { s, ox, oy, w, h } = mapGeom, fl = G.fl;
+  g.fillStyle = '#163a5f'; g.fillRect(0, 0, w, h);
+  if (!fl) return;
+  g.save(); g.translate(ox, oy);
+  // floor + blueprint grid
+  g.fillStyle = '#12304f';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fl.grid[y][x] === 0) g.fillRect(x * s, y * s, s, s);
+  g.strokeStyle = 'rgba(219,231,243,.07)'; g.lineWidth = 1; g.beginPath();
+  for (let x = 0; x <= W; x++) { g.moveTo(x * s, 0); g.lineTo(x * s, H * s); }
+  for (let y = 0; y <= H; y++) { g.moveTo(0, y * s); g.lineTo(W * s, y * s); }
+  g.stroke();
+  // lantern wash (the only sign of the Keeper)
+  for (const [k, d] of G.lit) {
+    const x = k % W, y = (k / W) | 0;
+    g.fillStyle = `rgba(240,179,90,${(1 - d) * .55 + .06})`; g.fillRect(x * s, y * s, s, s);
+  }
+  // walls in chalk
+  g.fillStyle = 'rgba(219,231,243,.82)';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fl.grid[y][x] === 1) g.fillRect(x * s, y * s, s + .5, s + .5);
+  // door swings
+  g.strokeStyle = 'rgba(219,231,243,.5)'; g.lineWidth = 1;
+  for (const d of fl.doors) { g.strokeRect(d.x * s + 1.5, d.y * s + 1.5, s - 3, s - 3); }
+  // furniture from last-seen snapshot
+  for (let id = 0; id < G.snap.length; id++) {
+    const sn = G.snap[id];
+    const age = G.now - sn.seen;
+    const alpha = G.touched.has(id) ? 1 : Math.max(.22, .78 - Math.min(age / 90, 1) * .56);
+    for (const it of sn.items) drawItem(g, it, s, alpha);
+  }
+  // start mark
+  g.strokeStyle = 'rgba(219,231,243,.6)'; g.lineWidth = 1.2;
+  const sx = (fl.start.x + .5) * s, sy = (fl.start.y + .5) * s;
+  g.beginPath(); g.moveTo(sx - s * .2, sy - s * .2); g.lineTo(sx + s * .2, sy + s * .2); g.moveTo(sx + s * .2, sy - s * .2); g.lineTo(sx - s * .2, sy + s * .2); g.stroke();
+  // exit
+  const ex = fl.exit.x * s, ey = fl.exit.y * s;
+  g.strokeStyle = '#ffe7a3'; g.lineWidth = 1.6; g.strokeRect(ex + 1, ey + 1, s - 2, s - 2);
+  g.beginPath();
+  if (G.floorIdx < 2) { for (let i = 1; i < 4; i++) { g.moveTo(ex + 2, ey + i * s / 4); g.lineTo(ex + s - 2, ey + i * s / 4); } }
+  else { g.moveTo(ex + 2, ey + s - 2); g.arc(ex + 2, ey + s - 2, s - 4, -Math.PI / 2, 0); }
+  g.stroke();
+  g.fillStyle = '#ffe7a3'; g.font = `600 ${Math.max(9, s * .55)}px "Atkinson Hyperlegible", sans-serif`; g.textAlign = 'center';
+  g.fillText(G.floorIdx < 2 ? 'STAIRS DOWN' : 'FRONT DOOR', ex + s / 2, ey - 4);
+  // stars
+  for (const st of starPool) if (st.active) {
+    drawStar(g, (st.x + .5) * s, (st.y + .5) * s, s * .42, st.visited ? 'rgba(255,231,163,.45)' : '#ffe7a3');
+    if (st.visited) { g.strokeStyle = 'rgba(255,231,163,.6)'; g.beginPath(); g.arc((st.x + .5) * s, (st.y + .5) * s, s * .55, 0, 7); g.stroke(); }
+  }
+  // hover
+  if (hover && G.state === 'play') {
+    const ok = fl.grid[hover.y][hover.x] === 0;
+    g.strokeStyle = ok ? 'rgba(255,231,163,.8)' : 'rgba(219,231,243,.25)'; g.lineWidth = 1.5;
+    g.strokeRect(hover.x * s + .5, hover.y * s + .5, s - 1, s - 1);
+  }
+  // compass
+  g.restore();
+  g.fillStyle = 'rgba(219,231,243,.7)'; g.font = `400 16px "IM Fell English", Georgia, serif`; g.textAlign = 'left';
+  g.fillText('N ↑', 14, h - 18);
+  g.fillStyle = grainPattern; g.fillRect(0, 0, w, h);
+}
+
+function mapCell(e) {
+  const rect = mCanvas.getBoundingClientRect(), { s, ox, oy } = mapGeom;
+  const x = Math.floor((e.clientX - rect.left - ox) / s), y = Math.floor((e.clientY - rect.top - oy) / s);
+  if (x < 0 || y < 0 || x >= W || y >= H) return null;
+  return { x, y };
+}
+mCanvas.addEventListener('pointermove', e => { hover = mapCell(e); });
+mCanvas.addEventListener('pointerleave', () => { hover = null; });
+mCanvas.addEventListener('pointerdown', e => { const c = mapCell(e); if (c && G.fl && G.fl.grid[c.y][c.x] === 0) toggleStar(c.x, c.y); });
+document.getElementById('shieldToggle').addEventListener('change', e => { document.getElementById('readerPanel').classList.toggle('shielded', e.target.checked); });
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k) && G.state !== 'intro') e.preventDefault();
+  if (e.repeat) return;
+  keys[k] = true;
+  if (k === ' ') toggleLantern();
+  if (k === 'e') openDrawer();
+  if (k === 'p' || k === 'escape') togglePause();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+document.querySelectorAll('.pad button').forEach(b => {
+  const k = b.dataset.key;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { keys[k] = false; });
+});
+document.getElementById('tRaise').addEventListener('click', toggleLantern);
+document.getElementById('tOpen').addEventListener('click', openDrawer);
+
+function togglePause() {
+  if (G.state === 'play') { G.state = 'paused'; document.getElementById('paused').hidden = false; }
+  else if (G.state === 'paused') { G.state = 'play'; document.getElementById('paused').hidden = true; }
+}
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+document.getElementById('beginBtn').addEventListener('click', () => {
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
+  document.getElementById('intro').hidden = true;
+  resetRun();
+});
+document.getElementById('againBtn').addEventListener('click', () => { document.getElementById('ending').hidden = true; resetRun(); });
+
+// ---------- Resize ----------
+function sizeKeeper() {
+  const r = kCanvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+const ro = new ResizeObserver(() => { sizeKeeper(); sizeMap(); });
+ro.observe(kCanvas.parentElement); ro.observe(mCanvas.parentElement);
+
+// ---------- HUD ----------
+const el = id => document.getElementById(id);
+const hud = { floor: el('floorStat'), time: el('timeStat'), clear: el('clearStat'), oilNum: el('oilNum'), oilFill: el('oilFill'), lstate: el('lanternState'), prompt: el('prompt') };
+let hudTimer = 0;
+function updateHud() {
+  hud.floor.textContent = `${G.floorIdx + 1} / 3`;
+  const t = Math.max(0, Math.ceil(G.timeLeft)); hud.time.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  hud.time.classList.toggle('warn', t <= 30);
+  hud.clear.textContent = G.cleared.filter(Boolean).length;
+  hud.oilNum.textContent = Math.round(G.oil);
+  hud.oilFill.style.width = G.oil + '%';
+  hud.lstate.textContent = G.oil <= 0 ? 'Ember only' : G.raised ? 'Lantern raised' : 'Lantern lowered';
+  const near = G.state === 'play' && nearestDresser();
+  hud.prompt.hidden = !near;
+  if (near) hud.prompt.textContent = 'Press E to open the drawer';
+  const blur = G.oil < 25 ? (25 - G.oil) / 25 * 2.2 : 0;
+  const sat = 0.55 + Math.min(1, G.oil / 40) * 0.45;
+  kCanvas.style.filter = `blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)})`;
+}
+
+// ---------- Loop ----------
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  if (G.fl && G.state === 'play') {
+    G.now += dt;
+    // movement
+    let mx = 0, mz = 0;
+    if (keys.w || keys.arrowup) mz -= 1; if (keys.s || keys.arrowdown) mz += 1;
+    if (keys.a || keys.arrowleft) mx -= 1; if (keys.d || keys.arrowright) mx += 1;
+    if (mx || mz) {
+      const l = Math.hypot(mx, mz), sp = 3.1 * dt;
+      const nx = G.kx + mx / l * sp, nz = G.kz + mz / l * sp;
+      if (!blocked(nx, G.kz)) G.kx = nx;
+      if (!blocked(G.kx, nz)) G.kz = nz;
+      const target = Math.atan2(mx, mz);
+      let dh = target - G.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+      G.heading += dh * Math.min(1, dt * 12);
+    }
+    // oil
+    if (G.oil > 0) G.oil = Math.max(0, G.oil - (G.raised ? 1.7 : 0.6) * dt);
+    // timer
+    G.timeLeft -= dt;
+    // light / map
+    G.litTimer -= dt;
+    if (G.litTimer <= 0) { computeLit(); G.litTimer = .1; }
+    // unlit furniture drifts
+    for (const r of G.fl.rooms) {
+      if (G.touched.has(r.id)) { r.nextMove = Math.max(r.nextMove, G.now + 3); continue; }
+      if (G.now > r.nextMove) { tryRearrange(r); r.nextMove = G.now + 5 + Math.random() * 8; }
+    }
+    // stars visited
+    for (const st of starPool) if (st.active && !st.visited && Math.hypot(st.x + .5 - G.kx, st.y + .5 - G.kz) < 1.1) { st.visited = true; G.starsVisited++; chime([784, 1175]); }
+    // exit / timeout
+    if (Math.hypot(G.fl.exit.x + .5 - G.kx, G.fl.exit.y + .5 - G.kz) < .5) endFloor(true);
+    else if (G.timeLeft <= 0) endFloor(false);
+  }
+  if (G.fl) {
+    for (const f of G.fl.furn) if (f.t < 1) {
+      f.t = Math.min(1, f.t + dt / 1.8);
+      const e = f.t < .5 ? 2 * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 2) / 2;
+      f.mesh.position.x = f.from.x + .5 + (f.x - f.from.x) * e;
+      f.mesh.position.z = f.from.y + .5 + (f.y - f.from.y) * e;
+      let dr = f.rot - f.from.rot; dr = Math.atan2(Math.sin(dr), Math.cos(dr));
+      f.mesh.rotation.y = f.from.rot + dr * e;
+    }
+    keeper.position.set(G.kx, 0, G.kz); keeper.rotation.y = G.heading;
+    const r = radius();
+    const lift = G.raised && G.oil > 0 ? .5 : 0;
+    lanternMesh.position.y = .55 + lift;
+    const flick = 1 + Math.sin(G.now * 13) * .03 + Math.sin(G.now * 31) * .02;
+    lantern.position.set(G.kx + Math.sin(G.heading + .9) * .25, 1.1 + lift, G.kz + Math.cos(G.heading + .9) * .25);
+    lantern.distance = r + 1; lantern.intensity = (G.oil > 0 ? 2.3 : .9) * flick;
+    lanternMesh.material.emissiveIntensity = G.oil > 0 ? 1.6 : .5;
+    for (const st of starPool) if (st.active) { const p = .8 + Math.sin(G.now * 2 + st.x) * .15; st.sprite.material.opacity = st.visited ? .35 : p; st.light.intensity = st.visited ? .35 : .9 * p; }
+    // camera follow, with a warp in the last 30 seconds
+    camera.position.x += (G.kx - camera.position.x) * Math.min(1, dt * 4);
+    camera.position.z += (G.kz + 4.6 - camera.position.z) * Math.min(1, dt * 4);
+    camera.position.y = 12;
+    const warp = G.state === 'play' && G.timeLeft < 30 ? (30 - G.timeLeft) / 30 : 0;
+    camera.fov = 50 + Math.sin(G.now * 1.7) * 4 * warp; camera.updateProjectionMatrix();
+    camera.lookAt(camera.position.x, 0, camera.position.z - 4.6);
+  }
+  renderer.render(scene, camera);
+  drawMap();
+  hudTimer -= dt; if (hudTimer <= 0) { updateHud(); hudTimer = .1; }
+  requestAnimationFrame(frame);
+}
+
+// initial idle scene behind the intro
+sizeKeeper(); sizeMap();
+startFloor(0); G.state = 'intro';
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

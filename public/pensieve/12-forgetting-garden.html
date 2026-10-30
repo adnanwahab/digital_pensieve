@@ -1,0 +1,565 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Forgetting Garden</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Karla:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-bleed night garden canvas; HUD floats at the edges like engravings on the basin rim. Single dark theme by design. */
+:root{
+  --night:#0b0f1a;
+  --moss:#141d24;
+  --ink:#ebe6f2;
+  --muted:#9ba4ba;
+  --gold:#e9b949;
+  --blue:#7fb2ff;
+  --silver:#d3d9e8;
+  --line:rgba(211,217,232,.18);
+  --display:"Marcellus","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --body:"Karla","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:14px}
+canvas#stage{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+.hud-top{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand h1{font-family:var(--display);font-weight:400;font-size:clamp(20px,3vw,28px);margin:0;letter-spacing:.02em;text-wrap:balance}
+.brand span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.basin{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pips{display:flex;gap:6px}
+.pip{width:10px;height:10px;border-radius:50%;border:1.5px solid currentColor;background:currentColor;transition:background .4s,opacity .4s}
+.pip.gone{background:transparent;opacity:.45}
+.count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.count b{color:var(--ink);font-weight:700}
+
+.cards{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
+  padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.card{width:min(300px,44vw);min-width:0;background:rgba(11,15,26,.72);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.card.p1{border-top:2px solid var(--gold)}
+.card.p2{border-top:2px solid var(--blue);text-align:right}
+.who{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.card.p2 .who{flex-direction:row-reverse}
+.keys{font-variant-numeric:tabular-nums}
+kbd{font-family:var(--body);font-size:10px;border:1px solid var(--line);border-radius:3px;padding:1px 4px;color:var(--ink)}
+.mem-game{font-family:var(--display);font-size:17px;line-height:1.2}
+.mem-text{color:var(--ink);opacity:.86;line-height:1.45;font-size:13px}
+.mem-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.status{font-size:12px;color:var(--muted)}
+.status.live{color:var(--ink)}
+
+.tag{position:fixed;transform:translate(-50%,-100%);font-family:var(--display);font-size:13px;padding:2px 8px;border-radius:2px;background:rgba(11,15,26,.6);white-space:nowrap;pointer-events:none;transition:opacity .2s}
+
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(11,15,26,.55),rgba(11,15,26,.94));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px;overflow:auto}
+.panel{max-width:560px;display:flex;flex-direction:column;gap:14px}
+.panel h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,42px);margin:0;line-height:1.1;text-wrap:balance}
+.panel p{margin:0;line-height:1.6;color:var(--ink);opacity:.88;max-width:62ch}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ctrl div{border:1px solid var(--line);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.ctrl .g{border-top:2px solid var(--gold)} .ctrl .b{border-top:2px solid var(--blue)}
+button{font-family:var(--body);font-weight:700;font-size:14px;letter-spacing:.04em;background:var(--silver);color:var(--night);border:0;border-radius:3px;padding:11px 20px;cursor:pointer;align-self:flex-start}
+button:hover{background:var(--ink)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.note{font-size:12px;color:var(--muted)}
+#tapestry{width:100%;max-width:560px;aspect-ratio:14/9;border:1px solid var(--line);border-radius:2px;background:var(--moss)}
+.kept{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;color:var(--muted);margin:0;padding:0;list-style:none}
+.kept li{display:flex;gap:8px;align-items:baseline;min-width:0}
+.kept i{width:8px;height:8px;border-radius:50%;flex:none;transform:translateY(-1px)}
+.kept span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:520px){.ctrl,.kept{grid-template-columns:1fr}.card{width:46vw;padding:10px}.mem-text{font-size:12px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<canvas id="stage"></canvas>
+
+<div class="hud-top">
+  <div class="brand"><span>Pensieve · Memory 12</span><h1>The Forgetting Garden</h1></div>
+  <div class="basin"><div class="pips" id="pips"></div><div class="count" id="count"></div></div>
+</div>
+
+<div class="tag" id="tag1" hidden></div>
+<div class="tag" id="tag2" hidden></div>
+
+<div class="cards">
+  <div class="card p1" id="card1">
+    <div class="who"><span style="color:var(--gold)">Player A</span><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · hold <kbd>E</kbd></span></div>
+    <div id="m1"></div>
+  </div>
+  <div class="card p2" id="card2">
+    <div class="who"><span style="color:var(--blue)">Player B</span><span class="keys"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> · hold <kbd>Enter</kbd></span></div>
+    <div id="m2"></div>
+  </div>
+</div>
+
+<div class="overlay" id="intro">
+  <div class="panel">
+    <span class="eyebrow">The Core · Finale</span>
+    <h2>Every thread became a plant. The basin holds seven.</h2>
+    <p>Walk the garden together. Kneel at a plant to watch its memory replay. A plant comes up only when both of you hold a hand on it at the same time. Keep uprooting until seven remain. There is no timer.</p>
+    <div class="ctrl">
+      <div class="g"><b style="color:var(--gold)">Player A</b><span>Move with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Kneel and place hand: hold <kbd>E</kbd></span></div>
+      <div class="b"><b style="color:var(--blue)">Player B</b><span>Move with the arrow keys</span><span>Kneel and place hand: hold <kbd>Enter</kbd></span></div>
+    </div>
+    <p class="note">Two players share one keyboard. Plants come from a sample run: gold memories are A's, blue are B's, silver are shared. Brighter plants were cleared with more clarity.</p>
+    <button id="begin">Enter the garden</button>
+  </div>
+</div>
+
+<div class="overlay" id="ending" hidden>
+  <div class="panel">
+    <span class="eyebrow">The tapestry</span>
+    <h2>Seven memories, woven</h2>
+    <canvas id="tapestry" width="1120" height="720"></canvas>
+    <ul class="kept" id="keptList"></ul>
+    <p class="note" id="endNote"></p>
+    <button id="again">Walk the garden again</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const COLORS = { gold: 0xe9b949, blue: 0x7fb2ff, silver: 0xd3d9e8 };
+const CSS = { gold: '#e9b949', blue: '#7fb2ff', silver: '#d3d9e8' };
+const KEEP = 7;
+
+// Sample session threads (games 1–11 plus Echo Tide's bonus thread)
+const MEMORIES = [
+  { game: 'Echo Tide', text: 'The pier at low tide, a red bucket on the boards.', clarity: .78, sync: .70, color: 'gold' },
+  { game: 'Echo Tide · bonus', text: 'The bucket turned blue in round two, and A noticed.', clarity: .60, sync: .81, color: 'gold' },
+  { game: 'Two Rooms, One Room', text: 'Grandmother’s kitchen, two versions of the same window.', clarity: .64, sync: .58, color: 'silver' },
+  { game: 'Ink Drift', text: 'Rain on a classroom window, laughter down the hall.', clarity: .52, sync: .62, color: 'blue' },
+  { game: 'The Weight of Things', text: 'A brass key: a feather to one of you, an anchor to the other.', clarity: .82, sync: .67, color: 'gold' },
+  { game: 'Lantern Keeper', text: 'A dark house. The oil was in the third drawer.', clarity: .47, sync: .55, color: 'blue' },
+  { game: 'Mirror Walk', text: 'Two mazes, one door, opened in the same half second.', clarity: .71, sync: .88, color: 'silver' },
+  { game: 'Falling Upward', text: 'The library where the stairs ran both ways.', clarity: .58, sync: .74, color: 'gold' },
+  { game: 'The Unspooling', text: 'A vase broke at twelve seconds, then didn’t.', clarity: .66, sync: .60, color: 'blue' },
+  { game: 'Faces in Fog', text: 'A neighbor’s face, recognized on the second showing.', clarity: .89, sync: .77, color: 'gold' },
+  { game: 'The Lullaby', text: 'The last verse, hummed with no notes on screen.', clarity: .93, sync: .91, color: 'silver' },
+  { game: 'The Argument', text: 'A door left open, a phone face-down. Both pressed at peace.', clarity: .40, sync: .52, color: 'blue' },
+];
+
+// ---------- renderer & scene ----------
+const canvas = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0f1a);
+scene.fog = new THREE.FogExp2(0x0b0f1a, 0.04);
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 200);
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.fov = innerWidth < 600 ? 62 : 48;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+scene.add(new THREE.HemisphereLight(0x3a4c78, 0x0b0f1a, 0.75));
+const moon = new THREE.DirectionalLight(0x9fb0e0, 0.55); moon.position.set(-6, 12, 4); scene.add(moon);
+
+function glowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.25, 'rgba(255,255,255,.45)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const GLOW = glowTexture();
+function halo(color, scale, opacity = .6) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+  s.scale.setScalar(scale); return s;
+}
+
+// Garden floor, basin rim, water beyond
+const R = 10;
+const ground = new THREE.Mesh(new THREE.CircleGeometry(R, 72), new THREE.MeshStandardMaterial({ color: 0x18241f, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(R + .15, .32, 10, 120), new THREE.MeshStandardMaterial({ color: 0x3b404c, roughness: .9 }));
+rim.rotation.x = Math.PI / 2; rim.position.y = .12; scene.add(rim);
+const water = new THREE.Mesh(new THREE.RingGeometry(R + .45, 60, 96), new THREE.MeshStandardMaterial({ color: 0x0c1830, roughness: .25, metalness: .4 }));
+water.rotation.x = -Math.PI / 2; water.position.y = -.05; scene.add(water);
+
+// Grass tufts
+{
+  const n = 900, geo = new THREE.ConeGeometry(.035, .32, 3); geo.translate(0, .16, 0);
+  const grass = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }), n);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * (R - .4);
+    e.set((Math.random() - .5) * .5, Math.random() * 3, (Math.random() - .5) * .5); q.setFromEuler(e);
+    const s = .6 + Math.random() * .9;
+    m.compose(new THREE.Vector3(Math.cos(a) * d, 0, Math.sin(a) * d), q, new THREE.Vector3(s, s, s));
+    grass.setMatrixAt(i, m);
+    grass.setColorAt(i, col.setHSL(.38 + Math.random() * .08, .3, .16 + Math.random() * .1));
+  }
+  scene.add(grass);
+}
+
+// Fireflies
+const flies = (() => {
+  const n = 140, pos = new Float32Array(n * 3), seed = [];
+  for (let i = 0; i < n; i++) seed.push([Math.random() * Math.PI * 2, Math.sqrt(Math.random()) * 13, .5 + Math.random() * 4, Math.random() * 10]);
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ map: GLOW, size: .22, color: 0xcfd8ff, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false }));
+  scene.add(pts);
+  return { update(t) {
+    for (let i = 0; i < n; i++) { const [a, d, h, p] = seed[i]; const aa = a + t * .03 + Math.sin(t * .3 + p) * .2;
+      pos[i*3] = Math.cos(aa) * d; pos[i*3+1] = h + Math.sin(t * .7 + p) * .3; pos[i*3+2] = Math.sin(aa) * d; }
+    geo.attributes.position.needsUpdate = true;
+  } };
+})();
+
+// ---------- plants ----------
+const stemMat = new THREE.MeshStandardMaterial({ color: 0x3e5d48, roughness: .9 });
+const leafMat = new THREE.MeshStandardMaterial({ color: 0x52805d, roughness: .8, side: THREE.DoubleSide });
+let plants = [];
+
+function plantPositions(n) {
+  const out = []; let tries = 0;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const d = 2.2 + 5.6 * Math.sqrt((i + .5) / n), a = i * golden + 0.6;
+    out.push(new THREE.Vector3(Math.cos(a) * d, 0, Math.sin(a) * d));
+  }
+  return out;
+}
+
+function makePlant(mem, pos, idx) {
+  const g = new THREE.Group(); g.position.copy(pos);
+  const h = .9 + mem.clarity * 1.0;
+  const stemGeo = new THREE.CylinderGeometry(.03, .055, h, 6); stemGeo.translate(0, h / 2, 0);
+  g.add(new THREE.Mesh(stemGeo, stemMat));
+  const leaves = 2 + Math.round(mem.clarity * 4);
+  for (let i = 0; i < leaves; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), leafMat);
+    leaf.scale.set(1, .12, .45);
+    const a = i * 2.4, y = .2 + (i / leaves) * h * .75;
+    leaf.position.set(Math.cos(a) * .17, y, Math.sin(a) * .17);
+    leaf.rotation.set(0, -a, .5);
+    g.add(leaf);
+  }
+  const col = COLORS[mem.color];
+  const bulb = new THREE.Mesh(new THREE.IcosahedronGeometry(.16 + .13 * mem.clarity, 1),
+    new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .35 + mem.clarity * 1.1, flatShading: true, transparent: true, opacity: .5 + .5 * mem.clarity, roughness: .4 }));
+  bulb.position.y = h + .1; g.add(bulb);
+  const glow = halo(col, 1 + mem.clarity * 1.4, .25 + mem.clarity * .45); glow.position.y = h + .1; g.add(glow);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.55, .66, 64, 1, -Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = .03; ring.geometry.setDrawRange(0, 0); g.add(ring);
+  const base = new THREE.Mesh(new THREE.RingGeometry(.55, .58, 64), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .0, side: THREE.DoubleSide, depthWrite: false }));
+  base.rotation.x = -Math.PI / 2; base.position.y = .02; g.add(base);
+  scene.add(g);
+  return { mem, idx, group: g, bulb, glow, ring, base, h, hold: 0, alive: true, dying: 0, phase: Math.random() * 6, bloom: 0 };
+}
+
+// ---------- avatars ----------
+function makeAvatar(color, x) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .35, roughness: .5 });
+  const bodyGeo = new THREE.CylinderGeometry(.18, .3, .8, 14); bodyGeo.translate(0, .4, 0);
+  const body = new THREE.Mesh(bodyGeo, mat); g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.19, 16, 12), mat); head.position.y = .98; g.add(head);
+  const aura = halo(color, 2.2, .35); aura.position.y = .6; g.add(aura);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(.4, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = .01; g.add(shadow);
+  scene.add(g);
+  const hand = new THREE.Group();
+  hand.add(new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), new THREE.MeshBasicMaterial({ color })));
+  hand.add(halo(color, .7, .9)); hand.visible = false; scene.add(hand);
+  g.position.set(x, 0, 8);
+  return { group: g, body, head, hand, pos: g.position, focus: null, holding: false, kneel: 0, heading: Math.PI };
+}
+const A = makeAvatar(COLORS.gold, -1.2);
+const B = makeAvatar(COLORS.blue, 1.2);
+
+// ---------- input ----------
+const keys = new Set();
+const GAME_KEYS = ['KeyW','KeyA','KeyS','KeyD','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','NumpadEnter','Slash','Space'];
+addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code) && playing) e.preventDefault(); keys.add(e.code); });
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+const CTRL = {
+  A: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', hand: ['KeyE', 'Space'] },
+  B: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', hand: ['Enter', 'NumpadEnter', 'Slash'] },
+};
+
+// ---------- audio ----------
+let actx = null;
+function chime(freqs, dur = 2.2, gain = .08) {
+  if (!actx) return;
+  const t0 = actx.currentTime;
+  freqs.forEach((f, i) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t0 + i * .09); g.gain.linearRampToValueAtTime(gain, t0 + i * .09 + .02);
+    g.gain.exponentialRampToValueAtTime(.0001, t0 + i * .09 + dur);
+    o.connect(g).connect(actx.destination); o.start(t0 + i * .09); o.stop(t0 + i * .09 + dur + .1);
+  });
+}
+
+// ---------- drifting lights (uprooted memories) ----------
+const drifts = [];
+function figureTargets(cx, cy, cz, n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const side = i < n / 2 ? -1 : 1, k = i % (n / 2), m = n / 2;
+    const ox = cx + side * .75;
+    if (k < m * .35) { const a = (k / (m * .35)) * Math.PI * 2; pts.push([ox + Math.cos(a) * .24, cy + 1.25 + Math.sin(a) * .24, cz]); }
+    else { const u = (k - m * .35) / (m * .65); const row = Math.floor(u * 8) / 8, w = .18 + row * .32;
+      pts.push([ox + (Math.random() * 2 - 1) * w, cy + .85 - row * 1.25, cz + (Math.random() - .5) * .1]); }
+  }
+  return pts;
+}
+function spawnDrift(p) {
+  const n = 120, from = p.group.position.clone(); from.y = p.h;
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const start = [], target = figureTargets(from.x, from.y + 3.2, from.z, n);
+  const cA = new THREE.Color(COLORS.gold), cB = new THREE.Color(COLORS.blue), cM = new THREE.Color(COLORS[p.mem.color]);
+  for (let i = 0; i < n; i++) {
+    start.push([from.x + (Math.random() - .5) * .5, from.y + Math.random() * .3, from.z + (Math.random() - .5) * .5]);
+    const c = (i < n / 2 ? cA : cB).clone().lerp(cM, .35);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ map: GLOW, size: .26, vertexColors: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pts = new THREE.Points(geo, mat); scene.add(pts);
+  drifts.push({ pts, geo, mat, start, target, t: 0, n, jitter: start.map(() => Math.random() * 6) });
+}
+function updateDrifts(dt, t) {
+  for (let d = drifts.length - 1; d >= 0; d--) {
+    const D = drifts[d]; D.t += dt;
+    const arr = D.geo.attributes.position.array;
+    for (let i = 0; i < D.n; i++) {
+      const s = D.start[i], g = D.target[i], j = D.jitter[i];
+      let x, y, z;
+      if (D.t < 1.4) { const u = D.t / 1.4; x = s[0] + Math.sin(j + D.t * 3) * .3 * u; y = s[1] + u * 2.2; z = s[2] + Math.cos(j + D.t * 3) * .3 * u; }
+      else { const u = Math.min(1, (D.t - 1.4) / 1.8), e = u * u * (3 - 2 * u);
+        const mx = s[0] + Math.sin(j + 4.2) * .3, my = s[1] + 2.2, mz = s[2] + Math.cos(j + 4.2) * .3;
+        x = mx + (g[0] - mx) * e + Math.sin(t * 2 + j) * .02; y = my + (g[1] - my) * e + Math.cos(t * 2 + j) * .02; z = mz + (g[2] - mz) * e; }
+      arr[i*3] = x; arr[i*3+1] = y; arr[i*3+2] = z;
+    }
+    D.geo.attributes.position.needsUpdate = true;
+    D.mat.opacity = D.t < 4.6 ? 1 : Math.max(0, 1 - (D.t - 4.6) / 1.8);
+    if (D.t > 6.5) { scene.remove(D.pts); D.geo.dispose(); D.mat.dispose(); drifts.splice(d, 1); }
+  }
+}
+
+// ---------- HUD ----------
+const pipsEl = document.getElementById('pips'), countEl = document.getElementById('count');
+const memEls = [document.getElementById('m1'), document.getElementById('m2')];
+const tags = [document.getElementById('tag1'), document.getElementById('tag2')];
+function renderPips() {
+  pipsEl.innerHTML = plants.map(p => `<i class="pip${p.alive ? '' : ' gone'}" style="color:${CSS[p.mem.color]}" title="${p.mem.game}"></i>`).join('');
+  const alive = plants.filter(p => p.alive).length, left = alive - KEEP;
+  countEl.innerHTML = left > 0 ? `<b>${alive}</b> growing · basin holds ${KEEP} · uproot <b>${left}</b> more` : `<b>${KEEP}</b> remain`;
+}
+const lastCard = ['', ''];
+function renderCard(i, pl, partner) {
+  let html;
+  if (!pl.focus) html = `<div class="status">Walk toward a plant to see its memory.</div>`;
+  else {
+    const m = pl.focus.mem, same = partner.focus === pl.focus;
+    let status;
+    if (pl.holding && partner.holding && same) status = `<div class="status live">Both hands on it. Uprooting…</div>`;
+    else if (pl.holding) status = `<div class="status live">Kneeling, hand placed. ${same ? 'Your partner is here; ask them to place theirs.' : 'Waiting for your partner’s hand.'}</div>`;
+    else if (partner.holding && same) status = `<div class="status live">Your partner’s hand is on it. Hold yours to uproot, or walk away to keep it.</div>`;
+    else status = `<div class="status">Hold to kneel and place your hand.</div>`;
+    html = `<div class="mem-game">${m.game}</div><div class="mem-text">${m.text}</div>
+      <div class="mem-meta">Clarity ${Math.round(m.clarity * 100)}% · sync ${Math.round(m.sync * 100)}% · ${m.color === 'silver' ? 'shared' : m.color === 'gold' ? 'A’s memory' : 'B’s memory'}</div>${status}`;
+  }
+  if (html !== lastCard[i]) { memEls[i].innerHTML = html; lastCard[i] = html; }
+}
+const v3 = new THREE.Vector3();
+function placeTag(el, p) {
+  if (!p) { el.hidden = true; return; }
+  v3.set(p.group.position.x, p.h + .6, p.group.position.z).project(camera);
+  el.hidden = false;
+  el.style.left = ((v3.x + 1) / 2 * innerWidth) + 'px';
+  el.style.top = ((1 - v3.y) / 2 * innerHeight) + 'px';
+  el.style.color = CSS[p.mem.color];
+  el.textContent = p.mem.game;
+}
+
+// ---------- game state ----------
+let playing = false, ended = false, endTimer = -1;
+function setup() {
+  plants.forEach(p => scene.remove(p.group));
+  drifts.splice(0).forEach(D => scene.remove(D.pts));
+  const pos = plantPositions(MEMORIES.length);
+  plants = MEMORIES.map((m, i) => makePlant(m, pos[i], i));
+  A.pos.set(-1.2, 0, 9); B.pos.set(1.2, 0, 9);
+  A.focus = B.focus = null; ended = false; endTimer = -1;
+  renderPips();
+}
+
+function updatePlayer(pl, ctrl, dt) {
+  pl.holding = ctrl.hand.some(k => keys.has(k)) && playing;
+  let dx = 0, dz = 0;
+  if (playing && !pl.holding) {
+    if (keys.has(ctrl.up)) dz -= 1; if (keys.has(ctrl.down)) dz += 1;
+    if (keys.has(ctrl.left)) dx -= 1; if (keys.has(ctrl.right)) dx += 1;
+  }
+  const len = Math.hypot(dx, dz);
+  if (len) { dx /= len; dz /= len; pl.pos.x += dx * 3.2 * dt; pl.pos.z += dz * 3.2 * dt; pl.heading = Math.atan2(dx, dz); }
+  const r = Math.hypot(pl.pos.x, pl.pos.z); if (r > R - .5) { pl.pos.x *= (R - .5) / r; pl.pos.z *= (R - .5) / r; }
+  for (const p of plants) if (p.alive) {
+    const ox = pl.pos.x - p.group.position.x, oz = pl.pos.z - p.group.position.z, d = Math.hypot(ox, oz);
+    if (d < .5 && d > 1e-4) { pl.pos.x += ox / d * (.5 - d); pl.pos.z += oz / d * (.5 - d); }
+  }
+  let best = null, bd = 1.5;
+  for (const p of plants) if (p.alive) { const d = Math.hypot(pl.pos.x - p.group.position.x, pl.pos.z - p.group.position.z); if (d < bd) { bd = d; best = p; } }
+  pl.focus = best;
+  if (best && pl.holding) pl.heading = Math.atan2(best.group.position.x - pl.pos.x, best.group.position.z - pl.pos.z);
+  pl.kneel += ((pl.holding ? 1 : 0) - pl.kneel) * Math.min(1, dt * 10);
+  let dh = pl.heading - pl.group.rotation.y; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+  pl.group.rotation.y += dh * Math.min(1, dt * 12);
+  pl.body.scale.y = 1 - .38 * pl.kneel; pl.head.position.y = .98 - .32 * pl.kneel;
+  const handOn = pl.holding && best;
+  pl.hand.visible = !!handOn;
+  if (handOn) {
+    const target = new THREE.Vector3().copy(best.group.position).lerp(pl.pos, .35); target.y = best.h * .55;
+    pl.hand.position.lerp(target, Math.min(1, dt * 12));
+  } else pl.hand.position.set(pl.pos.x, .6, pl.pos.z);
+}
+
+function uproot(p) {
+  p.alive = false; p.dying = 0.0001; p.ring.geometry.setDrawRange(0, 0);
+  spawnDrift(p);
+  chime([392, 494, 587, 740].map(f => f * (p.mem.color === 'blue' ? .89 : p.mem.color === 'gold' ? 1 : 1.12)));
+  renderPips();
+  if (plants.filter(q => q.alive).length <= KEEP) { endTimer = 5.5; playing = false; }
+}
+
+const camTarget = new THREE.Vector3(0, 0, 4), camPos = new THREE.Vector3(0, 11, 16);
+function updateCamera(dt) {
+  const mid = new THREE.Vector3().addVectors(A.pos, B.pos).multiplyScalar(.5);
+  const spread = A.pos.distanceTo(B.pos);
+  const narrow = innerWidth < 600 ? 1.35 : 1;
+  let want, look;
+  if (endTimer >= 0 || ended) { look = new THREE.Vector3(0, 1.5, 0); want = new THREE.Vector3(0, 16, 15); }
+  else { look = mid.clone().multiplyScalar(.6); look.y = .8;
+    const dist = (8 + spread * .45) * narrow; want = new THREE.Vector3(look.x, dist * .95, look.z + dist * .85); }
+  camTarget.lerp(look, Math.min(1, dt * 2.5)); camPos.lerp(want, Math.min(1, dt * 1.6));
+  camera.position.copy(camPos); camera.lookAt(camTarget);
+}
+
+// ---------- tapestry ----------
+function drawTapestry(kept) {
+  const c = document.getElementById('tapestry'), g = c.getContext('2d'), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#141d24'; g.fillRect(0, 0, W, H);
+  const pad = 56, bw = (W - pad * 2) / kept.length;
+  kept.forEach((p, i) => {
+    const x0 = pad + i * bw, col = CSS[p.mem.color], threads = 4 + Math.round(p.mem.clarity * 10);
+    g.save();
+    if ('filter' in g) g.filter = `blur(${((1 - p.mem.clarity) * 3).toFixed(1)}px)`;
+    g.globalAlpha = .35 + p.mem.clarity * .65;
+    g.strokeStyle = col; g.lineWidth = Math.max(2, bw / threads * .7);
+    for (let k = 0; k < threads; k++) { const x = x0 + (k + .5) * bw / threads; g.beginPath(); g.moveTo(x, pad); g.lineTo(x, H - pad); g.stroke(); }
+    g.restore();
+  });
+  // weft: silver over-under, density from sync
+  const rows = 46, rh = (H - pad * 2) / rows;
+  for (let r = 0; r < rows; r++) {
+    const y = pad + (r + .5) * rh;
+    kept.forEach((p, i) => {
+      const x0 = pad + i * bw, threads = 4 + Math.round(p.mem.clarity * 10), tw = bw / threads;
+      g.fillStyle = `rgba(211,217,232,${.15 + p.mem.sync * .5})`;
+      for (let k = 0; k < threads; k++) if ((k + r) % 2 === 0) g.fillRect(x0 + k * tw, y - rh * .32, tw, rh * .64);
+    });
+  }
+  // the lullaby line from game 10, woven across
+  g.strokeStyle = 'rgba(235,230,242,.85)'; g.lineWidth = 3; g.beginPath();
+  for (let x = pad; x <= W - pad; x += 4) { const y = H * .62 + Math.sin(x * .025) * 26 + Math.sin(x * .061) * 10; x === pad ? g.moveTo(x, y) : g.lineTo(x, y); }
+  g.stroke();
+  // the hybrid rooms from game 2: two small woven windows
+  [[.2, .22], [.74, .2]].forEach(([fx, fy]) => {
+    const x = W * fx, y = H * fy, s = 70;
+    g.strokeStyle = 'rgba(233,185,73,.8)'; g.lineWidth = 3; g.strokeRect(x, y, s, s * .8);
+    g.strokeStyle = 'rgba(127,178,255,.8)'; g.strokeRect(x + 10, y + 8, s, s * .8);
+  });
+  // fringe
+  g.strokeStyle = 'rgba(211,217,232,.4)'; g.lineWidth = 2;
+  for (let x = pad; x <= W - pad; x += 12) { g.beginPath(); g.moveTo(x, H - pad); g.lineTo(x + 3, H - pad + 26); g.stroke(); }
+}
+function showEnding() {
+  ended = true;
+  const kept = plants.filter(p => p.alive);
+  drawTapestry(kept);
+  document.getElementById('keptList').innerHTML = kept.map(p => `<li><i style="background:${CSS[p.mem.color]}"></i><span>${p.mem.game} · ${Math.round(p.mem.clarity * 100)}%</span></li>`).join('');
+  const avg = kept.reduce((s, p) => s + p.mem.clarity, 0) / kept.length;
+  const gone = plants.filter(p => !p.alive).map(p => p.mem.game);
+  document.getElementById('endNote').textContent = `Average clarity of what you kept: ${Math.round(avg * 100)}%. Let go: ${gone.join(', ')}. The kitchen and bus rooms from Two Rooms, One Room hang in the weave, and your lullaby runs through it.`;
+  document.getElementById('ending').hidden = false;
+  chime([523, 659, 784, 1047, 784], 3.5, .06);
+  document.getElementById('again').focus();
+}
+
+document.getElementById('begin').addEventListener('click', () => {
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  document.getElementById('intro').hidden = true; playing = true; canvas.focus?.();
+});
+document.getElementById('again').addEventListener('click', () => {
+  document.getElementById('ending').hidden = true; setup(); playing = true;
+});
+
+// ---------- loop ----------
+const clock = new THREE.Clock();
+setup();
+function frame() {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  updatePlayer(A, CTRL.A, dt); updatePlayer(B, CTRL.B, dt);
+  // keep avatars apart
+  const ox = B.pos.x - A.pos.x, oz = B.pos.z - A.pos.z, d = Math.hypot(ox, oz);
+  if (d < .6 && d > 1e-4) { const push = (.6 - d) / 2; A.pos.x -= ox / d * push; A.pos.z -= oz / d * push; B.pos.x += ox / d * push; B.pos.z += oz / d * push; }
+
+  for (const p of plants) {
+    if (p.alive) {
+      const handA = A.holding && A.focus === p, handB = B.holding && B.focus === p;
+      if (handA && handB) p.hold += dt / 1.6; else p.hold = Math.max(0, p.hold - dt * 1.5);
+      p.ring.geometry.setDrawRange(0, Math.floor(Math.min(1, p.hold) * 64) * 6);
+      p.base.material.opacity = (handA || handB) ? .55 : 0;
+      p.base.material.color.setHex(handA && !handB ? COLORS.gold : handB && !handA ? COLORS.blue : 0xffffff);
+      const kneeled = handA || handB;
+      p.bloom += ((kneeled ? 1 : (A.focus === p || B.focus === p) ? .35 : 0) - p.bloom) * Math.min(1, dt * 5);
+      const pulse = 1 + p.bloom * (.25 + Math.sin(t * 4 + p.phase) * .08) + (handA && handB ? p.hold * .3 : 0);
+      p.bulb.scale.setScalar(pulse); p.bulb.rotation.y += dt * (.3 + p.bloom * 1.5);
+      p.glow.scale.setScalar((1 + p.mem.clarity * 1.4) * (1 + p.bloom * .6));
+      p.group.rotation.z = Math.sin(t * .9 + p.phase) * .04 + (handA && handB ? Math.sin(t * 40) * .03 * p.hold : 0);
+      if (p.hold >= 1) uproot(p);
+    } else if (p.dying > 0) {
+      p.dying += dt;
+      const u = Math.min(1, p.dying / 1.1);
+      p.group.position.y = u * 1.4; p.group.scale.setScalar(Math.max(.001, 1 - u));
+      if (u >= 1) { p.dying = 0; p.group.visible = false; }
+    }
+  }
+  if (endTimer >= 0) {
+    endTimer -= dt;
+    plants.forEach(p => { if (p.alive) { p.glow.material.opacity = Math.min(1, p.glow.material.opacity + dt * .2); p.bulb.material.emissiveIntensity += dt * .3; } });
+    if (endTimer < 0 && !ended) showEnding();
+  }
+  updateDrifts(dt, t);
+  flies.update(t);
+  updateCamera(dt);
+  renderer.render(scene, camera);
+
+  renderCard(0, A, B); renderCard(1, B, A);
+  placeTag(tags[0], playing ? A.focus : null);
+  placeTag(tags[1], playing && B.focus !== A.focus ? B.focus : null);
+  requestAnimationFrame(frame);
+}
+frame();
+})();
+</script>
+
+</body></html>

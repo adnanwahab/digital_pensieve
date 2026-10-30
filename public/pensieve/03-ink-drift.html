@@ -1,0 +1,823 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ink Drift</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed night pond with a painting hovering over the far bank; thin instrument strip on top, paper-slip overlays */
+:root{
+  --abyss:#0a1120;
+  --pool:#14233a;
+  --mist:#9fb0c8;
+  --silver:#ebe8f4;
+  --gold:#e8c37a;
+  --blue:#8fb6e8;
+  --rough:#e5826e;
+  --slip:rgba(14,22,38,.86);
+  --line:rgba(159,176,200,.22);
+  --display:"Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--abyss);color:var(--silver);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+
+.hud{position:fixed;top:0;left:0;right:0;z-index:5;pointer-events:none;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:12px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand h1{margin:0;font-family:var(--display);font-style:italic;font-weight:400;font-size:28px;line-height:1;letter-spacing:.01em}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+.clock{display:flex;flex-direction:column;align-items:center;gap:4px}
+#time{font-family:var(--mono);font-size:30px;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1}
+#phase{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+.stats{justify-self:end;display:flex;gap:18px;font-variant-numeric:tabular-nums}
+.stat{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.stat b{font-family:var(--mono);font-weight:500;font-size:20px;line-height:1}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+.stat.lost b{color:var(--rough)}
+.stat.clar b{color:var(--gold)}
+
+.roles{position:fixed;left:0;right:0;z-index:5;pointer-events:none;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.role{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mist)}
+.role i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c)}
+.role strong{color:var(--silver);font-weight:600}
+.role kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--silver)}
+.gauge{display:flex;flex-direction:column;gap:6px;width:min(280px,40vw)}
+.gauge .track{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--blue) 0%,var(--silver) 48%,var(--rough) 80%)}
+.gauge .needle{position:absolute;top:-5px;width:2px;height:16px;background:var(--silver);left:0;transition:left .06s linear;box-shadow:0 0 6px var(--silver)}
+.gauge .ends{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist)}
+
+#caption{position:fixed;z-index:4;transform:translate(-50%,0);pointer-events:none;font-family:var(--display);font-style:italic;font-size:22px;color:var(--silver);opacity:0;transition:opacity .6s ease;text-shadow:0 2px 14px rgba(0,0,0,.6);white-space:nowrap}
+
+.overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(6,10,20,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px;overflow:auto}
+.slip{width:min(560px,100%);background:var(--slip);border:1px solid var(--line);border-radius:6px;padding:28px 28px 24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.slip h2{margin:0;font-family:var(--display);font-weight:400;font-size:40px;line-height:1.05;text-wrap:balance}
+.slip h2 em{color:var(--gold)}
+.slip p{margin:0;line-height:1.55;color:#cfd6e4;max-width:62ch}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pair > div{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.pair h3{margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist);font-weight:500;display:flex;align-items:center;gap:8px}
+.pair h3 i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.pair p{font-size:14px}
+.rules{font-family:var(--mono);font-size:12px;color:var(--mist);display:flex;gap:16px;flex-wrap:wrap}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:600 14px var(--body);color:var(--abyss);background:var(--gold);border:0;border-radius:4px;padding:11px 18px;cursor:pointer}
+button.ghost{background:transparent;color:var(--silver);border:1px solid var(--line)}
+button:focus-visible{outline:2px solid var(--silver);outline-offset:3px}
+.hint{font-size:12px;color:var(--mist)}
+.result{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.result img{width:220px;max-width:100%;border-radius:3px;display:block;border:1px solid var(--line)}
+.nums{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;font-variant-numeric:tabular-nums}
+.nums div{display:flex;flex-direction:column;gap:2px}
+.nums b{font-family:var(--mono);font-size:22px;font-weight:500}
+.nums span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+#thread{width:100%;height:36px;display:block}
+pre#json{margin:0;font:12px/1.5 var(--mono);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:4px;padding:10px 12px;overflow-x:auto;color:var(--silver)}
+
+#stick{position:fixed;z-index:6;left:max(22px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:110px;height:110px;border-radius:50%;border:1px solid var(--line);background:rgba(143,182,232,.06);touch-action:none}
+#stick .nub{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(235,232,244,.18);border:1px solid var(--line)}
+
+@media (max-width:640px){
+  .hud{grid-template-columns:1fr auto}
+  .stats{grid-column:1 / -1;justify-self:start}
+  .brand h1{font-size:22px}
+  .pair,.result{grid-template-columns:1fr}
+  .slip h2{font-size:32px}
+}
+@media (prefers-reduced-motion:reduce){#caption{transition:none}.gauge .needle{transition:none}}
+</style>
+
+<canvas id="gl" aria-label="Ink Drift pond"></canvas>
+
+<div class="hud">
+  <div class="brand"><span class="eyebrow">Memory 3 · The Surface</span><h1>Ink Drift</h1></div>
+  <div class="clock"><div id="time">3:00</div><div id="phase">Round 1 of 2</div></div>
+  <div class="stats">
+    <div class="stat"><b id="sGot">0</b><span>Gathered</span></div>
+    <div class="stat lost"><b id="sLost">0</b><span>Scattered</span></div>
+    <div class="stat clar"><b id="sClar">0%</b><span>Clarity</span></div>
+  </div>
+</div>
+
+<div class="roles">
+  <div class="role" id="rStir" style="--c:var(--gold)"><i></i><span><strong>Stirrer</strong> · Player A · drag the water</span></div>
+  <div class="gauge" aria-hidden="true">
+    <div class="track"><div class="needle" id="needle"></div></div>
+    <div class="ends"><span>Slow current</span><span>Rough water</span></div>
+  </div>
+  <div class="role" id="rSwim" style="--c:var(--blue)"><i></i><span><strong>Swimmer</strong> · Player B · <kbd>WASD</kbd> <kbd>↑↓←→</kbd></span></div>
+</div>
+
+<div id="caption"></div>
+<div id="stick" hidden><div class="nub"></div></div>
+
+<div class="overlay" id="ovIntro">
+  <div class="slip">
+    <span class="eyebrow">Memory 3 of 12 · shared</span>
+    <h2>The memory has dissolved into <em>ink</em>.</h2>
+    <p>Twenty-four gold fragments hang in the clouds. Stir slow currents to carry the swimmer to them. Stir too fast and the water roughens, scattering any fragment it touches.</p>
+    <div class="pair">
+      <div style="--c:var(--gold)"><h3><i></i>Stirrer</h3><p>Hold and drag on the water in slow arcs. Each arc becomes a current that lingers for a few seconds.</p></div>
+      <div style="--c:var(--blue)"><h3><i></i>Swimmer</h3><p>Steer gently with WASD or the arrows. You can barely swim; the current does most of the moving.</p></div>
+    </div>
+    <div class="rules"><span>3:00 total</span><span>24 fragments</span><span>roles swap at 1:30</span><span>P to pause</span></div>
+    <div class="actions"><button id="bStart">Dive in</button><span class="hint">Sound on: each fragment replays a sound from the memory.</span></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovSwap" hidden>
+  <div class="slip">
+    <span class="eyebrow">1:30 · halfway</span>
+    <h2>The ink settles. <em>Trade places.</em></h2>
+    <p>Player B takes the mouse and stirs. Player A takes the keys and swims. The fragments stay where the currents left them.</p>
+    <div class="actions"><button id="bSwap">Keep drifting</button><span class="hint">Space also continues</span></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovPause" hidden>
+  <div class="slip">
+    <h2>Held still.</h2>
+    <p>The water waits. Nothing drifts while paused.</p>
+    <div class="actions"><button id="bResume">Resume</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovEnd" hidden>
+  <div class="slip">
+    <span class="eyebrow">Memory released</span>
+    <h2 id="endTitle">A window in the rain.</h2>
+    <div class="result">
+      <img id="endImg" alt="The painting the pair recovered">
+      <div class="nums">
+        <div><b id="eClar">0%</b><span>Clarity</span></div>
+        <div><b id="eSync">0%</b><span>Sync</span></div>
+        <div><b id="eGot">0</b><span>Gathered</span></div>
+        <div><b id="eLost">0</b><span>Scattered</span></div>
+      </div>
+    </div>
+    <svg id="thread" viewBox="0 0 500 36" preserveAspectRatio="none" aria-label="Silver thread"><path id="threadPath" d="" fill="none" stroke-linecap="round"/></svg>
+    <p class="hint">Sync measures how often the swimmer steered with the current rather than against it.</p>
+    <pre id="json"></pre>
+    <div class="actions"><button id="bAgain">Dive again</button><button class="ghost" id="bCopy">Copy thread JSON</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+// ---------- constants ----------
+const W = 30, H = 16, NX = 60, NZ = 32, CELL = W / NX;
+const TOTAL = 180, SWAP_AT = 90, NFRAG = 24, NINK = 5200;
+const PAINT_POS = new THREE.Vector3(0, 6.6, -12.6);
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- renderer / scene ----------
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a1120);
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 200);
+const camTarget = new THREE.Vector3(0, 2.2, -3);
+const camOffset = new THREE.Vector3(0, 20, 18.5);
+
+// ---------- flow field ----------
+const N = NX * NZ;
+let vx = new Float32Array(N), vz = new Float32Array(N), turb = new Float32Array(N);
+let tx = new Float32Array(N), tz = new Float32Array(N);
+const S = { x: 0, z: 0, t: 0 };
+function sampleField(x, z, time){
+  let gx = clamp((x + W / 2) / CELL - .5, 0, NX - 1.001), gz = clamp((z + H / 2) / CELL - .5, 0, NZ - 1.001);
+  const i = gx | 0, j = gz | 0, fx = gx - i, fz = gz - j;
+  const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1;
+  const w00 = (1 - fx) * (1 - fz), w10 = fx * (1 - fz), w01 = (1 - fx) * fz, w11 = fx * fz;
+  S.x = vx[a] * w00 + vx[b] * w10 + vx[c] * w01 + vx[d] * w11;
+  S.z = vz[a] * w00 + vz[b] * w10 + vz[c] * w01 + vz[d] * w11;
+  S.t = turb[a] * w00 + turb[b] * w10 + turb[c] * w01 + turb[d] * w11;
+  // ambient drift so the dream never stands still
+  S.x += .26 * Math.sin(z * .36 + time * .21) + .1 * Math.cos(x * .22 - time * .13);
+  S.z += .22 * Math.cos(x * .3 - time * .17) + .08 * Math.sin(z * .5 + time * .11);
+  return S;
+}
+let speedEMA = 0, roughNow = 0;
+function deposit(p0, p1, dt){
+  const dx = p1.x - p0.x, dz = p1.z - p0.z, d = Math.hypot(dx, dz);
+  if (d < 1e-4 || dt <= 0) return;
+  const sp = d / Math.max(dt, 1 / 240);
+  speedEMA = speedEMA * .72 + sp * .28;
+  const rough = smooth(13, 24, speedEMA);
+  roughNow = rough;
+  const ux = dx / d, uz = dz / d;
+  const steps = Math.max(1, Math.ceil(d / .35)), seg = d / steps;
+  const R = 1.9, sig2 = 2 * .85 * .85;
+  for (let s = 0; s < steps; s++){
+    const px = p0.x + dx * (s + .5) / steps, pz = p0.z + dz * (s + .5) / steps;
+    if (px < -W / 2 || px > W / 2 || pz < -H / 2 || pz > H / 2) continue;
+    const gi = (px + W / 2) / CELL - .5, gj = (pz + H / 2) / CELL - .5, rr = R / CELL;
+    const i0 = Math.max(0, Math.floor(gi - rr)), i1 = Math.min(NX - 1, Math.ceil(gi + rr));
+    const j0 = Math.max(0, Math.floor(gj - rr)), j1 = Math.min(NZ - 1, Math.ceil(gj + rr));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++){
+      const cx = (i + .5) * CELL - W / 2, cz = (j + .5) * CELL - H / 2;
+      const r2 = (cx - px) ** 2 + (cz - pz) ** 2; if (r2 > R * R) continue;
+      const w = Math.exp(-r2 / sig2), k = j * NX + i;
+      vx[k] += ux * w * 2.7 * (1 - rough) * seg;
+      vz[k] += uz * w * 2.7 * (1 - rough) * seg;
+      if (rough > 0){
+        turb[k] += rough * w * 1.4 * seg;
+        vx[k] += (Math.random() - .5) * rough * w * 7 * seg;
+        vz[k] += (Math.random() - .5) * rough * w * 7 * seg;
+      }
+      const m = Math.hypot(vx[k], vz[k]); if (m > 7){ vx[k] *= 7 / m; vz[k] *= 7 / m; }
+    }
+  }
+  trails.push({ x0: p0.x, z0: p0.z, x1: p1.x, z1: p1.z, t: 0, r: rough });
+  if (trails.length > 340) trails.shift();
+}
+function stepField(dt){
+  const dv = Math.exp(-dt * .26), dtb = Math.exp(-dt * 1.25), a = Math.min(1, dt * 3) * .25;
+  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++){
+    const k = j * NX + i;
+    const l = i > 0 ? k - 1 : k, r = i < NX - 1 ? k + 1 : k, u = j > 0 ? k - NX : k, d = j < NZ - 1 ? k + NX : k;
+    tx[k] = (vx[k] + a * ((vx[l] + vx[r] + vx[u] + vx[d]) * .25 - vx[k])) * dv;
+    tz[k] = (vz[k] + a * ((vz[l] + vz[r] + vz[u] + vz[d]) * .25 - vz[k])) * dv;
+    if (i === 0 || i === NX - 1) tx[k] *= .2;
+    if (j === 0 || j === NZ - 1) tz[k] *= .2;
+    turb[k] *= dtb;
+  }
+  [vx, tx] = [tx, vx]; [vz, tz] = [tz, vz];
+}
+
+// ---------- water ----------
+const fieldData = new Uint8Array(N * 4);
+const fieldTex = new THREE.DataTexture(fieldData, NX, NZ, THREE.RGBAFormat);
+fieldTex.magFilter = fieldTex.minFilter = THREE.LinearFilter;
+fieldTex.needsUpdate = true;
+const waterMat = new THREE.ShaderMaterial({
+  uniforms: { uField: { value: fieldTex }, uTime: { value: 0 }, uGray: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `
+    uniform sampler2D uField; uniform float uTime, uGray; varying vec2 vUv;
+    float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+    float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+      return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); }
+    void main(){
+      vec4 f=texture2D(uField,vUv);
+      vec2 p=vUv*vec2(30.,16.);
+      float w=n(p*.55+vec2(uTime*.12,-uTime*.07))*.65+n(p*1.4-uTime*.09)*.35;
+      vec3 c=mix(vec3(.035,.06,.115), vec3(.075,.14,.23), w*.7);
+      float caust=pow(n(p*2.2+w*2.+uTime*.2),6.)*.35;
+      c+=vec3(.5,.62,.8)*caust*.25;
+      c+=vec3(.10,.15,.22)*f.g;
+      float foam=smoothstep(.08,.9,f.r);
+      c=mix(c, vec3(.88,.5,.42), foam*.55);
+      c+=vec3(1.)*foam*pow(n(p*5.+uTime*3.),3.)*.35;
+      vec2 e=min(vUv,1.-vUv);
+      c*=mix(.3,1.,smoothstep(0.,.07,min(e.x*1.,e.y*1.9)));
+      float g=dot(c,vec3(.3,.59,.11)); c=mix(c,vec3(g*1.05),uGray);
+      gl_FragColor=vec4(c,1.);
+    }`
+});
+const water = new THREE.Mesh(new THREE.PlaneGeometry(W, H), waterMat);
+water.rotation.x = -Math.PI / 2; scene.add(water);
+const rim = new THREE.Mesh(new THREE.PlaneGeometry(W + 1.6, H + 1.6), new THREE.MeshBasicMaterial({ color: 0x1a2436 }));
+rim.rotation.x = -Math.PI / 2; rim.position.y = -.02; scene.add(rim);
+function uploadField(){
+  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++){
+    const k = j * NX + i, o = ((NZ - 1 - j) * NX + i) * 4;
+    fieldData[o] = clamp(turb[k] * 200, 0, 255);
+    fieldData[o + 1] = clamp(Math.hypot(vx[k], vz[k]) * 40, 0, 255);
+  }
+  fieldTex.needsUpdate = true;
+}
+
+// ---------- glow sprite texture ----------
+function glowTex(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const GLOW = glowTex();
+function glowSprite(color, size){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  s.scale.set(size, size, 1); return s;
+}
+
+// ---------- ink particles ----------
+const inkGeo = new THREE.BufferGeometry();
+const iPos = new Float32Array(NINK * 3), iCol = new Float32Array(NINK * 3), iAlpha = new Float32Array(NINK), iSize = new Float32Array(NINK);
+const iAge = new Float32Array(NINK), iLife = new Float32Array(NINK);
+inkGeo.setAttribute('position', new THREE.BufferAttribute(iPos, 3));
+inkGeo.setAttribute('aColor', new THREE.BufferAttribute(iCol, 3));
+inkGeo.setAttribute('aAlpha', new THREE.BufferAttribute(iAlpha, 1));
+inkGeo.setAttribute('aSize', new THREE.BufferAttribute(iSize, 1));
+const inkMat = new THREE.ShaderMaterial({
+  uniforms: { uScale: { value: 400 }, uGray: { value: 0 } },
+  vertexShader: `attribute vec3 aColor; attribute float aAlpha, aSize; uniform float uScale; varying vec3 vC; varying float vA;
+    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uScale/-mv.z; gl_Position=projectionMatrix*mv; vC=aColor; vA=aAlpha; }`,
+  fragmentShader: `uniform float uGray; varying vec3 vC; varying float vA;
+    void main(){ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d); a*=a;
+      vec3 c=mix(vC, vec3(dot(vC,vec3(.33))), uGray); gl_FragColor=vec4(c, a*vA); }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+});
+const ink = new THREE.Points(inkGeo, inkMat); ink.frustumCulled = false; scene.add(ink);
+const INK_COLORS = [[.62, .58, .9], [.5, .64, .88], [.86, .84, .95], [.7, .55, .82]];
+let clouds = [];
+
+// ---------- fragments, swimmer, cursor, trails ----------
+const fragGeo = new THREE.OctahedronGeometry(.26, 0);
+const frags = [];
+const SOUNDS = ['door', 'laughter', 'rain'];
+const CAPTIONS = { door: 'a door closes, somewhere', laughter: 'laughter in the next room', rain: 'rain on the glass' };
+
+const swimmer = new THREE.Group();
+const swimBody = new THREE.Mesh(new THREE.SphereGeometry(.32, 20, 14), new THREE.MeshBasicMaterial({ color: 0xdfe9fb }));
+const swimGlow = glowSprite(0x8fb6e8, 3.2);
+swimmer.add(swimBody, swimGlow); scene.add(swimmer);
+const swimTrailGeo = new THREE.BufferGeometry();
+const SWT = 40, swPts = new Float32Array(SWT * 3);
+swimTrailGeo.setAttribute('position', new THREE.BufferAttribute(swPts, 3));
+const swimTrail = new THREE.Line(swimTrailGeo, new THREE.LineBasicMaterial({ color: 0x8fb6e8, transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false }));
+swimTrail.frustumCulled = false; scene.add(swimTrail);
+
+const cursor = new THREE.Mesh(new THREE.RingGeometry(.7, .82, 48), new THREE.MeshBasicMaterial({ color: 0xebe8f4, transparent: true, opacity: .5, depthWrite: false }));
+cursor.rotation.x = -Math.PI / 2; cursor.position.y = .06; cursor.visible = false; scene.add(cursor);
+
+const trails = [];
+const MAXSEG = 340;
+const trGeo = new THREE.BufferGeometry();
+const trPos = new Float32Array(MAXSEG * 6), trCol = new Float32Array(MAXSEG * 6);
+trGeo.setAttribute('position', new THREE.BufferAttribute(trPos, 3));
+trGeo.setAttribute('color', new THREE.BufferAttribute(trCol, 3));
+const trLines = new THREE.LineSegments(trGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+trLines.frustumCulled = false; scene.add(trLines);
+
+// ---------- painting ----------
+const PW = 640, PH = 400;
+const pcan = document.createElement('canvas'); pcan.width = PW; pcan.height = PH;
+const pctx = pcan.getContext('2d');
+const paintTex = new THREE.CanvasTexture(pcan);
+const paintMat = new THREE.ShaderMaterial({
+  uniforms: { map: { value: paintTex }, uGray: { value: 0 }, uTime: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform sampler2D map; uniform float uGray, uTime; varying vec2 vUv;
+    void main(){ vec2 uv=vUv+vec2(sin(vUv.y*9.+uTime*.6),cos(vUv.x*7.+uTime*.5))*.0025;
+      vec3 c=texture2D(map,uv).rgb; vec2 e=min(vUv,1.-vUv);
+      float a=smoothstep(0.,.09,e.x)*smoothstep(0.,.13,e.y);
+      c=mix(c,vec3(dot(c,vec3(.3,.59,.11))),uGray); gl_FragColor=vec4(c,a*.96); }`,
+  transparent: true, depthWrite: false
+});
+const painting = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 8), paintMat);
+painting.position.copy(PAINT_POS); scene.add(painting);
+
+function catmull(pts, n){
+  const out = [];
+  for (let s = 0; s < n; s++){
+    const t = s / (n - 1) * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(t)), u = t - i;
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const f = (a, b, c, d) => .5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (-a + 3 * b - 3 * c + d) * u * u * u);
+    out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+  }
+  return out;
+}
+// A window in the rain: sky, frame, table and cup, lamp, rain, curtains, and a gold thread.
+const STROKES = [
+  { c: '#4b6386', w: 70, a: .55, p: [[60, 80], [200, 60], [330, 85], [470, 64]] },
+  { c: '#5a7397', w: 60, a: .5, p: [[180, 150], [320, 132], [460, 155]] },
+  { c: '#263149', w: 90, a: .6, p: [[20, 360], [320, 345], [620, 362]] },
+  { c: '#c7ae84', w: 12, a: .9, p: [[172, 40], [168, 170], [172, 300]] },
+  { c: '#c7ae84', w: 12, a: .9, p: [[468, 40], [472, 170], [468, 300]] },
+  { c: '#c7ae84', w: 12, a: .9, p: [[166, 42], [320, 38], [474, 44]] },
+  { c: '#b39770', w: 18, a: .9, p: [[150, 302], [320, 298], [492, 304]] },
+  { c: '#a78c66', w: 7, a: .85, p: [[320, 44], [322, 170], [319, 296]] },
+  { c: '#a78c66', w: 7, a: .85, p: [[172, 170], [320, 168], [468, 172]] },
+  { glow: true, c: '232,195,122', x: 560, y: 110, r: 120, a: .75 },
+  { c: '#6b4f3a', w: 14, a: .9, p: [[30, 340], [320, 336], [610, 342]] },
+  { c: '#ddd5c6', w: 26, a: .95, p: [[238, 312], [242, 330]] },
+  { c: '#ddd5c6', w: 4, a: .9, p: [[254, 312], [266, 316], [264, 328], [254, 330]] },
+  { c: '#cfd6e4', w: 3, a: .55, p: [[236, 300], [244, 284], [234, 268], [242, 250]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[200, 60], [214, 150]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[260, 72], [276, 160]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[360, 58], [374, 150]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[420, 80], [434, 162]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[220, 188], [236, 284]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[350, 190], [364, 288]] },
+  { c: '#c5d6ee', w: 2, a: .7, p: [[430, 182], [444, 280]] },
+  { c: '#7d4f62', w: 30, a: .8, p: [[120, 30], [136, 120], [114, 210], [132, 320]] },
+  { c: '#7d4f62', w: 30, a: .8, p: [[520, 30], [504, 120], [526, 210], [508, 320]] },
+  { c: '#e8c37a', w: 3, a: 1, p: [[60, 380], [200, 372], [340, 384], [480, 370], [590, 378]] },
+].map((s, i) => s.glow ? s : Object.assign(s, { pts: catmull(s.p, s.p.length > 2 ? 48 : 16), seed: i * 97 + 13 }));
+function resetPainting(){
+  pctx.globalCompositeOperation = 'source-over';
+  pctx.fillStyle = '#111a2a'; pctx.fillRect(0, 0, PW, PH);
+  const r = mulberry(7);
+  for (let i = 0; i < 1800; i++){ pctx.fillStyle = `rgba(200,210,235,${r() * .035})`; pctx.fillRect(r() * PW, r() * PH, 1 + r() * 2, 1 + r() * 2); }
+  paintTex.needsUpdate = true;
+}
+function drawStroke(s, t0, t1){
+  if (s.glow){
+    const g = pctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+    g.addColorStop(0, `rgba(${s.c},${s.a * (t1 - t0)})`); g.addColorStop(1, `rgba(${s.c},0)`);
+    pctx.fillStyle = g; pctx.fillRect(s.x - s.r, s.y - s.r, s.r * 2, s.r * 2); return;
+  }
+  const n = s.pts.length, a = Math.floor(t0 * (n - 1)), b = Math.ceil(t1 * (n - 1));
+  if (b <= a) return;
+  const rnd = mulberry(s.seed), passes = 6;
+  pctx.lineCap = 'round'; pctx.lineJoin = 'round'; pctx.strokeStyle = s.c;
+  for (let k = 0; k < passes; k++){
+    const ox = (rnd() - .5) * s.w * .5, oy = (rnd() - .5) * s.w * .5, wk = s.w * (.35 + rnd() * .5);
+    pctx.globalAlpha = s.a / passes * 1.7; pctx.lineWidth = wk;
+    pctx.beginPath(); pctx.moveTo(s.pts[a][0] + ox, s.pts[a][1] + oy);
+    for (let i = a + 1; i <= b; i++) pctx.lineTo(s.pts[i][0] + ox + Math.sin(i * .7 + k) * 1.2, s.pts[i][1] + oy);
+    pctx.stroke();
+  }
+  pctx.globalAlpha = 1;
+}
+const activeStrokes = [];
+
+// ---------- audio ----------
+let ac = null, master = null, wet = null, noiseBuf = null;
+function initAudio(){
+  if (ac) { ac.resume && ac.resume(); return; }
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = .75; master.connect(ac.destination);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const conv = ac.createConvolver(), len = ac.sampleRate * 2.6, ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let c = 0; c < 2; c++){ const ch = ir.getChannelData(c); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    conv.buffer = ir; wet = ac.createGain(); wet.gain.value = .45; conv.connect(wet).connect(master); wet.input = conv;
+    // ambient water hush
+    const n = noise(), lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 340;
+    const g = ac.createGain(); g.gain.value = .05; n.connect(lp).connect(g).connect(master); n.start();
+  } catch (e) { ac = null; }
+}
+function noise(){ const s = ac.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s; }
+function out(node){ node.connect(master); node.connect(wet.input); }
+function env(g, t, peak, att, dec){ g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + att); g.gain.exponentialRampToValueAtTime(.0001, t + att + dec); }
+const SFX = {
+  chime(){ const t = ac.currentTime; [880, 1318.5, 1760].forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = f; env(g, t + i * .05, .12 / (i + 1), .01, 1.4); o.connect(g); out(g); o.start(t + i * .05); o.stop(t + 1.8); }); },
+  scatter(){ const t = ac.currentTime, n = noise(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.setValueAtTime(2400, t); bp.frequency.exponentialRampToValueAtTime(300, t + .6);
+    env(g, t, .3, .02, .6); n.connect(bp).connect(g); out(g); n.start(t); n.stop(t + .8); },
+  door(){ const t = ac.currentTime + .1, o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(42, t + .3); env(g, t, .7, .008, .55); o.connect(g); out(g); o.start(t); o.stop(t + .7);
+    const n = noise(), hp = ac.createBiquadFilter(), g2 = ac.createGain(); hp.type = 'bandpass'; hp.frequency.value = 1800; hp.Q.value = 3;
+    env(g2, t + .34, .35, .003, .05); n.connect(hp).connect(g2); out(g2); n.start(t + .3); n.stop(t + .5); },
+  laughter(){ const t0 = ac.currentTime + .1;
+    for (let i = 0; i < 6; i++){ const t = t0 + i * .13 + Math.random() * .02, o = ac.createOscillator(), f1 = ac.createBiquadFilter(), f2 = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(300 - i * 14, t); o.frequency.linearRampToValueAtTime(260 - i * 14, t + .1);
+      f1.type = 'bandpass'; f1.frequency.value = 850; f1.Q.value = 5; f2.type = 'bandpass'; f2.frequency.value = 1250; f2.Q.value = 6;
+      env(g, t, .32, .015, .1); o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g); out(g); o.start(t); o.stop(t + .16); } },
+  rain(){ const t = ac.currentTime + .05, n = noise(), hp = ac.createBiquadFilter(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    hp.type = 'highpass'; hp.frequency.value = 900; lp.type = 'lowpass'; lp.frequency.value = 6500;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.22, t + .35); g.gain.setValueAtTime(.22, t + 1.3); g.gain.exponentialRampToValueAtTime(.0001, t + 2.4);
+    n.connect(hp).connect(lp).connect(g); out(g); n.start(t); n.stop(t + 2.5);
+    for (let i = 0; i < 22; i++){ const tt = t + Math.random() * 2, o = ac.createOscillator(), gg = ac.createGain(); o.frequency.value = 1800 + Math.random() * 2600; env(gg, tt, .05, .002, .04); o.connect(gg); out(gg); o.start(tt); o.stop(tt + .06); } }
+};
+function play(name){ if (ac) try { SFX[name](); } catch (e) {} }
+
+// ---------- caption ----------
+const capEl = $('caption'); let capTimer = 0;
+function caption(text){ capEl.textContent = text; capEl.style.opacity = 1; capTimer = 2.4; }
+
+// ---------- game state ----------
+let state = 'intro', elapsed = 0, round = 1, collected = 0, scattered = 0, simTime = 0;
+let syncSum = 0, syncN = 0;
+const sw = { x: 0, z: 0, vx: 0, vz: 0, sx: 0, sz: 0 };
+const keys = new Set();
+const stick = { x: 0, z: 0 };
+
+function newGame(){
+  vx.fill(0); vz.fill(0); turb.fill(0); trails.length = 0; activeStrokes.length = 0;
+  elapsed = 0; round = 1; collected = 0; scattered = 0; syncSum = 0; syncN = 0; speedEMA = 0;
+  resetPainting();
+  const r = Math.random;
+  clouds = [];
+  for (let i = 0; i < 8; i++) clouds.push({ x: -12 + (i % 4) * 8 + (r() - .5) * 3, z: (i < 4 ? -3.5 : 3.5) + (r() - .5) * 2.5 });
+  for (const f of frags){ scene.remove(f.mesh); scene.remove(f.glow); }
+  frags.length = 0;
+  for (let i = 0; i < NFRAG; i++){
+    const c = clouds[i % clouds.length];
+    const mesh = new THREE.Mesh(fragGeo, new THREE.MeshBasicMaterial({ color: 0xf1d08e, transparent: true }));
+    const glow = glowSprite(0xe8c37a, 1.7);
+    const f = { x: clamp(c.x + (r() - .5) * 4, -W / 2 + 1, W / 2 - 1), z: clamp(c.z + (r() - .5) * 3.5, -H / 2 + 1, H / 2 - 1),
+      state: 'alive', t: 0, phase: r() * 6.28, sound: SOUNDS[i % 3], mesh, glow };
+    scene.add(mesh); scene.add(glow); frags.push(f);
+  }
+  // keep the swimmer's start clear of fragments
+  sw.x = 0; sw.z = 0; sw.vx = sw.vz = 0;
+  for (let k = 0; k < SWT; k++){ swPts[k * 3] = 0; swPts[k * 3 + 1] = .2; swPts[k * 3 + 2] = 0; }
+  for (let i = 0; i < NINK; i++) spawnInk(i, true);
+  setRoles(); updateHud();
+}
+function spawnInk(i, initial){
+  const r = Math.random;
+  let cx, cz;
+  const alive = frags.filter(f => f.state === 'alive');
+  if (alive.length && r() < .3){ const f = alive[(r() * alive.length) | 0]; cx = f.x; cz = f.z; }
+  else { const c = clouds[(r() * clouds.length) | 0]; cx = c.x; cz = c.z; }
+  const g = () => (r() + r() + r() - 1.5) * 1.6;
+  iPos[i * 3] = cx + g() * 1.3; iPos[i * 3 + 1] = .05 + r() * .1; iPos[i * 3 + 2] = cz + g();
+  const col = INK_COLORS[(r() * INK_COLORS.length) | 0];
+  iCol[i * 3] = col[0]; iCol[i * 3 + 1] = col[1]; iCol[i * 3 + 2] = col[2];
+  iLife[i] = 6 + r() * 10; iAge[i] = initial ? r() * iLife[i] : 0;
+  iSize[i] = .7 + r() * 1.5;
+}
+function setRoles(){
+  const aStirs = round === 1;
+  $('rStir').style.setProperty('--c', aStirs ? 'var(--gold)' : 'var(--blue)');
+  $('rSwim').style.setProperty('--c', aStirs ? 'var(--blue)' : 'var(--gold)');
+  $('rStir').querySelector('span').innerHTML = `<strong>Stirrer</strong> · Player ${aStirs ? 'A' : 'B'} · drag the water`;
+  $('rSwim').querySelector('span').innerHTML = `<strong>Swimmer</strong> · Player ${aStirs ? 'B' : 'A'} · <kbd>WASD</kbd> <kbd>↑↓←→</kbd>`;
+  const col = aStirs ? 0x8fb6e8 : 0xe8c37a;
+  swimGlow.material.color.setHex(col); swimTrail.material.color.setHex(col);
+  $('phase').textContent = `Round ${round} of 2`;
+}
+const clarity = () => clamp((collected - scattered) / NFRAG, 0, 1);
+function updateHud(){
+  const left = Math.max(0, TOTAL - elapsed), m = Math.floor(left / 60), s = Math.floor(left % 60);
+  $('time').textContent = `${m}:${String(s).padStart(2, '0')}`;
+  $('sGot').textContent = `${collected}/${NFRAG}`;
+  $('sLost').textContent = scattered;
+  $('sClar').textContent = Math.round(clarity() * 100) + '%';
+}
+function show(id, on){ $(id).hidden = !on; }
+
+function begin(){ initAudio(); newGame(); show('ovIntro', false); state = 'play'; }
+function finish(){
+  state = 'end';
+  for (const a of activeStrokes) drawStroke(STROKES[a.i], a.t, 1);
+  activeStrokes.length = 0; paintTex.needsUpdate = true;
+  const cl = clarity(), sync = syncN ? syncSum / syncN : 0;
+  $('endImg').src = pcan.toDataURL('image/png');
+  $('eClar').textContent = Math.round(cl * 100) + '%';
+  $('eSync').textContent = Math.round(sync * 100) + '%';
+  $('eGot').textContent = collected; $('eLost').textContent = scattered;
+  $('endTitle').textContent = cl > .75 ? 'A window in the rain.' : cl > .4 ? 'A window, mostly. Rain, somewhere.' : 'Something about rain. It blurs.';
+  const len = 40 + cl * 450, path = [];
+  for (let x = 0; x <= len; x += 6) path.push(`${x ? 'L' : 'M'}${(x + 5).toFixed(1)} ${(18 + Math.sin(x * .05) * (6 - sync * 4)).toFixed(1)}`);
+  const tp = $('threadPath'); tp.setAttribute('d', path.join(' '));
+  tp.setAttribute('stroke', `rgb(${Math.round(190 + cl * 45)},${Math.round(190 + cl * 5)},${Math.round(215 - cl * 90)})`);
+  tp.setAttribute('stroke-width', (1.5 + sync * 3).toFixed(1));
+  $('json').textContent = JSON.stringify({ game: 3, clarity: +cl.toFixed(2), sync: +sync.toFixed(2), color: 'silver', collected, scattered }, null, 2);
+  show('ovEnd', true);
+}
+
+// ---------- input ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitV = new THREE.Vector3();
+function hit(e){
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : null;
+}
+const stir = { on: false, id: null, last: null, lastT: 0, moved: 0 };
+canvas.addEventListener('pointerdown', e => {
+  if (state !== 'play') return;
+  const p = hit(e); if (!p) return;
+  stir.on = true; stir.id = e.pointerId; stir.last = p; stir.lastT = e.timeStamp;
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('pointermove', e => {
+  const p = hit(e);
+  if (p){ cursor.visible = Math.abs(p.x) < W / 2 && Math.abs(p.z) < H / 2; cursor.position.x = p.x; cursor.position.z = p.z; }
+  if (!stir.on || e.pointerId !== stir.id || !p || state !== 'play') return;
+  const dt = (e.timeStamp - stir.lastT) / 1000;
+  if (dt < .004) return;
+  deposit(stir.last, p, dt); stir.last = p; stir.lastT = e.timeStamp; stir.moved = performance.now();
+});
+const endStir = e => { if (e.pointerId === stir.id) stir.on = false; };
+canvas.addEventListener('pointerup', endStir); canvas.addEventListener('pointercancel', endStir);
+canvas.addEventListener('pointerleave', () => { if (!stir.on) cursor.visible = false; });
+
+const KEYMAP = { KeyW: 'u', ArrowUp: 'u', KeyS: 'd', ArrowDown: 'd', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+addEventListener('keydown', e => {
+  if (KEYMAP[e.code]){ keys.add(KEYMAP[e.code]); e.preventDefault(); }
+  if (e.code === 'Space' || e.code === 'Enter'){
+    if (state === 'intro'){ e.preventDefault(); begin(); }
+    else if (state === 'swap'){ e.preventDefault(); resumeFromSwap(); }
+    else if (state === 'paused'){ e.preventDefault(); resume(); }
+    else if (e.code === 'Space') e.preventDefault();
+  }
+  if ((e.code === 'KeyP' || e.code === 'Escape')){ if (state === 'play') pause(); else if (state === 'paused') resume(); }
+});
+addEventListener('keyup', e => { if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
+addEventListener('blur', () => keys.clear());
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pause(); });
+
+// touch stick for the swimmer
+if (window.matchMedia && matchMedia('(pointer:coarse)').matches){
+  const el = $('stick'), nub = el.querySelector('.nub'); el.hidden = false; let sid = null;
+  const move = e => { const r = el.getBoundingClientRect(); let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const m = Math.hypot(dx, dy), max = r.width / 2 - 10; if (m > max){ dx *= max / m; dy *= max / m; }
+    nub.style.transform = `translate(${dx}px,${dy}px)`; stick.x = dx / max; stick.z = dy / max; };
+  el.addEventListener('pointerdown', e => { sid = e.pointerId; el.setPointerCapture(sid); move(e); e.stopPropagation(); });
+  el.addEventListener('pointermove', e => { if (e.pointerId === sid) move(e); });
+  const up = e => { if (e.pointerId !== sid) return; sid = null; stick.x = stick.z = 0; nub.style.transform = ''; };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+
+function pause(){ state = 'paused'; stir.on = false; show('ovPause', true); }
+function resume(){ show('ovPause', false); state = 'play'; initAudio(); }
+function resumeFromSwap(){ show('ovSwap', false); round = 2; setRoles(); state = 'play'; }
+$('bStart').onclick = begin;
+$('bSwap').onclick = resumeFromSwap;
+$('bResume').onclick = resume;
+$('bAgain').onclick = () => { show('ovEnd', false); begin(); };
+$('bCopy').onclick = () => {
+  const txt = $('json').textContent, btn = $('bCopy');
+  const done = ok => { btn.textContent = ok ? 'Copied' : 'Select and copy above'; setTimeout(() => btn.textContent = 'Copy thread JSON', 1600); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), () => { selectJson(); done(false); }); } catch (e) { selectJson(); done(false); }
+};
+function selectJson(){ const r = document.createRange(); r.selectNodeContents($('json')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+// ---------- simulation step ----------
+function step(dt){
+  simTime += dt; elapsed += dt;
+  stepField(dt);
+  if (performance.now() - stir.moved > 90){ speedEMA *= Math.exp(-dt * 7); roughNow = smooth(13, 24, speedEMA); }
+
+  // swimmer
+  let ix = 0, iz = 0;
+  if (keys.has('l')) ix -= 1; if (keys.has('r')) ix += 1; if (keys.has('u')) iz -= 1; if (keys.has('d')) iz += 1;
+  ix += stick.x; iz += stick.z;
+  const im = Math.hypot(ix, iz); if (im > 1){ ix /= im; iz /= im; }
+  sw.sx += (ix * 1.15 - sw.sx) * Math.min(1, dt * 2.2);
+  sw.sz += (iz * 1.15 - sw.sz) * Math.min(1, dt * 2.2);
+  const fl = sampleField(sw.x, sw.z, simTime);
+  const fx = fl.x, fz = fl.z, ft = fl.t;
+  sw.vx += (fx + sw.sx - sw.vx) * Math.min(1, dt * 3) + (Math.random() - .5) * ft * 30 * dt;
+  sw.vz += (fz + sw.sz - sw.vz) * Math.min(1, dt * 3) + (Math.random() - .5) * ft * 30 * dt;
+  sw.x += sw.vx * dt; sw.z += sw.vz * dt;
+  const mx = W / 2 - .5, mz = H / 2 - .5;
+  if (Math.abs(sw.x) > mx){ sw.x = Math.sign(sw.x) * mx; sw.vx *= -.4; }
+  if (Math.abs(sw.z) > mz){ sw.z = Math.sign(sw.z) * mz; sw.vz *= -.4; }
+  const fm = Math.hypot(fx, fz);
+  if (im > .1 && fm > .6){ syncSum += Math.max(0, (ix * fx + iz * fz) / (Math.min(1, im) * fm)); syncN++; }
+
+  // fragments
+  let alive = 0;
+  for (const f of frags){
+    if (f.state === 'alive'){
+      alive++;
+      const s = sampleField(f.x, f.z, simTime);
+      f.x = clamp(f.x + s.x * .25 * dt, -W / 2 + .6, W / 2 - .6);
+      f.z = clamp(f.z + s.z * .25 * dt, -H / 2 + .6, H / 2 - .6);
+      if (s.t > 1){ f.state = 'scatter'; f.t = 0; scattered++; play('scatter'); }
+      else if ((f.x - sw.x) ** 2 + (f.z - sw.z) ** 2 < .62){
+        f.state = 'rise'; f.t = 0; f.sx = f.x; f.sz = f.z; collected++;
+        play('chime'); play(f.sound); caption(CAPTIONS[f.sound]);
+      }
+    } else f.t += dt;
+  }
+  if (!alive && !frags.some(f => f.state === 'rise')) { updateHud(); finish(); return; }
+  if (elapsed >= SWAP_AT && round === 1){ state = 'swap'; stir.on = false; keys.clear(); show('ovSwap', true); }
+  if (elapsed >= TOTAL){ elapsed = TOTAL; updateHud(); finish(); return; }
+
+  // clouds wander with the water
+  for (const c of clouds){ const s = sampleField(c.x, c.z, simTime); c.x = clamp(c.x + s.x * .35 * dt, -W / 2 + 2, W / 2 - 2); c.z = clamp(c.z + s.z * .35 * dt, -H / 2 + 2, H / 2 - 2); }
+  updateHud();
+}
+
+// ---------- visuals per frame ----------
+function render(dt){
+  const t = simTime;
+  waterMat.uniforms.uTime.value = t; paintMat.uniforms.uTime.value = t;
+  const gray = clamp(scattered / NFRAG * 1.6, 0, .8);
+  waterMat.uniforms.uGray.value = gray; paintMat.uniforms.uGray.value = gray; inkMat.uniforms.uGray.value = gray * .8;
+  uploadField();
+
+  // ink
+  const live = state === 'play';
+  for (let i = 0; i < NINK; i++){
+    const o = i * 3;
+    if (live){
+      const s = sampleField(iPos[o], iPos[o + 2], t);
+      iPos[o] += (s.x + (Math.random() - .5) * (.3 + s.t * 8)) * dt;
+      iPos[o + 2] += (s.z + (Math.random() - .5) * (.3 + s.t * 8)) * dt;
+      iAge[i] += dt;
+      if (iAge[i] > iLife[i] || Math.abs(iPos[o]) > W / 2 || Math.abs(iPos[o + 2]) > H / 2) spawnInk(i, false);
+    }
+    const u = iAge[i] / iLife[i];
+    iAlpha[i] = .085 * Math.min(1, u * 5) * Math.min(1, (1 - u) * 3);
+  }
+  inkGeo.attributes.position.needsUpdate = true; inkGeo.attributes.aAlpha.needsUpdate = true;
+  inkGeo.attributes.aColor.needsUpdate = true; inkGeo.attributes.aSize.needsUpdate = true;
+
+  // fragments
+  for (const f of frags){
+    const m = f.mesh, g = f.glow;
+    if (f.state === 'alive'){
+      const y = .45 + Math.sin(t * 2 + f.phase) * .12;
+      m.position.set(f.x, y, f.z); m.rotation.y = t * 1.3 + f.phase; m.rotation.x = .4;
+      g.position.set(f.x, y, f.z); m.visible = g.visible = true; m.material.opacity = 1;
+      g.material.opacity = .65 + Math.sin(t * 3 + f.phase) * .2;
+    } else if (f.state === 'rise'){
+      const u = Math.min(1, f.t / 1.1), e = u * u * (3 - 2 * u);
+      const x = f.sx + (PAINT_POS.x + (STROKE_X(collectedIndex(f))) - f.sx) * e;
+      const z = f.sz + (PAINT_POS.z - f.sz) * e;
+      const y = .45 + (PAINT_POS.y - .45) * e + Math.sin(e * Math.PI) * 3;
+      m.position.set(x, y, z); g.position.set(x, y, z); m.rotation.y += dt * 8;
+      const sc = 1 - e * .6; m.scale.setScalar(sc); g.scale.set(1.7 * sc, 1.7 * sc, 1);
+      if (u >= 1){ f.state = 'done'; m.visible = g.visible = false; activeStrokes.push({ i: f.strokeIdx, t: 0 }); }
+    } else if (f.state === 'scatter'){
+      const u = Math.min(1, f.t / .7);
+      m.visible = false; g.visible = u < 1;
+      g.material.color.setHex(0xe5826e); g.material.opacity = (1 - u) * .9; g.scale.set(1.7 + u * 4, 1.7 + u * 4, 1);
+      if (u >= 1) f.state = 'gone';
+    }
+  }
+
+  // painting strokes
+  if (activeStrokes.length){
+    for (let k = activeStrokes.length - 1; k >= 0; k--){
+      const a = activeStrokes[k], nt = Math.min(1, a.t + dt / .9);
+      drawStroke(STROKES[a.i], a.t, nt); a.t = nt;
+      if (nt >= 1) activeStrokes.splice(k, 1);
+    }
+    paintTex.needsUpdate = true;
+  }
+  painting.position.y = PAINT_POS.y + Math.sin(t * .5) * .15;
+
+  // swimmer
+  swimmer.position.set(sw.x, .38 + Math.sin(t * 3) * .05, sw.z);
+  if (live){
+    for (let k = SWT - 1; k > 0; k--){ swPts[k * 3] = swPts[(k - 1) * 3]; swPts[k * 3 + 1] = swPts[(k - 1) * 3 + 1]; swPts[k * 3 + 2] = swPts[(k - 1) * 3 + 2]; }
+    swPts[0] = sw.x; swPts[1] = .2; swPts[2] = sw.z; swimTrailGeo.attributes.position.needsUpdate = true;
+  }
+
+  // cursor + trails
+  const rc = new THREE.Color(0xebe8f4).lerp(new THREE.Color(0xe5826e), roughNow);
+  cursor.material.color.copy(rc); cursor.scale.setScalar(1 + roughNow * .6 + (stir.on ? .15 : 0));
+  cursor.material.opacity = stir.on ? .8 : .4;
+  let n = 0;
+  for (let k = trails.length - 1; k >= 0; k--){
+    const s = trails[k]; if (live) s.t += dt;
+    if (s.t > 2.2){ trails.splice(k, 1); continue; }
+    const fade = (1 - s.t / 2.2) * .6, o = n * 6;
+    trPos[o] = s.x0; trPos[o + 1] = .08; trPos[o + 2] = s.z0; trPos[o + 3] = s.x1; trPos[o + 4] = .08; trPos[o + 5] = s.z1;
+    const r = (.75 + s.r * .15) * fade, g = (.78 - s.r * .3) * fade, b = (.9 - s.r * .5) * fade;
+    for (let v = 0; v < 2; v++){ trCol[o + v * 3] = r; trCol[o + v * 3 + 1] = g; trCol[o + v * 3 + 2] = b; }
+    if (++n >= MAXSEG) break;
+  }
+  trGeo.setDrawRange(0, n * 2);
+  trGeo.attributes.position.needsUpdate = true; trGeo.attributes.color.needsUpdate = true;
+
+  $('needle').style.left = `calc(${clamp(speedEMA / 30, 0, 1) * 100}% - 1px)`;
+
+  // caption under the painting
+  if (capTimer > 0){
+    capTimer -= dt; if (capTimer <= 0) capEl.style.opacity = 0;
+    const v = new THREE.Vector3(PAINT_POS.x, PAINT_POS.y - 4.4, PAINT_POS.z).project(camera);
+    capEl.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; capEl.style.top = ((1 - v.y) / 2 * innerHeight) + 'px';
+  }
+  renderer.render(scene, camera);
+}
+// each collected fragment claims the next stroke in the composition
+let strokeCounter = 0;
+function collectedIndex(f){ if (f.strokeIdx === undefined) f.strokeIdx = strokeCounter++ % STROKES.length; return f.strokeIdx; }
+function STROKE_X(i){ const s = STROKES[i]; const px = s.glow ? s.x : s.pts[(s.pts.length / 2) | 0][0]; return (px / PW - .5) * 12.8; }
+const _newGame = newGame;
+newGame = function(){ strokeCounter = 0; _newGame(); };
+
+// ---------- resize + loop ----------
+function resize(){
+  const w = innerWidth, h = innerHeight, aspect = w / h;
+  renderer.setSize(w, h, false); camera.aspect = aspect;
+  const k = clamp(1.75 / aspect, 1, 3.4);
+  camera.position.copy(camTarget).addScaledVector(camOffset, k);
+  camera.lookAt(camTarget); camera.updateProjectionMatrix();
+  painting.lookAt(camera.position);
+  inkMat.uniforms.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+}
+addEventListener('resize', resize);
+resize();
+newGame();
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (state === 'play') step(dt);
+  else if (state === 'intro') simTime += dt * .5;
+  render(state === 'play' ? dt : (state === 'intro' ? dt * .5 : 0));
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>

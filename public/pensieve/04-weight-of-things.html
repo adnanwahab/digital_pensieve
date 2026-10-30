@@ -1,0 +1,504 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Weight of Things</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed three.js basin at dusk; one floating panel docked bottom-center carries every private and shared step. Single committed night look. */
+:root{
+  --night:#0b1120;
+  --mist:#cdd6e8;
+  --dim:#8a95ad;
+  --gold:#e9b95c;
+  --blue:#86b4ff;
+  --silver:#dfe4ee;
+  --panel:rgba(14,21,38,.88);
+  --line:rgba(205,214,232,.16);
+  --display:"Italiana","Didot","Bodoni 72",Georgia,serif;
+  --body:"Figtree",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--mist);font-family:var(--body);font-size:15px;line-height:1.5;overflow:hidden}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%;transition:filter 1.4s ease}
+
+.top{position:fixed;top:0;left:0;right:0;z-index:5;pointer-events:none;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.meter{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--mist);font-variant-numeric:tabular-nums}
+.meter .bar{width:84px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--silver);transition:width .8s}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;pointer-events:none;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.panel{--pc:var(--silver);pointer-events:auto;width:100%;max-width:520px;max-height:68vh;overflow-y:auto;
+  background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-top:2px solid var(--pc);border-radius:14px;padding:20px 20px 18px;
+  display:flex;flex-direction:column;gap:14px}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;line-height:1.05;text-wrap:balance;color:var(--silver)}
+h1{font-size:clamp(34px,7vw,46px)}
+h2{font-size:30px}
+p{margin:0}
+.lede{color:var(--mist);font-style:italic;font-size:15.5px}
+.muted{color:var(--dim);font-size:13.5px}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--pc)}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font:500 13px var(--body);color:var(--mist);background:transparent;border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--c);color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.btn{font:600 14.5px var(--body);color:#0b1120;background:var(--pc);border:0;border-radius:10px;padding:12px 18px;cursor:pointer;align-self:flex-start}
+.btn.ghost{background:transparent;color:var(--mist);border:1px solid var(--line)}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible{outline:2px solid var(--silver);outline-offset:3px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:14px;color:var(--mist)}
+.val{display:flex;align-items:baseline;gap:10px}
+.val b{font-family:var(--display);font-weight:400;font-size:40px;color:var(--pc);line-height:1;font-variant-numeric:tabular-nums;min-width:1.4em}
+.val span{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.ends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(223,228,238,.18),rgba(140,146,160,.85))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--pc);margin-top:-9px;box-shadow:0 0 14px color-mix(in srgb,var(--pc) 60%,transparent)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(223,228,238,.18),rgba(140,146,160,.85))}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:var(--pc)}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.side{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.side .who{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.side .big{font-family:var(--display);font-size:38px;line-height:1;font-variant-numeric:tabular-nums}
+.side small{color:var(--dim);font-size:12.5px}
+.off{font-family:var(--mono);font-size:12px}
+.note{border-left:2px solid var(--silver);padding-left:12px;font-size:14px;color:var(--silver)}
+
+.table{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr 1fr 18px;gap:6px 10px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;align-items:center}
+.table .h{color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+.table .n{font-family:var(--body);font-size:13.5px;color:var(--mist)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--silver);box-shadow:0 0 8px var(--silver)}
+.stats{display:flex;gap:22px;flex-wrap:wrap}
+.stat .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat .v{font-family:var(--display);font-size:40px;line-height:1;color:var(--silver);font-variant-numeric:tabular-nums}
+pre{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--mist);background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;white-space:pre}
+
+#cover{position:fixed;inset:0;z-index:20;background:var(--night);display:flex;align-items:center;justify-content:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#cover .inner{--pc:var(--silver);max-width:420px;display:flex;flex-direction:column;gap:16px;text-align:left}
+#cover h2{font-size:44px;color:var(--pc)}
+@media (prefers-reduced-motion: reduce){#stage canvas,.meter .bar i{transition:none}}
+</style>
+
+<div id="stage"></div>
+<div class="top">
+  <span class="eyebrow">Pensieve · Act I · Memory 4</span>
+  <span class="meter" id="meter" hidden><span id="count">1 / 8</span><span class="bar"><i id="clar" style="width:100%"></i></span><span id="clarTxt">clarity 100%</span></span>
+</div>
+<div class="dock"><section class="panel" id="panel" aria-live="polite"></section></div>
+<div id="cover" hidden><div class="inner" id="coverInner"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COLORS = {gold:0xe9b95c, blue:0x86b4ff, silver:0xdfe4ee};
+const PLAYER = {A:{key:'A',name:'Gold',css:'var(--gold)',hex:COLORS.gold}, B:{key:'B',name:'Blue',css:'var(--blue)',hex:COLORS.blue}};
+const WORDS = ['feather','wisp','light','light','slight','middling','solid','heavy','heavy','leaden','anchor'];
+
+/* ---------- three.js scene ---------- */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1120);
+scene.fog = new THREE.FogExp2(0x0b1120, 0.055);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+
+scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x1a1408, 0.55));
+const moon = new THREE.DirectionalLight(0xcfd8ff, 0.9); moon.position.set(-3,8,5); scene.add(moon);
+const goldLight = new THREE.PointLight(COLORS.gold, 0, 6); goldLight.position.set(-1.8,2.2,1.2); scene.add(goldLight);
+const blueLight = new THREE.PointLight(COLORS.blue, 0, 6); blueLight.position.set(1.8,2.2,1.2); scene.add(blueLight);
+const objLight = new THREE.PointLight(0xfff1d6, 0.7, 5); objLight.position.set(0,4.4,1.6); scene.add(objLight);
+
+// water basin
+const waterGeo = new THREE.RingGeometry(0, 6, 120, 40); waterGeo.rotateX(-Math.PI/2);
+const waterBase = waterGeo.attributes.position.array.slice();
+const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({color:0x152645, metalness:.35, roughness:.22}));
+scene.add(water);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(6.08,0.2,12,140), new THREE.MeshStandardMaterial({color:0x5c6270, roughness:.95}));
+rim.rotation.x = Math.PI/2; scene.add(rim);
+const ripples = [];
+function ripple(x,z,amp){ ripples.push({x,z,t0:clockT,amp:amp||0.08}); if(ripples.length>6) ripples.shift(); }
+
+// stone scale
+const stone = new THREE.MeshStandardMaterial({color:0x7d8494, roughness:.92});
+const stoneDark = new THREE.MeshStandardMaterial({color:0x5f6573, roughness:.95});
+const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.15,0.45,32), stoneDark); plinth.position.y=0.12; scene.add(plinth);
+const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.17,1.75,20), stone); pillar.position.y=1.2; scene.add(pillar);
+const PIV = 2.08, L = 1.6, HANG = 1.05;
+const cap = new THREE.Mesh(new THREE.SphereGeometry(0.15,20,14), stone); cap.position.y=PIV; scene.add(cap);
+const beam = new THREE.Group(); beam.position.y = PIV; scene.add(beam);
+beam.add(new THREE.Mesh(new THREE.BoxGeometry(3.4,0.08,0.13), stone));
+[-L,L].forEach(x=>{ const f=new THREE.Mesh(new THREE.SphereGeometry(0.07,12,10), stone); f.position.x=x; beam.add(f); });
+function makePan(){
+  const g = new THREE.Group();
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.4,0.08,36), stone); g.add(dish);
+  const stones = new THREE.Group(); stones.position.y = 0.04; g.add(stones); g.userData.stones = stones;
+  scene.add(g); return g;
+}
+const panA = makePan(), panB = makePan();
+const chainGeo = new THREE.BufferGeometry(); chainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12*3),3));
+const chains = new THREE.LineSegments(chainGeo, new THREE.LineBasicMaterial({color:0x9aa1b0, transparent:true, opacity:.7}));
+scene.add(chains);
+let beamAngle = 0, beamTarget = 0;
+function layoutScale(){
+  const c=Math.cos(beamAngle), s=Math.sin(beamAngle);
+  beam.rotation.z = beamAngle;
+  const ends = [[-L*c, PIV - L*s],[L*c, PIV + L*s]];
+  const pans = [panA, panB]; const arr = chainGeo.attributes.position.array; let k=0;
+  pans.forEach((p,i)=>{
+    const [ex,ey]=ends[i]; p.position.set(ex, ey-HANG, 0);
+    for(let j=0;j<3;j++){ const a=j*Math.PI*2/3+0.5;
+      arr[k++]=ex; arr[k++]=ey; arr[k++]=0;
+      arr[k++]=ex+Math.cos(a)*0.5; arr[k++]=ey-HANG+0.04; arr[k++]=Math.sin(a)*0.5; }
+  });
+  chainGeo.attributes.position.needsUpdate = true;
+}
+const PEBBLE_SPOTS = [[0,.09,0],[.22,.09,0],[-.22,.09,0],[0,.09,.22],[0,.09,-.22],[.11,.25,.11],[-.11,.25,-.11],[.11,.25,-.11],[-.11,.25,.11],[0,.41,0]];
+const pebbleGeo = new THREE.IcosahedronGeometry(0.12,1);
+function fillPan(pan, n, hex){
+  clearPan(pan);
+  for(let i=0;i<n;i++){
+    const m = new THREE.Mesh(pebbleGeo, new THREE.MeshStandardMaterial({color:hex, emissive:hex, emissiveIntensity:.25, roughness:.6}));
+    const sp = PEBBLE_SPOTS[i]; m.position.set(sp[0], sp[1]+1.2, sp[2]);
+    m.scale.set(1+((i*37)%7)/20, .8+((i*13)%5)/20, 1); m.rotation.set(i, i*2, 0); m.visible=false;
+    pan.userData.stones.add(m);
+    setTimeout(()=>{ m.visible=true; tween(REDUCED?0.01:0.45, e=>{ m.position.y = sp[1]+1.2*(1-e); }); }, REDUCED?0:i*90);
+  }
+}
+function clearPan(pan){ const s=pan.userData.stones; while(s.children.length){ const c=s.children.pop(); c.material.dispose(); } }
+
+// drifting motes
+const motesN = 380, motesPos = new Float32Array(motesN*3);
+for(let i=0;i<motesN;i++){ const r=Math.sqrt(Math.random())*7, a=Math.random()*Math.PI*2; motesPos[i*3]=Math.cos(a)*r; motesPos[i*3+1]=Math.random()*8; motesPos[i*3+2]=Math.sin(a)*r; }
+const motesGeo = new THREE.BufferGeometry(); motesGeo.setAttribute('position', new THREE.BufferAttribute(motesPos,3));
+const motes = new THREE.Points(motesGeo, new THREE.PointsMaterial({color:0xdfe4ee, size:.045, transparent:true, opacity:.55, depthWrite:false}));
+scene.add(motes);
+
+/* ---------- the eight objects ---------- */
+function M(color, o){ return new THREE.MeshStandardMaterial(Object.assign({color, roughness:.55, metalness:0}, o||{})); }
+const brass = () => M(0xc9a45a,{metalness:.85, roughness:.32});
+function makeKey(){ const g=new THREE.Group(), m=brass();
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(.22,.06,12,32),m); bow.position.x=-.45; g.add(bow);
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.85,12),m); sh.rotation.z=Math.PI/2; sh.position.x=.15; g.add(sh);
+  [[.42,-.09],[.52,-.07]].forEach(([x,y])=>{ const t=new THREE.Mesh(new THREE.BoxGeometry(.07,.13,.05),m); t.position.set(x,y,0); g.add(t); });
+  return g; }
+function makeShoe(){ const g=new THREE.Group(), lea=M(0x5b3a2b,{roughness:.7}), sole=M(0x2a1f1a);
+  const s=new THREE.Mesh(new THREE.BoxGeometry(1.0,.08,.38),sole); g.add(s);
+  const up=new THREE.Mesh(new THREE.BoxGeometry(.55,.3,.36),lea); up.position.set(-.18,.18,0); g.add(up);
+  const toe=new THREE.Mesh(new THREE.SphereGeometry(.2,20,14),lea); toe.scale.set(1.5,.75,.92); toe.position.set(.2,.1,0); g.add(toe);
+  const lace=new THREE.Mesh(new THREE.BoxGeometry(.3,.02,.2),M(0xe8e0cf)); lace.position.set(.02,.25,0); lace.rotation.z=-.35; g.add(lace);
+  g.rotation.y=-.5; return g; }
+function makeLetter(){ const g=new THREE.Group(), paper=M(0xece4d1,{roughness:.9});
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(1.0,.66,.02),paper));
+  const sh=new THREE.Shape(); sh.moveTo(-.5,.33); sh.lineTo(.5,.33); sh.lineTo(0,-.05); sh.lineTo(-.5,.33);
+  const flap=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.005,bevelEnabled:false}),M(0xdcd2bc,{roughness:.9})); flap.position.z=.011; g.add(flap);
+  const seal=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.025,24),M(0x8e2a2a,{roughness:.4})); seal.rotation.x=Math.PI/2; seal.position.set(0,-.02,.03); g.add(seal);
+  return g; }
+function photoTexture(){ const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
+  const sky=x.createLinearGradient(0,0,0,256); sky.addColorStop(0,'#9fb6d6'); sky.addColorStop(.6,'#f3c98b'); x.fillStyle=sky; x.fillRect(0,0,256,256);
+  x.fillStyle='#fff3d6'; x.beginPath(); x.arc(170,120,22,0,7); x.fill();
+  x.fillStyle='#3b4a3c'; x.beginPath(); x.moveTo(0,190); x.quadraticCurveTo(110,140,256,185); x.lineTo(256,256); x.lineTo(0,256); x.fill();
+  x.fillStyle='#1f2630'; [[96,172],[122,170]].forEach(([px,py])=>{ x.beginPath(); x.arc(px,py,8,0,7); x.fill(); x.fillRect(px-7,py+6,14,30); });
+  x.beginPath(); x.arc(252,168,8,0,7); x.fill(); x.fillRect(245,174,11,30); // someone at the edge
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; return t; }
+function makePhoto(){ const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(.8,1.0,.02),M(0xf2efe6,{roughness:.8})));
+  const img=new THREE.Mesh(new THREE.PlaneGeometry(.66,.66),new THREE.MeshStandardMaterial({map:photoTexture(),roughness:.6})); img.position.set(0,.08,.011); g.add(img);
+  g.rotation.z=.08; return g; }
+function makeTeacup(){ const g=new THREE.Group(), por=M(0xf4f1ea,{roughness:.3});
+  const pts=[[.0,-.2],[.2,-.2],[.24,-.15],[.3,0],[.36,.18],[.37,.22],[.34,.22],[.27,0],[.2,-.14],[0,-.15]].map(p=>new THREE.Vector2(p[0],p[1]));
+  const cup=new THREE.Mesh(new THREE.LatheGeometry(pts,40),por); cup.material.side=THREE.DoubleSide; g.add(cup);
+  const band=new THREE.Mesh(new THREE.TorusGeometry(.355,.012,8,48),brass()); band.rotation.x=Math.PI/2; band.position.y=.18; g.add(band);
+  const h=new THREE.Mesh(new THREE.TorusGeometry(.11,.028,10,24,Math.PI*1.3),por); h.position.set(.36,.02,0); h.rotation.z=-Math.PI*.65; g.add(h);
+  const sau=new THREE.Mesh(new THREE.CylinderGeometry(.48,.3,.04,40),por); sau.position.y=-.22; g.add(sau);
+  g.rotation.x=.25; return g; }
+function makeWatch(){ const g=new THREE.Group(), m=brass();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.1,40),m); body.rotation.x=Math.PI/2; g.add(body);
+  const face=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.02,40),M(0xf5f0e2)); face.rotation.x=Math.PI/2; face.position.z=.055; g.add(face);
+  const hand=(l,a)=>{ const h=new THREE.Mesh(new THREE.BoxGeometry(.018,l,.01),M(0x1d2230)); h.geometry.translate(0,l/2,0); h.position.z=.07; h.rotation.z=a; g.add(h); };
+  hand(.2,-2.1); hand(.27,.55);
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(.09,.022,8,20),m); bow.position.y=.48; g.add(bow);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.08,12),m); stem.position.y=.41; g.add(stem);
+  return g; }
+function makeRing(){ const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.TorusGeometry(.3,.055,16,56),M(0xe0b866,{metalness:.9,roughness:.25})));
+  const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.1,0),M(0xbfe3ff,{metalness:.1,roughness:.05,emissive:0x2a4a66,emissiveIntensity:.4})); gem.position.y=.37; g.add(gem);
+  return g; }
+function makeUmbrella(){ const g=new THREE.Group(), cloth=M(0x24324f,{roughness:.8,side:THREE.DoubleSide});
+  const can=new THREE.Mesh(new THREE.ConeGeometry(.7,.42,8,1,true),cloth); can.position.y=.35; g.add(can);
+  const stick=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,1.15,8),M(0x2b2b2b)); stick.position.y=-.1; g.add(stick);
+  const hk=new THREE.Mesh(new THREE.TorusGeometry(.11,.028,8,20,Math.PI),M(0x6b4423)); hk.position.set(.11,-.68,0); hk.rotation.z=Math.PI; g.add(hk);
+  g.rotation.z=.35; return g; }
+
+const OBJECTS = [
+  {id:'key',     name:'the key',          line:'The key to a house neither of you lives in anymore.', make:makeKey},
+  {id:'shoe',    name:'the shoe',         line:'One shoe, left by the door after a long walk home.', make:makeShoe},
+  {id:'letter',  name:'the letter',       line:'A letter that was written but never sent.', make:makeLetter},
+  {id:'photo',   name:'the photo',        line:'A photograph with someone half out of the frame.', make:makePhoto},
+  {id:'teacup',  name:'the teacup',       line:'A teacup with a chip that everyone learned to drink around.', make:makeTeacup},
+  {id:'watch',   name:'the pocket watch', line:'A pocket watch that stopped on an ordinary afternoon.', make:makeWatch},
+  {id:'ring',    name:'the ring',         line:'A ring that used to be too big.', make:makeRing},
+  {id:'umbrella',name:'the umbrella',     line:'An umbrella someone came back for in the rain.', make:makeUmbrella},
+];
+const cap1 = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+/* ---------- tweens & loop ---------- */
+const tweens=[]; let clockT=0;
+const ease = e => e<.5 ? 2*e*e : 1-Math.pow(-2*e+2,2)/2;
+function tween(dur, fn, done){ tweens.push({t0:clockT, dur:Math.max(dur,0.001), fn, done}); }
+
+let current=null, hovering=false; const shelf=[];
+let threadMesh=null, threadCount=0, threadTarget=0;
+
+function resize(){
+  const w=innerWidth, h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const clock=new THREE.Clock();
+function tick(){
+  const dt=Math.min(clock.getDelta(),.05); clockT+=dt;
+  for(let i=tweens.length-1;i>=0;i--){ const tw=tweens[i]; const e=Math.min(1,(clockT-tw.t0)/tw.dur); tw.fn(ease(e)); if(e>=1){ tweens.splice(i,1); tw.done&&tw.done(); } }
+  beamAngle += (beamTarget-beamAngle)*(REDUCED?1:Math.min(1,dt*3)); layoutScale();
+
+  // water
+  const p=waterGeo.attributes.position.array;
+  for(let i=0;i<p.length;i+=3){ const x=waterBase[i], z=waterBase[i+2];
+    let y = REDUCED?0:Math.sin(x*1.3+clockT*.7)*.012+Math.cos(z*1.1+clockT*.5)*.012;
+    for(const r of ripples){ const age=clockT-r.t0, d=Math.hypot(x-r.x,z-r.z), front=age*1.8, k=d-front; y += r.amp*Math.exp(-age*.55)*Math.sin(k*7)*Math.exp(-k*k*1.5); }
+    p[i+1]=y; }
+  waterGeo.attributes.position.needsUpdate=true; waterGeo.computeVertexNormals();
+
+  if(!REDUCED){ const mp=motesGeo.attributes.position.array; for(let i=1;i<mp.length;i+=3){ mp[i]+=dt*.12; if(mp[i]>8) mp[i]=0; } motesGeo.attributes.position.needsUpdate=true; }
+  if(current && hovering){ current.position.y = 3.65 + Math.sin(clockT*1.2)*.06; current.rotation.y += dt*.45; }
+  shelf.forEach((o,i)=>{ o.position.y = o.userData.baseY + Math.sin(clockT*.9+i)*.05; o.rotation.y += dt*.2; });
+  if(threadMesh && threadCount<threadTarget){ threadCount=Math.min(threadTarget, threadCount+dt*900); threadMesh.geometry.setDrawRange(0, Math.floor(threadCount/3)*3); }
+
+  const narrow = camera.aspect < .8;
+  const sway = REDUCED?0:Math.sin(clockT*.15)*.35;
+  camera.position.set(sway, narrow?4.1:3.3, narrow?11:7.6); camera.lookAt(0, narrow?2.3:2.0, 0);
+  renderer.render(scene,camera); requestAnimationFrame(tick);
+}
+
+/* ---------- game state ---------- */
+const S = {owner:'silver', round:0, results:[], phase:'intro', first:'A', draft:{}};
+const panel=document.getElementById('panel'), cover=document.getElementById('cover'), coverInner=document.getElementById('coverInner');
+const meter=document.getElementById('meter');
+
+function runningClarity(){ return S.results.length ? S.results.reduce((a,r)=>a+r.clarity,0)/S.results.length : 1; }
+function applyBlur(){
+  const c=runningClarity();
+  renderer.domElement.style.filter = `blur(${((1-c)*3).toFixed(2)}px) saturate(${(0.35+0.65*c).toFixed(2)})`;
+  scene.fog.density = 0.045 + (1-c)*0.08;
+  document.getElementById('clar').style.width = Math.round(c*100)+'%';
+  document.getElementById('clarTxt').textContent = 'clarity '+Math.round(c*100)+'%';
+  document.getElementById('count').textContent = Math.min(S.round+1,8)+' / 8';
+}
+
+/* Pure scoring: a networked build would call this on the server once both submissions arrive. */
+function score(a,b){
+  const accA = 1-Math.abs(a.guess-b.weight)/10, accB = 1-Math.abs(b.guess-a.weight)/10;
+  return {accA, accB, clarity:(accA+accB)/2, sync:1-Math.abs(a.weight-b.weight)/10, glow:Math.abs(a.weight-b.weight)>=5};
+}
+
+function dropObject(){
+  const o = OBJECTS[S.round];
+  current = o.make(); current.position.set(0,8,0); current.scale.setScalar(1.15); scene.add(current); hovering=false;
+  tween(REDUCED?0.01:1.8, e=>{ current.position.y = 8 - (8-3.65)*e; current.rotation.y = e*2.5; }, ()=>{ hovering=true; ripple(0,0,.07); });
+}
+function setGlow(obj){
+  obj.traverse(m=>{ if(m.isMesh && m.material.emissive){ m.material = m.material.clone(); m.material.emissive.setHex(COLORS.silver); m.material.emissiveIntensity=.45; } });
+  const l=new THREE.PointLight(COLORS.silver,1.1,2.6); obj.add(l);
+}
+function retireObject(glow){
+  const o=current; current=null; hovering=false; if(!o) return;
+  if(glow){
+    const k=shelf.length, x=-2.6+k*1.3, startY=o.position.y;
+    o.userData.baseY = 1.25; shelf.push(o);
+    tween(REDUCED?0.01:1.6, e=>{ o.position.set(x*e, startY+(1.25-startY)*e, -3.6*e); o.scale.setScalar(1.15-.45*e); });
+  } else {
+    const y0=o.position.y;
+    tween(REDUCED?0.01:1.6, e=>{ o.position.y = y0-(y0+1.4)*e; o.scale.setScalar(1.15*(1-.6*e)); }, ()=>{ scene.remove(o); });
+    setTimeout(()=>ripple(0,0,.1), REDUCED?0:1100);
+  }
+}
+function resetScale(){ clearPan(panA); clearPan(panB); beamTarget=0; goldLight.intensity=0; blueLight.intensity=0; }
+
+/* ---------- UI ---------- */
+function slider(id,label,val){
+  return `<div class="field"><label for="${id}">${label}</label>
+    <div class="val"><b id="${id}V">${val}</b><span id="${id}W">${WORDS[val]}</span></div>
+    <input type="range" id="${id}" min="0" max="10" step="1" value="${val}">
+    <div class="ends"><span>0 feather</span><span>anchor 10</span></div></div>`;
+}
+function bindSlider(id){
+  const el=document.getElementById(id);
+  el.addEventListener('input',()=>{ document.getElementById(id+'V').textContent=el.value; document.getElementById(id+'W').textContent=WORDS[+el.value]; });
+  return el;
+}
+function setPanel(html, pc){ panel.style.setProperty('--pc', pc||'var(--silver)'); panel.innerHTML=html; panel.scrollTop=0; }
+const other = k => k==='A'?'B':'A';
+
+function render(){
+  meter.hidden = S.phase==='intro';
+  const o = OBJECTS[S.round];
+  if(S.phase==='intro'){
+    setPanel(`<span class="tag">Memory 4 of 12</span>
+      <h1>The Weight of Things</h1>
+      <p class="lede">Eight objects fall from one memory. Each of you decides how heavy it feels, then guesses how heavy it feels to the other.</p>
+      <p class="muted">Play on one device and pass it between turns. Answers stay hidden until both land on the stone scale. You score on how well you predict each other, not on agreeing.</p>
+      <div class="field"><label>Whose memory is this?</label>
+      <div class="chips" role="group">
+        ${[['gold','Gold’s memory','var(--gold)'],['blue','Blue’s memory','var(--blue)'],['silver','Shared memory','var(--silver)']].map(([k,l,c])=>`<button class="chip" data-own="${k}" style="--c:${c}" aria-pressed="${S.owner===k}">${l}</button>`).join('')}
+      </div></div>
+      <button class="btn" id="go">Lean over the basin</button>`);
+    panel.querySelectorAll('[data-own]').forEach(b=>b.onclick=()=>{ S.owner=b.dataset.own; render(); });
+    document.getElementById('go').onclick=()=>{ S.phase='object'; dropObject(); render(); };
+  }
+  else if(S.phase==='object'){
+    const f=PLAYER[S.first];
+    setPanel(`<span class="tag">Object ${S.round+1} of 8</span><h2>${cap1(o.name)}</h2><p class="lede">${o.line}</p>
+      <button class="btn" id="go">Pass to ${f.name}</button>`, f.css);
+    document.getElementById('go').onclick=()=>handoff(S.first);
+  }
+  else if(S.phase==='input'){
+    const me=PLAYER[S.turn], them=PLAYER[other(S.turn)];
+    setPanel(`<span class="tag">${me.name} · private</span><h2>${cap1(o.name)}</h2>
+      ${slider('w',`How heavy does ${o.name} feel to you?`,5)}
+      ${slider('g',`What number will ${them.name} choose?`,5)}
+      <button class="btn" id="lock">Lock my answers</button>`, me.css);
+    const w=bindSlider('w'), g=bindSlider('g');
+    document.getElementById('lock').onclick=()=>{
+      S.draft[S.turn]={weight:+w.value, guess:+g.value};
+      if(S.draft[other(S.turn)]) reveal(); else handoff(other(S.turn));
+    };
+    w.focus();
+  }
+  else if(S.phase==='reveal'){
+    const r=S.results[S.round], A=r.A, B=r.B;
+    const side=(p,me,them,acc)=>`<div class="side" style="border-color:color-mix(in srgb,${p.css} 45%,transparent)">
+      <span class="who" style="color:${p.css}">${p.name} felt</span><span class="big" style="color:${p.css}">${me.weight}</span>
+      <small>${WORDS[me.weight]}</small>
+      <span class="off">guessed ${me.guess} · ${Math.abs(me.guess-them.weight)===0?'exact':'off by '+Math.abs(me.guess-them.weight)}</span></div>`;
+    const last = S.round===7;
+    setPanel(`<span class="tag">Object ${S.round+1} of 8 · revealed</span><h2>${cap1(o.name)}</h2>
+      <div class="duo">${side(PLAYER.A,A,B)}${side(PLAYER.B,B,A)}</div>
+      <p class="muted">Round clarity <b style="color:var(--silver)">${Math.round(r.clarity*100)}%</b></p>
+      ${r.glow?`<p class="note">You feel ${o.name} very differently. It begins to glow and drifts to the far wall. It will return in The Argument.</p>`:''}
+      <button class="btn" id="next">${last?'See the thread':'Let it sink'}</button>`);
+    document.getElementById('next').onclick=next;
+  }
+  else if(S.phase==='summary'){ renderSummary(); }
+  applyBlur();
+}
+
+function handoff(k){
+  S.turn=k; const p=PLAYER[k], q=PLAYER[other(k)];
+  coverInner.style.setProperty('--pc', p.css);
+  coverInner.innerHTML=`<span class="tag">${cap1(OBJECTS[S.round].name)}</span><h2>${p.name}, take the device.</h2>
+    <p class="muted">${q.name}, look away until ${p.name} locks in.</p>
+    <button class="btn" id="show">I’m ${p.name}. Show my sliders</button>`;
+  cover.hidden=false; S.phase='input'; panel.innerHTML='';
+  document.getElementById('show').onclick=()=>{ cover.hidden=true; render(); };
+  document.getElementById('show').focus();
+}
+
+function reveal(){
+  const A=S.draft.A, B=S.draft.B, sc=score(A,B);
+  S.results[S.round] = Object.assign({id:OBJECTS[S.round].id, A, B}, sc);
+  S.phase='reveal'; S.draft={};
+  fillPan(panA, A.weight, COLORS.gold); fillPan(panB, B.weight, COLORS.blue);
+  beamTarget = (B.weight - A.weight) * 0.045;  // heavier side sinks
+  goldLight.intensity = .4 + A.weight*.08; blueLight.intensity = .4 + B.weight*.08;
+  if(sc.glow && current) setGlow(current);
+  ripple(-1.6,0,.05); ripple(1.6,0,.05);
+  render();
+}
+
+function next(){
+  const r=S.results[S.round];
+  retireObject(r.glow); resetScale();
+  S.round++; S.first = other(S.first);
+  if(S.round>=8){ S.phase='summary'; growThread(); render(); return; }
+  S.phase='object'; setTimeout(dropObject, REDUCED?0:900); render();
+}
+
+function sessionThread(){
+  const n=S.results.length, clarity=S.results.reduce((a,r)=>a+r.clarity,0)/n, sync=S.results.reduce((a,r)=>a+r.sync,0)/n;
+  return {thread:{game:4, clarity:+clarity.toFixed(2), sync:+sync.toFixed(2), color:S.owner},
+    carryovers:{glowingObjects:S.results.filter(r=>r.glow).map(r=>r.id)}};
+}
+function growThread(){
+  if(threadMesh){ scene.remove(threadMesh); }
+  const t=sessionThread().thread, pts=[], N=140, h=1+4.5*t.clarity;
+  for(let i=0;i<=N;i++){ const a=i*.32, r=.45+.12*Math.sin(i*.17); pts.push(new THREE.Vector3(Math.cos(a)*r, i/N*h, -2.2+Math.sin(a)*r)); }
+  const geo=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 600, .035+.03*t.sync, 8, false);
+  const col=COLORS[t.color];
+  threadMesh=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:.9, roughness:.4}));
+  threadCount=0; threadTarget=geo.index.count; geo.setDrawRange(0,0); scene.add(threadMesh);
+  ripple(0,-2.2,.12);
+}
+
+function renderSummary(){
+  const st=sessionThread(), t=st.thread;
+  const rows=S.results.map((r,i)=>`<span class="n">${cap1(OBJECTS[i].name)}</span>
+    <span style="color:var(--gold)">${r.A.weight} <span style="color:var(--dim)">/ ${r.A.guess}</span></span>
+    <span style="color:var(--blue)">${r.B.weight} <span style="color:var(--dim)">/ ${r.B.guess}</span></span>
+    <span>${r.glow?'<i class="dot" title="Returns in The Argument"></i>':''}</span>`).join('');
+  const json=JSON.stringify(st,null,2);
+  setPanel(`<span class="tag">Memory 4 cleared</span><h2>A thread rises from the water</h2>
+    <div class="stats"><div class="stat"><div class="k">Clarity</div><div class="v">${Math.round(t.clarity*100)}%</div></div>
+      <div class="stat"><div class="k">In sync</div><div class="v">${Math.round(t.sync*100)}%</div></div>
+      <div class="stat"><div class="k">Glowing</div><div class="v">${st.carryovers.glowingObjects.length}</div></div></div>
+    <div class="table"><span class="h">Object</span><span class="h">Gold felt / guess</span><span class="h">Blue felt / guess</span><span></span>${rows}</div>
+    <p class="muted">Clarity measures how close each guess landed to the partner’s real answer. In sync measures how alike the two weights were.</p>
+    <pre id="json">${json}</pre>
+    <div class="row"><button class="btn" id="again">Dive again</button><button class="btn ghost" id="copy">Copy session state</button></div>`, `var(--${t.color})`);
+  document.getElementById('again').onclick=restart;
+  document.getElementById('copy').onclick=e=>{
+    const b=e.currentTarget;
+    const sel=()=>{ const r=document.createRange(); r.selectNodeContents(document.getElementById('json')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='Selected. Press copy'; };
+    try{ navigator.clipboard.writeText(json).then(()=>b.textContent='Copied',sel); }catch(_){ sel(); }
+  };
+}
+
+function restart(){
+  shelf.splice(0).forEach(o=>scene.remove(o)); if(threadMesh){ scene.remove(threadMesh); threadMesh=null; }
+  if(current){ scene.remove(current); current=null; }
+  resetScale(); Object.assign(S,{round:0, results:[], phase:'intro', first:'A', draft:{}}); render();
+}
+
+/* keep progress if the page is updated while open */
+window.claude?.hot?.snapshot?.(()=>({owner:S.owner, round:S.round, results:S.results, first:S.first}));
+function start(data){
+  if(data && data.results && data.results.length){
+    Object.assign(S,{owner:data.owner, round:data.round, results:data.results, first:data.first, draft:{}});
+    S.results.forEach((r,i)=>{ if(r.glow){ const o=OBJECTS[i].make(); setGlow(o); o.scale.setScalar(.7); o.position.set(-2.6+shelf.length*1.3,1.25,-3.6); o.userData.baseY=1.25; shelf.push(o); scene.add(o); } });
+    if(S.round>=8){ S.phase='summary'; growThread(); } else { S.phase='object'; dropObject(); }
+  }
+  render(); requestAnimationFrame(tick);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>

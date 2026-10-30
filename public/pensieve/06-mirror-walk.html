@@ -1,0 +1,454 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mirror Walk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=IBM+Plex+Mono:wght@400;500&family=Karla:wght@400;500;600&display=swap">
+<style>
+/* Layout: one full-bleed dream scene; a thin instrument strip on top, two d-pads at the bottom corners (gold left, blue right). Deliberately single-theme: night water. */
+:root{
+  --abyss:#070b14;
+  --deep:#0e1626;
+  --veil:rgba(14,22,38,.78);
+  --silver:#d9dee8;
+  --mist:#8a93a8;
+  --gold:#e8b85c;
+  --blue:#6fa8ff;
+  --tide:#5fd4c4;
+  --warn:#e98a7a;
+  --f-display:"Marcellus","Cormorant Garamond",Georgia,serif;
+  --f-body:"Karla",system-ui,-apple-system,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--abyss);color:var(--silver);font-family:var(--f-body);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+#scene{position:fixed;inset:0;display:block;width:100%;height:100%;transition:filter .4s}
+.hud{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:5;
+  padding:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-wrap:wrap;gap:8px 22px;align-items:baseline;pointer-events:none}
+.hud h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.02em}
+.stat{display:flex;flex-direction:column;gap:1px}
+.stat b{font-family:var(--f-data);font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--mist)}
+.axis b{color:var(--tide)}
+.lamps{display:flex;gap:6px;align-items:center}
+.lamp{width:9px;height:9px;border-radius:50%;border:1px solid var(--mist);transition:background .08s}
+.lamp.a.on{background:var(--gold);border-color:var(--gold)}
+.lamp.b.on{background:var(--blue);border-color:var(--blue)}
+.lamp.t.on{background:var(--silver);border-color:var(--silver)}
+.msg{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:5;
+  font-family:var(--f-display);font-size:19px;text-align:center;max-width:min(560px,90vw);pointer-events:none;
+  text-shadow:0 2px 14px var(--abyss);opacity:0;transition:opacity .3s}
+.msg.show{opacity:1}
+.keys{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:0;right:0;z-index:5;display:flex;justify-content:space-between;
+  padding:0 max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px));pointer-events:none;align-items:flex-end}
+.legend{font-family:var(--f-data);font-size:11px;color:var(--mist);line-height:1.6}
+.legend .g{color:var(--gold)} .legend .bl{color:var(--blue)}
+.pad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;pointer-events:auto}
+.pad button{border-radius:10px;border:1px solid currentColor;background:var(--veil);color:inherit;font-size:16px;touch-action:none;cursor:pointer}
+.pad button:focus-visible,.btn:focus-visible{outline:2px solid var(--silver);outline-offset:2px}
+.pad.a{color:var(--gold)} .pad.b{color:var(--blue)}
+.pad .u{grid-column:2;grid-row:1}.pad .l{grid-column:1;grid-row:2}.pad .r{grid-column:3;grid-row:2}.pad .d{grid-column:2;grid-row:3}
+.touch-only{display:none}
+@media (pointer:coarse){.touch-only{display:grid}.desk-only{display:none}}
+.overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(7,11,20,.72);backdrop-filter:blur(6px);
+  padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.card{max-width:520px;display:flex;flex-direction:column;gap:14px}
+.card .eyebrow{font-family:var(--f-data);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mist)}
+.card h2{font-family:var(--f-display);font-weight:400;font-size:clamp(32px,7vw,46px);margin:0;line-height:1.05;text-wrap:balance}
+.card p{margin:0;line-height:1.55;color:var(--silver);max-width:62ch}
+.card ul{margin:0;padding-left:18px;line-height:1.6;color:var(--mist)}
+.card ul b{color:var(--silver);font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--f-body);font-weight:600;font-size:15px;padding:11px 20px;border-radius:999px;border:1px solid var(--silver);
+  background:var(--silver);color:var(--abyss);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--silver)}
+.results{font-family:var(--f-data);font-size:13px;font-variant-numeric:tabular-nums;border-collapse:collapse;width:100%}
+.results td,.results th{padding:5px 8px;text-align:right;border-bottom:1px solid rgba(138,147,168,.25)}
+.results th{font-weight:400;color:var(--mist);font-size:11px;text-transform:uppercase;letter-spacing:.1em}
+.results td:first-child,.results th:first-child{text-align:left}
+pre.json{font-family:var(--f-data);font-size:12px;background:var(--deep);padding:12px;border-radius:8px;margin:0;overflow-x:auto;color:var(--mist)}
+#thread{width:100%;height:70px}
+@media (prefers-reduced-motion:reduce){#scene{transition:none}}
+</style>
+
+<canvas id="scene" aria-label="Two mirrored mazes floating on dark water"></canvas>
+
+<div class="hud" aria-live="polite">
+  <h1>Mirror Walk</h1>
+  <div class="stat"><b id="h-level">1 / 5</b><span>Memory</span></div>
+  <div class="stat"><b id="h-steps">0 · par 0</b><span>Steps</span></div>
+  <div class="stat"><b id="h-bumps">0</b><span>Wall bumps</span></div>
+  <div class="stat"><b id="h-clarity">100%</b><span>Clarity</span></div>
+  <div class="stat axis"><b id="h-axis">left ↔ right</b><span>Mirror axis</span></div>
+  <div class="stat"><div class="lamps" title="Lockstep tick: inputs collected every 100 ms"><i class="lamp a" id="l-a"></i><i class="lamp t" id="l-t"></i><i class="lamp b" id="l-b"></i></div><span>Tick 100 ms</span></div>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<div class="keys">
+  <div class="pad a touch-only" data-p="0" aria-label="Gold player controls">
+    <button class="u" data-d="up" aria-label="Gold up">▲</button><button class="l" data-d="left" aria-label="Gold left">◀</button>
+    <button class="r" data-d="right" aria-label="Gold right">▶</button><button class="d" data-d="down" aria-label="Gold down">▼</button>
+  </div>
+  <div class="legend desk-only"><span class="g">Gold · W A S D</span><br><span class="bl">Blue · Arrow keys</span><br>R restarts the memory</div>
+  <div class="pad b touch-only" data-p="1" aria-label="Blue player controls">
+    <button class="u" data-d="up" aria-label="Blue up">▲</button><button class="l" data-d="left" aria-label="Blue left">◀</button>
+    <button class="r" data-d="right" aria-label="Blue right">▶</button><button class="d" data-d="down" aria-label="Blue down">▼</button>
+  </div>
+</div>
+
+<div class="overlay" id="intro">
+  <div class="card">
+    <div class="eyebrow">Pensieve · Act II · Game 6</div>
+    <h2>Mirror Walk</h2>
+    <p>Every step you take is mirrored in your partner's maze. Your own avatar moves the way you press; your partner's moves the opposite way across the mirror.</p>
+    <ul>
+      <li><b>Doors open together.</b> Both avatars must step onto their glowing door tiles within half a second of each other.</li>
+      <li><b>Walls don't reset you.</b> Bumping one costs a little clarity and blurs the dream.</li>
+      <li><b>Watch the tide line.</b> From memory 4 on, past the teal line the mirror turns from left–right to up–down.</li>
+      <li><b>Lockstep.</b> Inputs are gathered each 100 ms tick and applied to both mazes at once.</li>
+    </ul>
+    <p class="legend"><span class="g">Gold: W A S D</span> &nbsp; <span class="bl">Blue: arrow keys</span> &nbsp; On a phone, use the two pads.</p>
+    <div class="row"><button class="btn" id="begin">Dive in</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="end" hidden>
+  <div class="card">
+    <div class="eyebrow">Memory cleared · thread released</div>
+    <h2 id="end-title">The mirror settles</h2>
+    <canvas id="thread" aria-hidden="true"></canvas>
+    <table class="results" id="results"></table>
+    <pre class="json" id="json"></pre>
+    <div class="row"><button class="btn" id="again">Walk again</button><button class="btn ghost" id="copy">Copy thread JSON</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+// ---------- constants ----------
+const N = 11, TICK_MS = 100, WINDOW_TICKS = 5, LEVELS = 5;
+const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
+const LEVEL_CFG = [
+  { seed: 11, extra: 7, tide: null },
+  { seed: 23, extra: 6, tide: null },
+  { seed: 37, extra: 5, tide: null },
+  { seed: 41, extra: 6, tide: 5 },
+  { seed: 59, extra: 5, tide: 7 },
+];
+
+// ---------- seeded rng + maze ----------
+function mulberry(seed){ return () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function carve(r, extra){
+  const g = Array.from({length:N}, () => Array(N).fill(1));
+  const st = [[1,1]]; g[1][1] = 0;
+  while (st.length){
+    const [x,z] = st[st.length-1];
+    const nb = [[2,0],[-2,0],[0,2],[0,-2]].map(([dx,dz]) => [x+dx,z+dz,dx,dz])
+      .filter(([nx,nz]) => nx>0 && nz>0 && nx<N-1 && nz<N-1 && g[nz][nx]===1);
+    if (!nb.length){ st.pop(); continue; }
+    const [nx,nz,dx,dz] = nb[Math.floor(r()*nb.length)];
+    g[z+dz/2][x+dx/2] = 0; g[nz][nx] = 0; st.push([nx,nz]);
+  }
+  let tries = 0;
+  while (extra > 0 && tries++ < 400){
+    const x = 1 + Math.floor(r()*(N-2)), z = 1 + Math.floor(r()*(N-2));
+    if (g[z][x] !== 1 || (x+z)%2 === 0) continue;
+    const horiz = x%2===0 ? g[z][x-1]===0 && g[z][x+1]===0 : g[z-1][x]===0 && g[z+1][x]===0;
+    if (horiz){ g[z][x] = 0; extra--; }
+  }
+  return g;
+}
+
+// ---------- pure rules (shared by BFS and play) ----------
+const eq = (p,q) => p[0]===q[0] && p[1]===q[1];
+function mirrorDir(d, p, tide){ return (tide != null && p[1] < tide) ? [d[0], -d[1]] : [-d[0], d[1]]; }
+function move(g, p, d){ const n = [p[0]+d[0], p[1]+d[1]]; return g[n[1]][n[0]]===0 ? {p:n, bump:false} : {p, bump:true}; }
+function applyInput(L, a, b, player, d){
+  if (player === 0){ const ma = move(L.ga, a, d), mb = move(L.gb, b, mirrorDir(d, b, L.tide)); return {a:ma.p, b:mb.p, bumps:(ma.bump?1:0)+(mb.bump?1:0)}; }
+  const mb = move(L.gb, b, d), ma = move(L.ga, a, mirrorDir(d, a, L.tide)); return {a:ma.p, b:mb.p, bumps:(ma.bump?1:0)+(mb.bump?1:0)};
+}
+function solve(L){
+  const NN = N*N, id = p => p[1]*N+p[0], dist = new Int16Array(NN*NN).fill(-1), q = new Int32Array(NN*NN);
+  const s = id(L.sa)*NN + id(L.sb), goal = id(L.da)*NN + id(L.db);
+  let h = 0, t = 0; q[t++] = s; dist[s] = 0;
+  const dl = Object.values(DIRS);
+  while (h < t){
+    const cur = q[h++]; if (cur === goal) return dist[cur];
+    const ai = Math.floor(cur/NN), bi = cur%NN, a = [ai%N, Math.floor(ai/N)], b = [bi%N, Math.floor(bi/N)];
+    for (let pl=0; pl<2; pl++) for (const d of dl){
+      const r = applyInput(L, a, b, pl, d), k = id(r.a)*NN + id(r.b);
+      if (dist[k] < 0){ dist[k] = dist[cur]+1; q[t++] = k; }
+    }
+  }
+  return -1;
+}
+function buildLevel(i){
+  const cfg = LEVEL_CFG[i];
+  for (let attempt = 0; attempt < 300; attempt++){
+    const r = mulberry(cfg.seed*1000 + attempt);
+    const ga = carve(r, cfg.extra), gb = carve(r, cfg.extra);
+    const odd = [1,3,5,7,9];
+    const sx = odd[Math.floor(r()*5)], dx = odd[Math.floor(r()*5)];
+    const L = { ga, gb, tide: cfg.tide, sa:[sx,N-2], sb:[N-1-sx,N-2], da:[dx,1], db:[N-1-dx,1] };
+    const par = solve(L);
+    if (par >= 14 && par <= 48){ L.par = par; return L; }
+  }
+  throw new Error("No solvable maze pair found");
+}
+
+// ---------- three.js scene ----------
+const canvas = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const BG = new THREE.Color("#070b14");
+scene.background = BG; scene.fog = new THREE.FogExp2(BG, 0.018);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300);
+scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x05070c, 0.55));
+const moon = new THREE.DirectionalLight(0xdfe6ff, 0.55); moon.position.set(-6, 14, 8); scene.add(moon);
+
+const GOLD = new THREE.Color("#e8b85c"), BLUE = new THREE.Color("#6fa8ff"), TIDE = new THREE.Color("#5fd4c4");
+const OFF = N/2 + 1.1;           // half-gap between maze centers
+const toWorld = (side, x, z) => new THREE.Vector3((side? OFF : -OFF) + x - (N-1)/2, 0, z - (N-1)/2);
+
+// water
+const waterGeo = new THREE.PlaneGeometry(90, 90, 70, 70); waterGeo.rotateX(-Math.PI/2);
+const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({ color:0x0b1830, roughness:0.25, metalness:0.6 }));
+water.position.y = -0.35; scene.add(water);
+const wBase = waterGeo.attributes.position.array.slice();
+
+// mirror veil between mazes
+const veil = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 1, 1, 1),
+  new THREE.MeshBasicMaterial({ color:0xd9dee8, transparent:true, opacity:0.0 }));
+const veilPlane = new THREE.Mesh(new THREE.PlaneGeometry(N+1, 3.2),
+  new THREE.MeshBasicMaterial({ color:0xd9dee8, transparent:true, opacity:0.07, side:THREE.DoubleSide, depthWrite:false }));
+veilPlane.rotation.y = Math.PI/2; veilPlane.position.set(0, 1.0, 0); scene.add(veilPlane);
+
+let levelGroup = null, wallMats = [], avatars = [], rings = [], tideMesh = null;
+
+function makeAvatar(color){
+  const g = new THREE.Group();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 16), new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity:1.1 }));
+  orb.position.y = 0.38; g.add(orb);
+  const light = new THREE.PointLight(color, 1.4, 4.2); light.position.y = 0.6; g.add(light);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.42, 32), new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.35, side:THREE.DoubleSide }));
+  halo.rotation.x = -Math.PI/2; halo.position.y = 0.02; g.add(halo);
+  g.userData.orb = orb; return g;
+}
+
+function buildScene(L){
+  if (levelGroup){ scene.remove(levelGroup); levelGroup.traverse(o => { o.geometry && o.geometry.dispose(); }); }
+  levelGroup = new THREE.Group(); wallMats = []; rings = [];
+  [L.ga, L.gb].forEach((g, side) => {
+    const tint = side ? BLUE : GOLD;
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(N, N), new THREE.MeshStandardMaterial({ color:0x111a2c, roughness:0.9, emissive:tint, emissiveIntensity:0.04 }));
+    floor.rotation.x = -Math.PI/2; floor.position.copy(toWorld(side, (N-1)/2, (N-1)/2)); floor.position.y = 0.0; levelGroup.add(floor);
+    let count = 0; g.forEach(row => row.forEach(v => count += v));
+    const mat = new THREE.MeshStandardMaterial({ color:0x2a3346, roughness:0.7, emissive:tint, emissiveIntensity:0.08 });
+    wallMats.push(mat);
+    const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.98, 0.7, 0.98), mat, count);
+    const m = new THREE.Matrix4(); let i = 0;
+    g.forEach((row, z) => row.forEach((v, x) => { if (v){ const p = toWorld(side, x, z); m.makeTranslation(p.x, 0.35, p.z); inst.setMatrixAt(i++, m); } }));
+    levelGroup.add(inst);
+    const door = side ? L.db : L.da;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.05, 10, 40), new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:0.9 }));
+    ring.rotation.x = -Math.PI/2; ring.position.copy(toWorld(side, door[0], door[1])); ring.position.y = 0.06;
+    levelGroup.add(ring); rings.push(ring);
+    const doorGlow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), new THREE.MeshBasicMaterial({ color:tint, transparent:true, opacity:0.18 }));
+    doorGlow.rotation.x = -Math.PI/2; doorGlow.position.copy(ring.position); doorGlow.position.y = 0.03; levelGroup.add(doorGlow);
+  });
+  tideMesh = null;
+  if (L.tide != null){
+    const z = (L.tide - 0.5) - (N-1)/2;
+    tideMesh = new THREE.Mesh(new THREE.PlaneGeometry(2*OFF + N + 0.6, 0.16), new THREE.MeshBasicMaterial({ color:TIDE, transparent:true, opacity:0.7, depthWrite:false }));
+    tideMesh.rotation.x = -Math.PI/2; tideMesh.position.set(0, 0.72, z); levelGroup.add(tideMesh);
+  }
+  if (!avatars.length){ avatars = [makeAvatar(GOLD), makeAvatar(BLUE)]; avatars.forEach(a => scene.add(a)); }
+  scene.add(levelGroup);
+}
+
+function resize(){
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false);
+  camera.aspect = w/h;
+  const halfW = OFF + N/2 + 0.8, halfH = N/2 + 2.6;
+  const t = Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+  const d = Math.max(halfH / t, halfW / (t*camera.aspect));
+  camera.position.set(0, d*0.86, d*0.52 + 1.2); camera.lookAt(0, 0, 0.9);
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+
+// ---------- game state ----------
+const levels = Array.from({length:LEVELS}, (_, i) => buildLevel(i));
+let S = null, results = [], running = false, tickTimer = null, shake = 0, bumpFlash = 0, clearing = 0;
+const queues = [[], []];
+
+function startLevel(i){
+  const L = levels[i];
+  S = { i, L, a:[...L.sa], b:[...L.sb], steps:0, bumps:0, tick:0, arrA:-1, arrB:-1, missed:false,
+        inputTicks:0, bothTicks:0, viewA:toWorld(0, ...L.sa), viewB:toWorld(1, ...L.sb) };
+  queues[0].length = queues[1].length = 0;
+  buildScene(L); avatars[0].position.copy(S.viewA); avatars[1].position.copy(S.viewB);
+  say(i >= 3 ? "The tide has risen. Past the teal line, the mirror turns up–down." : `Memory ${i+1}. Find the doors together.`, 2600);
+  updateHud();
+}
+
+const clarityOf = s => Math.max(0.05, Math.min(1, s.L.par / Math.max(s.steps, s.L.par)) - 0.04*s.bumps);
+
+function tick(){
+  if (!running || clearing) return;
+  S.tick++;
+  const ins = [queues[0].shift(), queues[1].shift()];
+  document.getElementById("l-a").classList.toggle("on", !!ins[0]);
+  document.getElementById("l-b").classList.toggle("on", !!ins[1]);
+  document.getElementById("l-t").classList.toggle("on", S.tick % 2 === 0);
+  if (ins[0] || ins[1]){ S.inputTicks++; if (ins[0] && ins[1]) S.bothTicks++; }
+  let bumped = 0;
+  ins.forEach((d, p) => { if (!d) return; const r = applyInput(S.L, S.a, S.b, p, d); S.a = r.a; S.b = r.b; S.steps++; bumped += r.bumps; });
+  if (bumped){ S.bumps += bumped; shake = 0.22; bumpFlash = 1; }
+  const onA = eq(S.a, S.L.da), onB = eq(S.b, S.L.db);
+  if (onA && S.arrA < 0) S.arrA = S.tick; if (!onA) S.arrA = -1;
+  if (onB && S.arrB < 0) S.arrB = S.tick; if (!onB) S.arrB = -1;
+  if (!onA || !onB) S.missed = false;
+  if (onA && onB){
+    if (Math.abs(S.arrA - S.arrB) <= WINDOW_TICKS) return clearLevel();
+    if (!S.missed){ S.missed = true; say("You arrived too far apart. Step off and land on the doors together.", 3200); }
+  } else if ((onA || onB)){
+    const arr = onA ? S.arrA : S.arrB;
+    if (S.tick - arr === WINDOW_TICKS + 1) say("The window closed. The door waits for both of you at once.", 2600);
+  }
+  updateHud();
+}
+
+function clearLevel(){
+  clearing = performance.now();
+  const c = clarityOf(S);
+  results.push({ level:S.i+1, steps:S.steps, par:S.L.par, bumps:S.bumps, clarity:c,
+                 sync: S.inputTicks ? S.bothTicks / S.inputTicks : 0 });
+  say("The doors open.", 1400);
+  updateHud();
+  setTimeout(() => { clearing = 0; S.i + 1 < LEVELS ? startLevel(S.i + 1) : finish(); }, 1500);
+}
+
+function finish(){
+  running = false;
+  const clarity = results.reduce((s, r) => s + r.clarity, 0) / results.length;
+  const steps = results.reduce((s, r) => s + r.steps, 0), par = results.reduce((s, r) => s + r.par, 0);
+  const sync = results.reduce((s, r) => s + r.sync, 0) / results.length;
+  const pct = v => Math.round(v*100) + "%";
+  document.getElementById("end-title").textContent = clarity > 0.85 ? "The mirror holds still" : clarity > 0.6 ? "The mirror settles" : "The mirror ripples, but holds";
+  document.getElementById("results").innerHTML =
+    `<tr><th>Memory</th><th>Steps</th><th>Par</th><th>Bumps</th><th>Clarity</th></tr>` +
+    results.map(r => `<tr><td>${r.level}${r.level>=4?" · tide":""}</td><td>${r.steps}</td><td>${r.par}</td><td>${r.bumps}</td><td>${pct(r.clarity)}</td></tr>`).join("") +
+    `<tr><td><b>Total</b></td><td>${steps}</td><td>${par}</td><td>${results.reduce((s,r)=>s+r.bumps,0)}</td><td><b>${pct(clarity)}</b></td></tr>`;
+  const thread = { game:6, clarity:+clarity.toFixed(2), sync:+sync.toFixed(2), color:"silver" };
+  document.getElementById("json").textContent = JSON.stringify(thread, null, 2);
+  document.getElementById("end").hidden = false;
+  drawThread(clarity, sync);
+}
+
+function drawThread(clarity, sync){
+  const c = document.getElementById("thread"), dpr = devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  const w = c.clientWidth, h = c.clientHeight, len = w * (0.25 + 0.75*clarity);
+  const wob = 14 * (1 - sync) + 4;
+  let t = 0; const t0 = performance.now();
+  (function frame(now){
+    t = Math.min(1, (now - t0) / 1400);
+    g.clearRect(0, 0, w, h);
+    g.lineWidth = 2; g.strokeStyle = "#d9dee8"; g.shadowColor = "#d9dee8"; g.shadowBlur = 8;
+    g.beginPath();
+    for (let x = 0; x <= len * t; x += 2){ const y = h/2 + Math.sin(x/22) * wob * Math.sin(x/len*Math.PI); x ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+    if (t < 1) requestAnimationFrame(frame);
+  })(t0);
+}
+
+// ---------- HUD + messages ----------
+let msgTimer = null;
+function say(text, ms){ const m = document.getElementById("msg"); m.textContent = text; m.classList.add("show");
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => m.classList.remove("show"), ms); }
+function updateHud(){
+  const c = clarityOf(S);
+  document.getElementById("h-level").textContent = `${S.i+1} / ${LEVELS}`;
+  document.getElementById("h-steps").textContent = `${S.steps} · par ${S.L.par}`;
+  document.getElementById("h-bumps").textContent = S.bumps;
+  document.getElementById("h-clarity").textContent = Math.round(c*100) + "%";
+  document.getElementById("h-axis").textContent = S.L.tide == null ? "left ↔ right" : "left ↔ right · up ↕ down past tide";
+  canvas.style.filter = `blur(${((1-c)*1.4).toFixed(2)}px) saturate(${(0.35 + 0.65*c).toFixed(2)})`;
+}
+
+// ---------- input ----------
+const KEYMAP = { KeyW:[0,"up"], KeyS:[0,"down"], KeyA:[0,"left"], KeyD:[0,"right"],
+                 ArrowUp:[1,"up"], ArrowDown:[1,"down"], ArrowLeft:[1,"left"], ArrowRight:[1,"right"] };
+function push(p, name){ if (!running || clearing) return; if (queues[p].length < 2) queues[p].push(DIRS[name]); }
+addEventListener("keydown", e => {
+  if (e.code === "KeyR" && running){ startLevel(S.i); return; }
+  const k = KEYMAP[e.code]; if (!k) return;
+  e.preventDefault(); if (!e.repeat) push(k[0], k[1]);
+});
+document.querySelectorAll(".pad").forEach(pad => {
+  const p = +pad.dataset.p;
+  pad.querySelectorAll("button").forEach(btn => btn.addEventListener("pointerdown", e => { e.preventDefault(); push(p, btn.dataset.d); }));
+});
+
+function begin(){
+  results = []; document.getElementById("intro").hidden = true; document.getElementById("end").hidden = true;
+  running = true; startLevel(0);
+  clearInterval(tickTimer); tickTimer = setInterval(tick, TICK_MS);
+}
+document.getElementById("begin").addEventListener("click", begin);
+document.getElementById("again").addEventListener("click", begin);
+document.getElementById("copy").addEventListener("click", async () => {
+  const txt = document.getElementById("json").textContent;
+  try { await navigator.clipboard.writeText(txt); say("Thread copied.", 1400); }
+  catch { const r = document.createRange(); r.selectNodeContents(document.getElementById("json")); getSelection().removeAllRanges(); getSelection().addRange(r); }
+});
+
+// ---------- render loop ----------
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const clock = new THREE.Clock();
+function loop(){
+  const t = clock.getElapsedTime(), dt = Math.min(clock.getDelta(), 0.05);
+  // water ripple
+  if (!reduce){
+    const pos = waterGeo.attributes.position.array;
+    for (let i = 0; i < pos.length; i += 3) pos[i+1] = wBase[i+1] + Math.sin(wBase[i]*0.35 + t*0.9) * 0.08 + Math.cos(wBase[i+2]*0.3 + t*0.7) * 0.08;
+    waterGeo.attributes.position.needsUpdate = true; waterGeo.computeVertexNormals();
+  }
+  if (S){
+    const ta = toWorld(0, ...S.a), tb = toWorld(1, ...S.b);
+    avatars[0].position.lerp(ta, 0.32); avatars[1].position.lerp(tb, 0.32);
+    avatars.forEach((a, k) => { a.userData.orb.position.y = 0.38 + Math.sin(t*2.4 + k*Math.PI) * 0.05; });
+    // door rings: shrink while a 0.5 s window is open
+    const ons = [eq(S.a, S.L.da), eq(S.b, S.L.db)], arr = [S.arrA, S.arrB];
+    rings.forEach((r, k) => {
+      let s = 1 + Math.sin(t*3) * 0.06;
+      if (clearing) s = 1 + (performance.now() - clearing) / 300;
+      else if (ons[k] && !ons[1-k]){ const el = S.tick - arr[k]; s = el <= WINDOW_TICKS ? 1 - el / (WINDOW_TICKS+1) * 0.7 : 0.3; }
+      r.scale.setScalar(s); r.material.opacity = clearing ? Math.max(0, 1 - (performance.now()-clearing)/1200) : 0.9;
+    });
+    if (tideMesh) tideMesh.material.opacity = 0.45 + Math.sin(t*1.6) * 0.25;
+    wallMats.forEach(m => m.emissiveIntensity = 0.08 + bumpFlash * 0.5);
+    veilPlane.material.opacity = 0.06 + Math.sin(t*0.8) * 0.03 + bumpFlash * 0.12;
+  }
+  bumpFlash *= 0.9; shake *= 0.86;
+  camera.position.x = (Math.random()-0.5) * shake;
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+resize();
+startLevel(0); running = false;   // show memory 1 behind the intro card
+loop();
+})();
+</script>
+
+</body></html>

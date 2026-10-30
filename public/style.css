@@ -1,0 +1,28 @@
+/* Layout: full-bleed WebGL meadow, whisper-thin HUD pinned to corners. Single dusk look. */
+:root{
+  --ink:#fdf6ee; --ink-soft:rgba(253,246,238,.72); --shade:rgba(40,30,52,.35);
+  --glass:rgba(255,248,240,.14); --edge:rgba(255,248,240,.35); --bg:#3d4a63;
+  --f-display:"Josefin Sans","Avenir Next","Segoe UI",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;font:14px var(--f-display);overflow:hidden;background:var(--bg);color:var(--ink)}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.hud{position:fixed;top:calc(18px + env(safe-area-inset-top,0px));left:max(18px,env(safe-area-inset-left,0px));
+  font-family:var(--f-display);text-shadow:0 1px 12px var(--shade);pointer-events:none;display:grid;gap:4px}
+.name{font-weight:300;font-size:22px;letter-spacing:.32em;text-transform:uppercase}
+.count{font-size:13px;letter-spacing:.14em;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom,0px));
+  font-family:var(--f-display);font-weight:300;font-size:14px;letter-spacing:.12em;text-align:center;
+  width:min(90vw,520px);color:var(--ink);text-shadow:0 1px 12px var(--shade);pointer-events:none;transition:opacity 1.6s}
+.hint.gone{opacity:0}
+#snd{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));
+  font:400 12px var(--f-display);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);
+  background:var(--glass);border:1px solid var(--edge);border-radius:999px;padding:8px 14px;cursor:pointer;backdrop-filter:blur(6px)}
+#snd:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.end{position:fixed;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;
+  font-family:var(--f-display);font-weight:300;font-size:clamp(22px,4vw,38px);letter-spacing:.2em;
+  text-shadow:0 2px 24px var(--shade);padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));
+  animation:rise 3s ease both}
+.end small{display:block;margin-top:14px;font-size:13px;letter-spacing:.16em;color:var(--ink-soft)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.end{animation:none}.hint{transition:none}}

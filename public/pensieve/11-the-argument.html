@@ -1,0 +1,793 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Argument</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D kitchen at night; a screenplay-style side panel (bottom sheet on phones); centered cards between turns. Single dark dream palette, chosen on purpose. */
+:root{
+  --night:#0c0f17;
+  --panel:rgba(16,20,31,.92);
+  --raise:#1a2031;
+  --line:rgba(190,200,228,.15);
+  --silver:#e0e4ee;
+  --mist:#959db3;
+  --gold:#e4b45f;
+  --blue:#74a7e2;
+  --ember:#e07e52;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --ui:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--silver);font-family:var(--ui);font-size:15px;line-height:1.5;overflow:hidden}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;transition:filter .9s ease}
+#scene.veiled{filter:blur(7px) brightness(.55) saturate(.7)}
+#scene.blurred{filter:blur(4px) grayscale(.85) brightness(.7)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--silver);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.mark{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:2px;pointer-events:none;z-index:3}
+.mark .eyebrow{margin:0}
+.mark h1{margin:0;font-family:var(--display);font-style:italic;font-weight:400;font-size:26px;letter-spacing:.005em}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
+
+#caption{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 18px);transform:translateX(-50%);font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--silver);background:rgba(12,15,23,.7);border:1px solid var(--line);padding:6px 12px;border-radius:999px;z-index:4;white-space:nowrap;transition:opacity .4s}
+#caption[data-off]{opacity:0}
+
+.bubble{position:fixed;left:0;top:0;max-width:min(300px,70vw);transform:translate(-50%,calc(-100% - 10px));background:rgba(12,15,23,.88);border:1px solid var(--line);border-left:3px solid var(--who);padding:8px 12px 9px;border-radius:4px 12px 12px 12px;font-family:var(--display);font-size:18px;line-height:1.3;z-index:5;pointer-events:none;opacity:0;transition:opacity .35s}
+.bubble.on{opacity:1}
+.bubble small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--who);margin-bottom:2px}
+#bubA{--who:var(--gold)} #bubB{--who:var(--blue)}
+
+#panel{position:fixed;z-index:6;top:calc(env(safe-area-inset-top,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);right:max(16px,env(safe-area-inset-right,0px));width:min(410px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow-y:auto;overscroll-behavior:contain;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.pin{padding:20px 20px 0;display:flex;flex-direction:column;gap:16px}
+.pin h2{margin:0;font-family:var(--display);font-weight:500;font-size:24px;line-height:1.15;text-wrap:balance}
+.lede{margin:0;color:var(--mist);max-width:60ch}
+.pfoot{position:sticky;bottom:0;padding:14px 20px 18px;background:linear-gradient(to bottom,rgba(16,20,31,0),var(--panel) 30%);display:flex;flex-wrap:wrap;gap:8px}
+
+.moment{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.mhead{display:flex;align-items:baseline;gap:10px}
+.mhead h3{margin:0;font-family:var(--display);font-weight:500;font-size:19px}
+.mtime{font-family:var(--mono);font-size:11px;color:var(--mist);font-variant-numeric:tabular-nums}
+.cue{margin:0;display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:baseline}
+.who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--c)}
+.who.a{--c:var(--gold)} .who.b{--c:var(--blue)}
+.say{font-family:var(--display);font-size:17px;line-height:1.3;min-width:0}
+.say.edited{color:var(--c,var(--silver));font-style:italic}
+.smudge{filter:blur(3.5px);color:var(--mist);user-select:none}
+.thought{margin:0;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035);font-family:var(--display);font-style:italic;font-size:15px;color:#c9cfdd}
+.thought small{display:block;font-family:var(--mono);font-style:normal;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist);margin-top:4px}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.glabel{flex-basis:100%;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mist)}
+.chip{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;font-size:13.5px;line-height:1.3;cursor:pointer;background:transparent;transition:border-color .2s,background .2s}
+.chip.line{border-radius:10px;font-family:var(--display);font-size:15.5px}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip:hover{border-color:rgba(224,228,238,.4)}
+.chip:has(input:checked){background:color-mix(in srgb,var(--c) 18%,transparent);border-color:var(--c);color:#fff}
+.chip:has(input:focus-visible){outline:2px solid var(--silver);outline-offset:2px}
+.chip:has(input:disabled){opacity:.35;cursor:not-allowed}
+.glowdot{width:7px;height:7px;border-radius:50%;background:#f3e4bb;box-shadow:0 0 8px 2px rgba(243,228,187,.7);flex:none}
+.note{margin:0;font-size:12.5px;color:var(--mist)}
+.p-A{--c:var(--gold)} .p-B{--c:var(--blue)}
+
+.btn{border:1px solid var(--line);background:var(--raise);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:700}
+.btn:hover{border-color:rgba(224,228,238,.45)}
+.btn.primary{background:var(--silver);color:var(--night);border-color:var(--silver)}
+.btn.primary:hover{background:#fff}
+.btn.quiet{background:transparent;font-weight:400}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.peace{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.peace button{padding:14px 10px;border-radius:12px;border:1px solid var(--line);background:transparent;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left}
+.peace button .who{font-size:11px}
+.peace button strong{font-family:var(--display);font-weight:500;font-size:18px}
+.peace button[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 20%,transparent)}
+.peace button[aria-pressed="true"] strong::after{content:" ✓"}
+.ending h2{font-style:italic}
+.ending p{margin:0;font-family:var(--display);font-size:18px;line-height:1.45;max-width:60ch}
+.reveal{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.reveal li{display:grid;grid-template-columns:44px 1fr;gap:8px}
+.reveal .what{min-width:0}
+.meter{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--mist)}
+.meter .bar{flex:1;height:4px;border-radius:2px;background:linear-gradient(90deg,#f0c98a,#9db2d6);position:relative}
+.meter .bar i{position:absolute;top:-4px;width:2px;height:12px;background:var(--silver);border-radius:1px;transition:left .6s}
+
+.log{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.log li{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:baseline;animation:rise .4s ease both}
+.log li.beat{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist);padding-top:6px;border-top:1px solid var(--line)}
+.log li.act{display:block;font-family:var(--display);font-style:italic;color:var(--mist);font-size:15px}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+#overlay{position:fixed;inset:0;z-index:8;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px);overflow-y:auto}
+.card{width:min(520px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 26px 22px;display:flex;flex-direction:column;gap:16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.card h2{margin:0;font-family:var(--display);font-weight:400;font-style:italic;font-size:clamp(30px,6vw,42px);line-height:1.05;text-wrap:balance}
+.card p{margin:0;max-width:60ch}
+.card .big{font-family:var(--display);font-size:19px;line-height:1.45}
+.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px;color:#cdd3e0}
+.steps li::marker{font-family:var(--mono);color:var(--mist);font-size:12px}
+.carry{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--mist)}
+.tag{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--silver)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+pre.json{margin:0;padding:12px 14px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;font-family:var(--mono);font-size:12px;line-height:1.55;color:#cdd3e0;overflow-x:auto}
+.turnline{height:3px;border-radius:2px;background:var(--c)}
+
+@media (max-width:760px){
+  #panel{top:auto;left:0;right:0;width:auto;bottom:0;max-height:56%;border-radius:16px 16px 0 0;border-bottom:0}
+  .pin{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .pfoot{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
+  .mark h1{font-size:21px}
+  #caption{top:auto;bottom:calc(56% + 12px)}
+  .bubble{font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  #scene{transition:none}
+  .log li{animation:none}
+}
+</style>
+
+<canvas id="scene" aria-label="A kitchen at night. Two figures, Gold and Blue, stand apart. On the table: a key, a letter, a phone."></canvas>
+<div class="mark"><span class="eyebrow">Pensieve · Memory 11 of 12</span><h1>The Argument</h1></div>
+<div id="caption" data-off></div>
+<div class="bubble" id="bubA"><small>GOLD</small><span></span></div>
+<div class="bubble" id="bubB"><small>BLUE</small><span></span></div>
+<aside id="panel" hidden aria-live="polite"></aside>
+<div id="overlay"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- The memory ---------- */
+const P = {
+  A:{ name:"Gold", cls:"a", hex:0xe4b45f },
+  B:{ name:"Blue", cls:"b", hex:0x74a7e2 }
+};
+const other = p => p === "A" ? "B" : "A";
+const MAX_ROUNDS = 4;
+const LINE_HEAT = [0, -1, 1];
+const GESTURE = {
+  closer:{ heat:-1, label:"Step closer", past:"stepped closer" },
+  away:{ heat:1, label:"Turn away", past:"turned away" }
+};
+const SCRIPT = [
+  { title:"Arrival", time:"11:42 pm",
+    A:{ line:["You didn’t have to wait up.","I’m sorry. The train sat in a tunnel for an hour.","Don’t start. Not tonight."],
+        thought:"The train sat dark in a tunnel for an hour. My phone died at six. I ran from the station." },
+    B:{ line:["I called you nine times.","I was scared something happened. That’s all.","Of course you’re late. Of course."],
+        thought:"Nine calls. I kept picturing the road. Dinner went cold at eight." } },
+  { title:"The letter", time:"11:47 pm",
+    A:{ line:["What’s this letter?","Is it good news? You look frightened.","Were you ever going to tell me?"],
+        thought:"The envelope has a university crest on it. It’s been in the drawer all week." },
+    B:{ line:["I was going to tell you tonight.","I got in. I don’t know if I want to go.","You weren’t here to tell."],
+        thought:"I wanted to say it at dinner, while it was still good news." } },
+  { title:"What now", time:"11:53 pm",
+    A:{ line:["So you’re leaving.","What would make it work? Could I come with you?","Then go."],
+        thought:"If I ask them to stay, I become the reason they didn’t go." },
+    B:{ line:["I don’t know yet.","I want to decide it with you, not around you.","Maybe I should."],
+        thought:"I want to be asked to stay. I won’t be the one to say it first." } }
+];
+const OBJ = {
+  key:{ alt:"Set the key down quietly", past:"set the key down quietly", carry:true },
+  letter:{ alt:"Leave the letter open on the table", past:"left the letter open on the table", carry:true },
+  phone:{ alt:"Turn the phone face-down", past:"turned the phone face-down", carry:false },
+  door:{ alt:"Leave the front door open", past:"left the front door open", carry:false }
+};
+const OBJ_KEYS = ["key","letter","phone","door"];
+
+const keepAll = () => [0,1,2].map(() => ({ kind:"keep" }));
+const S = { phase:"intro", round:1, turn:"A", edits:{ A:keepAll(), B:keepAll() }, peace:{ A:false, B:false }, res:null, log:[] };
+
+const encode = e => e.kind === "keep" ? "keep" : e.kind + ":" + e.v;
+const decode = v => {
+  if (v === "keep") return { kind:"keep" };
+  const [kind, val] = v.split(":");
+  return { kind, v: kind === "line" ? Number(val) : val };
+};
+
+function objectsFrom(lists){
+  const by = { A:new Set(), B:new Set() };
+  for (const p of Object.keys(lists)) lists[p].forEach(e => { if (e.kind === "object") by[p].add(e.v); });
+  const o = {}; const shared = [];
+  OBJ_KEYS.forEach(k => { o[k] = (by.A && by.A.has(k)) || (by.B && by.B.has(k)) || false; if (by.A.has(k) && by.B.has(k)) shared.push(k); });
+  return { o, shared };
+}
+
+function compute(edits){
+  const { o, shared } = objectsFrom(edits);
+  const objHeat = [ o.key ? 0 : 1, (o.phone ? 0 : 1) + (o.letter ? -1 : 0), 0 ];
+  let heat = 0; const pHeat = { A:0, B:0 }; const beats = [];
+  SCRIPT.forEach((m, i) => {
+    const b = { i };
+    ["A","B"].forEach(p => {
+      const e = edits[p][i];
+      const li = e.kind === "line" ? e.v : 0;
+      const g = e.kind === "gesture" ? e.v : null;
+      const h = LINE_HEAT[li] + (g ? GESTURE[g].heat : 0);
+      pHeat[p] += h; heat += h;
+      b[p] = { text:m[p].line[li], gesture:g };
+    });
+    heat += objHeat[i];
+    b.heat = heat;
+    beats.push(b);
+  });
+  let ending;
+  if (heat >= 4 || (o.door && heat >= 3)) ending = "leave";
+  else if (heat >= 2) ending = "apart";
+  else if (heat >= -1) ending = "close";
+  else ending = "sit";
+  const leaver = pHeat.A > pHeat.B ? "A" : "B";
+  return { o, shared, beats, heat, ending, leaver };
+}
+
+function endingText(r){
+  const doorNote = r.o.door && r.ending !== "leave" ? " The front door stayed open the whole time. Neither of you used it." : "";
+  const n = P[r.leaver].name, stay = P[other(r.leaver)].name;
+  switch (r.ending){
+    case "leave": return { title:"Someone leaves", body: r.o.door
+      ? `${n} walks out through the open door. The night air comes in after them. ${stay} stays with the letter.`
+      : `${n} opens the door and walks out. It closes softly, which is worse. ${stay} stays with the letter.` };
+    case "apart": return { title:"The kitchen goes cold", body:"You stand at opposite ends of the room. Nobody says the next thing. The lamp hums, and the kettle never gets switched on." + doorNote };
+    case "close": return { title:"Close enough", body:"You end up standing close, not quite touching. The kettle clicks off. Someone says “tea?” and that is enough for tonight." + doorNote };
+    default: return { title:"Sitting down", body:"You both sit at the table. The letter lies between you. Nothing is decided yet, but it will be decided together." + doorNote };
+  }
+}
+
+/* ---------- Three.js scene ---------- */
+const canvas = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const NIGHT = new THREE.Color(0x0c0f17);
+scene.background = NIGHT.clone();
+scene.fog = new THREE.FogExp2(0x0c0f17, 0.075);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 60);
+
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color:c, roughness:.85, metalness:0 }, o));
+const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+
+// floor: faded linoleum checker
+(() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.fillStyle = "#1c2030"; g.fillRect(0,0,64,64);
+  g.fillStyle = "#161a26"; g.fillRect(0,0,32,32); g.fillRect(32,32,32,32);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 8); tex.magFilter = THREE.NearestFilter;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 8), mat(0xffffff, { map:tex }));
+  floor.rotation.x = -Math.PI / 2; floor.position.z = 0.6;
+  scene.add(floor);
+})();
+
+const wallM = mat(0x232839);
+const wallL = box(1.1, 3.2, .12, wallM); wallL.position.set(-3.95, 1.6, -3);
+const wallR = box(6.9, 3.2, .12, wallM); wallR.position.set(1.05, 1.6, -3);
+const lintel = box(1.0, 1.0, .12, wallM); lintel.position.set(-2.9, 2.7, -3);
+scene.add(wallL, wallR, lintel);
+
+// outside the door: night
+const outside = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.8), new THREE.MeshBasicMaterial({ color:0x18264a }));
+outside.position.set(-2.9, 1.3, -3.7); scene.add(outside);
+const doorHinge = new THREE.Group(); doorHinge.position.set(-3.4, 0, -3); scene.add(doorHinge);
+const door = box(1.0, 2.2, .06, mat(0x3a3326)); door.position.set(.5, 1.1, 0); doorHinge.add(door);
+const knob = new THREE.Mesh(new THREE.SphereGeometry(.035, 12, 8), mat(0xb59b62, { metalness:.6, roughness:.4 }));
+knob.position.set(.86, 1.05, .05); doorHinge.add(knob);
+
+// window + moon over the counter
+const win = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.0), new THREE.MeshBasicMaterial({ color:0x1d2c52 }));
+win.position.set(2.6, 1.95, -2.93); scene.add(win);
+const frameM = mat(0x2f3549);
+[[2.6,2.47,1.5,.06],[2.6,1.43,1.5,.06],[1.88,1.95,.06,1.1],[3.32,1.95,.06,1.1],[2.6,1.95,.04,1.0]].forEach(([x,y,w,h]) => {
+  const f = box(w, h, .05, frameM); f.position.set(x, y, -2.9); scene.add(f);
+});
+const moon = new THREE.Mesh(new THREE.CircleGeometry(.13, 32), new THREE.MeshBasicMaterial({ color:0xdfe6f5 }));
+moon.position.set(2.95, 2.18, -2.92); scene.add(moon);
+
+const counter = box(2.6, .9, .6, mat(0x2a2f40)); counter.position.set(2.6, .45, -2.65); scene.add(counter);
+const counterTop = box(2.7, .05, .66, mat(0x3b4156)); counterTop.position.set(2.6, .92, -2.65); scene.add(counterTop);
+const kettle = new THREE.Mesh(new THREE.CylinderGeometry(.12, .15, .24, 18), mat(0x8c93a6, { metalness:.5, roughness:.35 }));
+kettle.position.set(2.1, 1.07, -2.6); scene.add(kettle);
+
+// table + chairs
+const woodM = mat(0x4a3b2c);
+const tableTop = box(2.0, .07, 1.0, woodM); tableTop.position.set(.2, .76, -1.3); scene.add(tableTop);
+[[-.7,-1.7],[1.1,-1.7],[-.7,-.9],[1.1,-.9]].forEach(([x,z]) => { const l = box(.06,.74,.06,woodM); l.position.set(x,.37,z); scene.add(l); });
+function chair(x, rot){
+  const g = new THREE.Group();
+  const s = box(.46,.05,.46,woodM); s.position.y = .46; g.add(s);
+  const b = box(.05,.55,.46,woodM); b.position.set(-.21,.75,0); g.add(b);
+  [[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2]].forEach(([a,c]) => { const l = box(.04,.46,.04,woodM); l.position.set(a,.23,c); g.add(l); });
+  g.position.set(x, 0, -1.3); g.rotation.y = rot; scene.add(g);
+}
+chair(-1.15, 0); chair(1.55, Math.PI);
+
+// lamp
+const shade = new THREE.Mesh(new THREE.ConeGeometry(.32, .26, 24, 1, true), mat(0xd8c49a, { side:THREE.DoubleSide, emissive:0x6a5126, emissiveIntensity:.6 }));
+shade.position.set(.2, 2.45, -1.3); scene.add(shade);
+const cord = box(.01, .7, .01, mat(0x111111)); cord.position.set(.2, 2.92, -1.3); scene.add(cord);
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(.06, 12, 8), new THREE.MeshBasicMaterial({ color:0xffe2b0 }));
+bulb.position.set(.2, 2.36, -1.3); scene.add(bulb);
+const WARM = new THREE.Color(0xffc27a), COLD = new THREE.Color(0x9fb4da);
+const lamp = new THREE.PointLight(0xffc27a, 2.4, 9, 1.4); lamp.position.set(.2, 2.3, -1.3); scene.add(lamp);
+scene.add(new THREE.HemisphereLight(0x3d4870, 0x0c0f17, .7));
+const moonLight = new THREE.DirectionalLight(0x6f86b8, .35); moonLight.position.set(3, 3, -4); scene.add(moonLight);
+let lampTarget = WARM.clone();
+
+// glow halo texture
+const haloTex = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const g = c.getContext("2d"); const gr = g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,"rgba(255,244,214,.9)"); gr.addColorStop(.35,"rgba(255,232,180,.35)"); gr.addColorStop(1,"rgba(255,232,180,0)");
+  g.fillStyle = gr; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+})();
+function halo(size){ const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:haloTex, blending:THREE.AdditiveBlending, depthWrite:false, transparent:true })); s.scale.set(size,size,1); return s; }
+
+// objects on the table
+const TABLE_Y = .8;
+const key = new THREE.Group();
+const keyM = mat(0xd7c38c, { metalness:.7, roughness:.35 });
+const ring = new THREE.Mesh(new THREE.TorusGeometry(.045,.013,8,20), keyM); ring.rotation.x = Math.PI/2; key.add(ring);
+const shaft = box(.13,.018,.02,keyM); shaft.position.x = .1; key.add(shaft);
+const bit = box(.03,.018,.04,keyM); bit.position.set(.15,0,.02); key.add(bit);
+const KEY_REST = new THREE.Vector3(-.15, TABLE_Y + .01, -1.0);
+key.position.copy(KEY_REST); scene.add(key);
+const keyHalo = halo(.55); scene.add(keyHalo);
+
+const letter = new THREE.Group();
+const env = box(.34,.012,.22, mat(0xe9e3d3)); letter.add(env);
+const crest = new THREE.Mesh(new THREE.CircleGeometry(.03,16), new THREE.MeshBasicMaterial({ color:0x7a2f2f })); crest.rotation.x = -Math.PI/2; crest.position.set(-.1,.008,-.05); letter.add(crest);
+const paper = box(.28,.006,.4, mat(0xf3efe6)); paper.position.set(.36,0,-.05); paper.rotation.y = .18; letter.add(paper);
+[0,1,2,3,4,5].forEach(i => { const l = box(.2,.002,.008, mat(0x8a8f9c)); l.position.set(.36 - .02, .005, -.18 + i*.05); l.rotation.y = .18; letter.add(l); paper.userData.lines = (paper.userData.lines||[]).concat(l); });
+letter.position.set(.5, TABLE_Y, -1.42); letter.rotation.y = -.3; scene.add(letter);
+const letterHalo = halo(.7); scene.add(letterHalo);
+
+const phone = new THREE.Group();
+const phBody = box(.14,.014,.28, mat(0x14161d, { roughness:.4 })); phone.add(phBody);
+const screenM = new THREE.MeshBasicMaterial({ color:0x8fb6ff });
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(.12,.25), screenM); screen.rotation.x = -Math.PI/2; screen.position.y = .0085; phone.add(screen);
+const PHONE_REST = new THREE.Vector3(-.45, TABLE_Y + .005, -1.5);
+phone.position.copy(PHONE_REST); phone.rotation.y = .4; scene.add(phone);
+
+// figures
+function figure(hex){
+  const g = new THREE.Group();
+  const m = mat(hex, { emissive:hex, emissiveIntensity:.18, roughness:.6, transparent:true, opacity:1 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.2,.3,1.15,20), m); body.position.y = .62; g.add(body);
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(.2,20,12), m); shoulders.scale.set(1.15,.55,1); shoulders.position.y = 1.2; g.add(shoulders);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.19,24,16), m); head.position.y = 1.52; g.add(head);
+  const face = new THREE.Mesh(new THREE.SphereGeometry(.05,10,8), mat(0xffffff, { emissive:0xffffff, emissiveIntensity:.5, transparent:true })); face.position.set(0,1.54,.17); g.add(face);
+  g.userData = { tp:new THREE.Vector3(), tr:0, mat:m, faceM:face.material, to:1, speed:3, ty:0 };
+  scene.add(g); return g;
+}
+const fig = { A:figure(P.A.hex), B:figure(P.B.hex) };
+
+// dust
+const dust = (() => {
+  const n = 260, pos = new Float32Array(n*3);
+  for (let i=0;i<n;i++){ pos[i*3] = (Math.random()-.5)*8; pos[i*3+1] = Math.random()*3; pos[i*3+2] = (Math.random()-.5)*6 - .5; }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos,3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color:0xc8d2ea, size:.018, transparent:true, opacity:.55, depthWrite:false }));
+  scene.add(p); return p;
+})();
+
+/* ---------- Scene state helpers ---------- */
+const CENTER = new THREE.Vector3(0, 0, .4);
+const AXIS = new THREE.Vector3(1, 0, -.12).normalize();
+const sep = { A:1.6, B:1.6 };
+const faceTo = (from, to) => Math.atan2(to.x - from.x, to.z - from.z);
+function placePair(turnAway = {}){
+  const a = CENTER.clone().addScaledVector(AXIS, -sep.A);
+  const b = CENTER.clone().addScaledVector(AXIS, sep.B);
+  fig.A.userData.tp.copy(a); fig.B.userData.tp.copy(b);
+  fig.A.userData.ty = fig.B.userData.ty = 0;
+  fig.A.userData.tr = faceTo(a, b) + (turnAway.A ? Math.PI * .85 : 0);
+  fig.B.userData.tr = faceTo(b, a) + (turnAway.B ? -Math.PI * .85 : 0);
+}
+function resetFigures(){
+  sep.A = sep.B = 1.6; placePair();
+  ["A","B"].forEach(p => { const u = fig[p].userData; u.to = 1; u.speed = 3; fig[p].position.copy(u.tp); fig[p].rotation.y = u.tr; u.mat.opacity = 1; u.faceM.opacity = 1; });
+}
+let doorTarget = 0;
+const anim = { keyT0:-1, keyHard:true, buzzUntil:0, shakeUntil:0, highlight:null };
+function applyObjects(o, instant){
+  doorTarget = o.door ? 1.25 : 0;
+  if (instant) doorHinge.rotation.y = doorTarget;
+  paper.visible = !!o.letter; paper.userData.lines.forEach(l => l.visible = !!o.letter);
+  env.position.x = o.letter ? -.06 : 0;
+  phone.rotation.z = o.phone ? Math.PI : 0;
+  phone.position.y = PHONE_REST.y + (o.phone ? .014 : 0);
+  screen.visible = !o.phone;
+  anim.keyT0 = -1; key.position.copy(KEY_REST);
+}
+function setHeat(h){ const t = Math.min(1, Math.max(0, (h + 3) / 8)); lampTarget = WARM.clone().lerp(COLD, t); }
+
+const CAM = {
+  wide:{ p:[0, 2.55, 5.8], l:[0, 1.05, -.9] },
+  A:{ p:[-3.05, 1.95, 1.55], l:[1.6, 1.35, .15] },
+  B:{ p:[3.05, 1.95, 1.2], l:[-1.6, 1.35, .6] },
+  up:{ p:[0, 3.3, 4.6], l:[.2, 2.4, -1.3] }
+};
+let camKey = "wide";
+const camLook = new THREE.Vector3(...CAM.wide.l);
+camera.position.set(...CAM.wide.p);
+
+/* ---------- Thread (released when the memory clears) ---------- */
+let thread = null, threadT0 = 0;
+function releaseThread(color){
+  if (thread){ scene.remove(thread); thread.geometry.dispose(); }
+  const pts = [];
+  for (let i=0;i<=60;i++){ const t = i/60, a = t*Math.PI*5, r = .15 + t*.9; pts.push(new THREE.Vector3(.2 + Math.cos(a)*r, .85 + t*3.2, -1.3 + Math.sin(a)*r*.6)); }
+  const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, .014, 6, false);
+  thread = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color }));
+  geo.setDrawRange(0, 0); threadT0 = clock; scene.add(thread);
+}
+
+/* ---------- Render loop ---------- */
+let clock = 0, last = performance.now();
+const tmp = new THREE.Vector3();
+function lerpAngle(a, b, t){ let d = ((b - a + Math.PI) % (Math.PI*2)) - Math.PI; if (d < -Math.PI) d += Math.PI*2; return a + d*t; }
+function frame(now){
+  const dt = Math.min(.05, (now - last) / 1000); last = now; clock += dt;
+  for (const p of ["A","B"]){
+    const f = fig[p], u = f.userData;
+    const k = 1 - Math.exp(-dt * u.speed);
+    f.position.x += (u.tp.x - f.position.x) * k;
+    f.position.z += (u.tp.z - f.position.z) * k;
+    f.position.y += (u.ty - f.position.y) * k;
+    f.rotation.y = lerpAngle(f.rotation.y, u.tr, 1 - Math.exp(-dt*4));
+    u.mat.opacity += (u.to - u.mat.opacity) * (1 - Math.exp(-dt*2.2));
+    u.faceM.opacity = u.mat.opacity;
+    if (!reduce) f.children[0].scale.y = 1 + Math.sin(clock*1.6 + (p === "A" ? 0 : 1.3)) * .012;
+  }
+  doorHinge.rotation.y += (doorTarget - doorHinge.rotation.y) * (1 - Math.exp(-dt*2.5));
+  lamp.color.lerp(lampTarget, 1 - Math.exp(-dt*1.5));
+  bulb.material.color.copy(lamp.color).lerp(new THREE.Color(0xffffff), .4);
+  scene.fog.color.copy(NIGHT).lerp(lamp.color, .04);
+
+  // key drop
+  if (anim.keyT0 >= 0){
+    const e = clock - anim.keyT0;
+    const start = fig.A.position.clone().add(new THREE.Vector3(.35, 1.0, -.2));
+    if (anim.keyHard){
+      const f = Math.min(1, e / .42);
+      key.position.lerpVectors(start, KEY_REST, f);
+      key.position.y = THREE.MathUtils.lerp(start.y, KEY_REST.y, f*f);
+      if (f >= 1){ const b = e - .42; key.position.y = KEY_REST.y + Math.abs(Math.sin(b*14)) * .06 * Math.exp(-b*6); key.rotation.y = Math.sin(b*20) * .4 * Math.exp(-b*5); }
+      if (f >= 1 && anim.shakeUntil < clock && e < .5) anim.shakeUntil = clock + .25;
+    } else {
+      const f = Math.min(1, e / 1.4), s = f*f*(3 - 2*f);
+      key.position.lerpVectors(start, KEY_REST, s);
+    }
+  }
+  // phone buzz
+  if (clock < anim.buzzUntil && screen.visible){
+    phone.position.x = PHONE_REST.x + Math.sin(clock*95) * .007;
+    screenM.color.setHSL(.61, .8, .62 + Math.sin(clock*18)*.12);
+  } else { phone.position.x = PHONE_REST.x; screenM.color.setHSL(.61, .6, .45); }
+
+  // halos on game-4 objects
+  const pulse = .75 + Math.sin(clock*2) * .15;
+  keyHalo.position.copy(key.position).add(tmp.set(.05,.04,0));
+  letterHalo.position.copy(letter.position).add(tmp.set(0,.04,0));
+  keyHalo.material.opacity = pulse * (anim.highlight === "key" ? 1.6 : .8);
+  letterHalo.material.opacity = pulse * (anim.highlight === "letter" ? 1.6 : .8);
+  const hs = anim.highlight === "key" ? .9 : .55; keyHalo.scale.set(hs,hs,1);
+  const ls = anim.highlight === "letter" ? 1.1 : .7; letterHalo.scale.set(ls,ls,1);
+  screenM.color.multiplyScalar(anim.highlight === "phone" ? 1.6 : 1);
+  door.material.emissive.setHex(anim.highlight === "door" ? 0x3a3020 : 0x000000);
+
+  // dust
+  if (!reduce){ const a = dust.geometry.attributes.position; for (let i=0;i<a.count;i++){ let y = a.getY(i) + dt*.04; if (y > 3) y = 0; a.setY(i, y); } a.needsUpdate = true; }
+
+  // camera
+  const c = CAM[camKey], ck = 1 - Math.exp(-dt*1.8);
+  camera.position.x += (c.p[0] - camera.position.x) * ck;
+  camera.position.y += (c.p[1] - camera.position.y) * ck;
+  camera.position.z += (c.p[2] - camera.position.z) * ck;
+  camLook.x += (c.l[0] - camLook.x) * ck; camLook.y += (c.l[1] - camLook.y) * ck; camLook.z += (c.l[2] - camLook.z) * ck;
+  camera.lookAt(camLook);
+  if (!reduce && clock < anim.shakeUntil){ camera.position.x += (Math.random()-.5)*.03; camera.position.y += (Math.random()-.5)*.03; }
+
+  if (thread){ const n = thread.geometry.index.count; thread.geometry.setDrawRange(0, Math.floor(Math.min(1, (clock - threadT0)/3.5) * n)); }
+
+  renderer.render(scene, camera);
+  placeBubbles();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Bubbles ---------- */
+const bub = { A:document.getElementById("bubA"), B:document.getElementById("bubB") };
+function placeBubbles(){
+  const w = innerWidth, h = innerHeight;
+  for (const p of ["A","B"]){
+    const el = bub[p]; if (!el.classList.contains("on")) continue;
+    tmp.copy(fig[p].position); tmp.y += 1.85; tmp.project(camera);
+    let x = (tmp.x + 1)/2 * w, y = (1 - tmp.y)/2 * h;
+    const half = Math.min(150, el.offsetWidth/2) + 12;
+    x = Math.max(half, Math.min(w - half, x)); y = Math.max(el.offsetHeight + 70, y);
+    el.style.left = x + "px"; el.style.top = y + "px";
+  }
+}
+function say(p, text){ bub[p].querySelector("span").textContent = text; bub[p].classList.add("on"); placeBubbles(); }
+function hush(){ bub.A.classList.remove("on"); bub.B.classList.remove("on"); }
+
+/* ---------- Layout: keep the scene centered beside the panel ---------- */
+const panel = document.getElementById("panel");
+const overlay = document.getElementById("overlay");
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  if (!panel.hidden){
+    const r = panel.getBoundingClientRect();
+    if (w > 760){ const pw = Math.min(r.width + 16, w*.45); camera.aspect = (w + pw)/h; camera.setViewOffset(w + pw, h, pw, 0, w, h); }
+    else { const ph = Math.min(r.height, h*.5); camera.aspect = w/(h + ph); camera.setViewOffset(w, h + ph, 0, 0, w, h); }
+  } else { camera.aspect = w/h; camera.clearViewOffset(); }
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+
+/* ---------- Replay ---------- */
+let replayId = 0, skipping = false;
+const wait = ms => new Promise(r => setTimeout(r, skipping ? 0 : ms));
+const caption = document.getElementById("caption");
+function logAdd(html, cls = ""){ S.log.push({ html, cls }); const ul = document.getElementById("log"); if (ul){ const li = document.createElement("li"); if (cls) li.className = cls; li.innerHTML = html; ul.appendChild(li); panel.scrollTop = panel.scrollHeight; } }
+const cueHTML = (p, text) => `<span class="who ${P[p].cls}">${P[p].name.toUpperCase()}</span><span class="say">${text}</span>`;
+
+async function playReplay(){
+  const id = ++replayId; skipping = false;
+  const r = S.res; S.log = [];
+  setPhase("replay");
+  hush(); resetFigures(); applyObjects(r.o, true); setHeat(0); camKey = "wide";
+  await wait(700); if (id !== replayId) return;
+  for (const b of r.beats){
+    const m = SCRIPT[b.i];
+    caption.textContent = `${m.time} · ${m.title}`; delete caption.dataset.off;
+    logAdd(`${m.time} · ${m.title}`, "beat");
+    ["A","B"].forEach(p => { if (b[p].gesture === "closer") sep[p] = Math.max(.45, sep[p] - .5); if (b[p].gesture === "away") sep[p] += .25; });
+    placePair({ A:b.A.gesture === "away", B:b.B.gesture === "away" });
+    ["A","B"].forEach(p => { if (b[p].gesture) logAdd(`${P[p].name} ${GESTURE[b[p].gesture].past}.`, "act"); });
+    if (b.i === 0){ anim.keyHard = !r.o.key; anim.keyT0 = clock; logAdd(r.o.key ? "Gold sets the key down quietly." : "Gold drops the key in the bowl. It clatters.", "act"); }
+    if (b.i === 1){
+      if (!r.o.phone){ anim.buzzUntil = clock + 1.8; logAdd("The phone buzzes on the table. Work, again.", "act"); }
+      if (r.o.letter) logAdd("The letter is already open on the table.", "act");
+    }
+    setHeat(b.heat);
+    await wait(1100); if (id !== replayId) return;
+    say("A", b.A.text); logAdd(cueHTML("A", b.A.text));
+    await wait(2700); if (id !== replayId) return;
+    bub.A.classList.remove("on");
+    say("B", b.B.text); logAdd(cueHTML("B", b.B.text));
+    await wait(2700); if (id !== replayId) return;
+    hush();
+  }
+  caption.textContent = "Afterwards";
+  await endingAction(r, id); if (id !== replayId) return;
+  caption.dataset.off = "";
+  setPhase("verdict");
+}
+
+async function endingAction(r, id){
+  const A = fig.A.userData, B = fig.B.userData;
+  if (r.ending === "sit"){
+    A.tp.set(-1.0, 0, -1.3); B.tp.set(1.4, 0, -1.3); A.ty = B.ty = -.3;
+    A.tr = Math.PI/2; B.tr = -Math.PI/2;
+    logAdd("You both sit down at the table.", "act");
+  } else if (r.ending === "close"){
+    sep.A = sep.B = .45; placePair(); logAdd("You end up standing close.", "act");
+  } else if (r.ending === "apart"){
+    A.tp.set(-3.0, 0, .9); A.tr = -Math.PI*.4;
+    B.tp.set(2.7, 0, -1.9); B.tr = Math.PI;
+    logAdd("You move to opposite ends of the kitchen.", "act");
+  } else {
+    const L = fig[r.leaver].userData, Ostay = fig[other(r.leaver)].userData;
+    L.speed = 1.6; L.tp.set(-2.9, 0, -2.2); L.tr = Math.PI;
+    Ostay.tr = faceTo(fig[other(r.leaver)].position, new THREE.Vector3(.2,0,-1.3));
+    logAdd(`${P[r.leaver].name} walks to the door.`, "act");
+    await wait(2200); if (id !== replayId) return;
+    doorTarget = 1.25; await wait(700); if (id !== replayId) return;
+    L.tp.set(-2.9, 0, -3.9); L.to = 0;
+  }
+  setHeat(r.heat);
+  await wait(2800);
+}
+
+/* ---------- UI rendering ---------- */
+const smudge = t => t.replace(/[A-Za-z]/g, (c, i) => "mnuwoe"[i % 6]);
+function chip(p, i, val, label, cls = ""){
+  const cur = encode(S.edits[p][i]);
+  const id = `${p}-m${i}-${val.replace(":","-")}`;
+  return `<label class="chip ${cls}" for="${id}"${val.startsWith("object:") ? ` data-obj="${val.slice(7)}"` : ""}><input type="radio" id="${id}" name="${p}-m${i}" value="${val}"${cur === val ? " checked" : ""}>${label}</label>`;
+}
+function momentHTML(p, i){
+  const m = SCRIPT[i], o = other(p), e = S.edits[p][i];
+  const li = e.kind === "line" ? e.v : 0;
+  return `<section class="moment">
+    <div class="mhead"><span class="mtime">${m.time}</span><h3>${m.title}</h3></div>
+    <p class="cue"><span class="who ${P[p].cls}">YOU</span><span class="say${li ? " edited" : ""}" id="cue-${p}-${i}">${m[p].line[li]}</span></p>
+    <p class="cue"><span class="who ${P[o].cls}">${P[o].name.toUpperCase()}</span><span class="say"><span class="smudge" aria-hidden="true">${smudge(m[o].line[0])}</span><span class="sr">${P[o].name}’s line is hidden from you.</span></span></p>
+    <p class="thought">${m[p].thought}<small>Only you see this</small></p>
+    <fieldset><legend class="sr">Your one change for ${m.title}</legend>
+      <div class="group">${chip(p,i,"keep","Leave it as it was")}</div>
+      <div class="group"><span class="glabel">Say instead</span>${chip(p,i,"line:1","“" + m[p].line[1] + "”","line")}${chip(p,i,"line:2","“" + m[p].line[2] + "”","line")}</div>
+      <div class="group"><span class="glabel">Do</span>${chip(p,i,"gesture:closer","Step closer")}${chip(p,i,"gesture:away","Turn away")}</div>
+      <div class="group"><span class="glabel">Change the room</span>${OBJ_KEYS.map(k => chip(p,i,"object:"+k,(OBJ[k].carry ? '<i class="glowdot" title="Glowing since The Weight of Things"></i>' : "") + OBJ[k].alt)).join("")}</div>
+    </fieldset>
+  </section>`;
+}
+function syncObjectLocks(p){
+  OBJ_KEYS.forEach(k => {
+    for (let i=0;i<3;i++){
+      const used = S.edits[p].some((e, j) => j !== i && e.kind === "object" && e.v === k);
+      const inp = document.getElementById(`${p}-m${i}-object-${k}`); if (inp) inp.disabled = used;
+    }
+  });
+}
+
+function renderPanel(){
+  const r = S.res;
+  if (S.phase === "edit"){
+    const p = S.turn;
+    panel.className = "p-" + p;
+    panel.innerHTML = `<div class="pin">
+      <div class="turnline"></div>
+      <span class="eyebrow">Round ${S.round} of ${MAX_ROUNDS} · ${P[p].name}’s eyes only</span>
+      <h2>Change one thing in each moment</h2>
+      <p class="lede">You see the fight from ${P[p].name}’s side: your lines and what you were thinking. ${P[other(p)].name}’s lines are smudged. Pick one change per moment, or leave it. Room changes rewrite the whole memory. Glowing objects came back from The Weight of Things.</p>
+      ${[0,1,2].map(i => momentHTML(p, i)).join("")}
+    </div>
+    <div class="pfoot"><button class="btn primary" data-act="seal">Seal ${P[p].name}’s edits</button></div>`;
+    syncObjectLocks(p);
+  } else if (S.phase === "replay"){
+    panel.className = "";
+    panel.innerHTML = `<div class="pin">
+      <span class="eyebrow">Replay ${S.round} of ${MAX_ROUNDS} · both edits combined</span>
+      <h2>Watch it together</h2>
+      <ul class="log" id="log">${S.log.map(l => `<li class="${l.cls}">${l.html}</li>`).join("")}</ul>
+    </div>
+    <div class="pfoot"><button class="btn quiet" data-act="skip">Skip to the end</button></div>`;
+  } else if (S.phase === "verdict"){
+    const t = endingText(r);
+    const changes = [];
+    ["A","B"].forEach(p => S.edits[p].forEach((e, i) => {
+      if (e.kind === "keep") return;
+      const what = e.kind === "line" ? `said “${SCRIPT[i][p].line[e.v]}”` : e.kind === "gesture" ? GESTURE[e.v].past : OBJ[e.v].past;
+      changes.push(`<li><span class="who ${P[p].cls}">${P[p].name.toUpperCase()}</span><span class="what">${SCRIPT[i].title}: ${what}</span></li>`);
+    }));
+    const pos = Math.min(1, Math.max(0, (r.heat + 3) / 8)) * 100;
+    const last = S.round >= MAX_ROUNDS;
+    panel.className = "";
+    panel.innerHTML = `<div class="pin ending">
+      <span class="eyebrow">Replay ${S.round} of ${MAX_ROUNDS}</span>
+      <h2>${t.title}</h2>
+      <p>${t.body}</p>
+      ${r.shared.length ? `<p class="note">You both reached for the ${r.shared.join(" and the ")}.</p>` : ""}
+      <div class="meter" aria-label="How the room felt"><span>warm</span><span class="bar"><i style="left:calc(${pos}% - 1px)"></i></span><span>cold</span></div>
+      <div><span class="glabel eyebrow">What each of you changed</span>
+      ${changes.length ? `<ul class="reveal">${changes.join("")}</ul>` : `<p class="note">Neither of you changed anything. This is how it happened.</p>`}</div>
+      <p class="note">The memory clears when you both press “at peace” on the same replay. A hard ending counts if you both accept it.</p>
+      <div class="peace">
+        ${["A","B"].map(p => `<button class="p-${p}" data-act="peace" data-p="${p}" aria-pressed="${S.peace[p]}"><span class="who ${P[p].cls}">${P[p].name.toUpperCase()}</span><strong>At peace</strong></button>`).join("")}
+      </div>
+    </div>
+    <div class="pfoot">
+      ${last ? `<button class="btn" data-act="blur">Let the memory blur</button>` : `<button class="btn" data-act="change">Change something · round ${S.round + 1}</button>`}
+      <button class="btn quiet" data-act="again">Watch again</button>
+    </div>`;
+  }
+}
+
+function renderOverlay(){
+  let html = "";
+  if (S.phase === "intro"){
+    html = `<div class="card" role="dialog" aria-labelledby="t-intro">
+      <span class="eyebrow">Act III · The Core · two players, one screen</span>
+      <h2 id="t-intro">A kitchen, 11:42 pm</h2>
+      <p class="big">A late train, nine missed calls, and a letter nobody mentioned. Each of you sees the fight through one person’s eyes.</p>
+      <ol class="steps">
+        <li>Gold makes up to three changes in secret while Blue looks away.</li>
+        <li>Blue does the same while Gold looks away.</li>
+        <li>Watch the replay with every change combined.</li>
+        <li>If you both press “at peace” on the same replay, the memory clears. You get up to ${MAX_ROUNDS} replays.</li>
+      </ol>
+      <div class="carry"><span>Glowing since game 4:</span><span class="tag"><i class="glowdot"></i>key</span><span class="tag"><i class="glowdot"></i>letter</span></div>
+      <div class="row"><button class="btn primary" data-act="start">Begin with Gold’s eyes</button></div>
+    </div>`;
+  } else if (S.phase === "cover"){
+    const p = S.turn;
+    html = `<div class="card p-${p}" role="dialog" aria-labelledby="t-cover">
+      <div class="turnline"></div>
+      <span class="eyebrow">Round ${S.round} of ${MAX_ROUNDS}</span>
+      <h2 id="t-cover">${P[p].name}’s eyes only</h2>
+      <p class="big">${P[other(p)].name}, look away until ${P[p].name} seals their edits.${S.round > 1 ? " Your choices from last round are kept, so you can adjust them." : ""}</p>
+      <div class="row"><button class="btn primary" data-act="open">I’m ${P[p].name}. Show my side</button></div>
+    </div>`;
+  } else if (S.phase === "ready"){
+    html = `<div class="card" role="dialog" aria-labelledby="t-ready">
+      <span class="eyebrow">Round ${S.round} of ${MAX_ROUNDS}</span>
+      <h2 id="t-ready">Both edits are sealed</h2>
+      <p class="big">Look together now. The memory replays with every change from both of you at once.</p>
+      <div class="row"><button class="btn primary" data-act="play">Replay the memory</button></div>
+    </div>`;
+  } else if (S.phase === "cleared" || S.phase === "blurred"){
+    const r = S.res, cleared = S.phase === "cleared";
+    const json = JSON.stringify({ game:11, clarity:null, atPeace:cleared, replays:S.round, ending:r.ending, color:cleared ? "silver" : "grey", frayed:!cleared }, null, 2);
+    html = `<div class="card" role="dialog" aria-labelledby="t-end">
+      <span class="eyebrow">${cleared ? "Memory cleared" : "Memory blurred"} · after ${S.round} ${S.round === 1 ? "replay" : "replays"}</span>
+      <h2 id="t-end">${cleared ? "A silver thread rises" : "A grey thread, frayed"}</h2>
+      <p class="big">${cleared ? `You settled on “${endingText(r).title.toLowerCase()}” together. The thread will be waiting in the Forgetting Garden.` : "The fight never settled. The memory keeps its edges soft, and the thread comes out thin. It still goes to the garden."}</p>
+      <pre class="json" aria-label="Thread written to the session">${json}</pre>
+      <div class="row"><button class="btn primary" data-act="restart">Dive into it again</button></div>
+    </div>`;
+  }
+  overlay.innerHTML = html;
+  overlay.hidden = !html;
+  const first = overlay.querySelector("button"); if (first) first.focus({ preventScroll:true });
+}
+
+function setPhase(ph){
+  S.phase = ph;
+  const showPanel = ["edit","replay","verdict"].includes(ph);
+  panel.hidden = !showPanel;
+  canvas.classList.toggle("veiled", ["cover","ready","intro"].includes(ph));
+  canvas.classList.toggle("blurred", ph === "blurred");
+  if (ph === "edit"){
+    camKey = S.turn; caption.dataset.off = "";
+    resetFigures(); applyObjects(objectsFrom({ [S.turn]:S.edits[S.turn], [other(S.turn)]:[] }).o, true); setHeat(0);
+  }
+  if (["cover","ready","intro"].includes(ph)){ camKey = "wide"; hush(); caption.dataset.off = ""; resetFigures(); applyObjects({}, true); setHeat(0); }
+  if (ph === "cleared" || ph === "blurred"){ camKey = "up"; hush(); }
+  renderPanel(); renderOverlay();
+  panel.scrollTop = 0;
+  requestAnimationFrame(resize);
+}
+
+/* ---------- Events ---------- */
+panel.addEventListener("change", ev => {
+  const t = ev.target; const m = t.name && t.name.match(/^([AB])-m(\d)$/); if (!m) return;
+  const p = m[1], i = Number(m[2]);
+  S.edits[p][i] = decode(t.value);
+  const e = S.edits[p][i], li = e.kind === "line" ? e.v : 0;
+  const cue = document.getElementById(`cue-${p}-${i}`);
+  cue.textContent = SCRIPT[i][p].line[li]; cue.classList.toggle("edited", li > 0);
+  syncObjectLocks(p);
+  applyObjects(objectsFrom({ [p]:S.edits[p], [other(p)]:[] }).o, false);
+});
+const hl = ev => { const c = ev.target.closest && ev.target.closest("[data-obj]"); anim.highlight = c ? c.dataset.obj : null; };
+panel.addEventListener("pointerover", hl); panel.addEventListener("focusin", hl);
+panel.addEventListener("pointerleave", () => anim.highlight = null);
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act;
+  if (act === "start"){ S.turn = "A"; setPhase("cover"); }
+  else if (act === "open") setPhase("edit");
+  else if (act === "seal"){ if (S.turn === "A"){ S.turn = "B"; setPhase("cover"); } else setPhase("ready"); }
+  else if (act === "play"){ S.res = compute(S.edits); S.peace = { A:false, B:false }; playReplay(); }
+  else if (act === "skip"){ skipping = true; }
+  else if (act === "again"){ S.peace = { A:false, B:false }; playReplay(); }
+  else if (act === "change"){ S.round++; S.peace = { A:false, B:false }; S.turn = "A"; setPhase("cover"); }
+  else if (act === "peace"){
+    const p = b.dataset.p; S.peace[p] = !S.peace[p]; b.setAttribute("aria-pressed", String(S.peace[p]));
+    if (S.peace.A && S.peace.B){ setTimeout(() => { releaseThread(0xe6eaf4); setPhase("cleared"); }, 650); }
+  }
+  else if (act === "blur"){ releaseThread(0x6b7080); setPhase("blurred"); }
+  else if (act === "restart"){
+    if (thread){ scene.remove(thread); thread = null; }
+    replayId++; S.round = 1; S.edits = { A:keepAll(), B:keepAll() }; S.peace = { A:false, B:false }; S.res = null; setPhase("intro");
+  }
+});
+
+resetFigures(); applyObjects({}, true);
+setPhase("intro");
+resize();
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
