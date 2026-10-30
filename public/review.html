@@ -1,49 +1,196 @@
 <!doctype html>
 <html lang="en">
 <head>
- </head> <meta charset="utf-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Pensieve Prototypes Review</title>
   <style>
-    :root{--</style>bg:#0f1020;--card:#1a1d35;--line:#3a3f66;--text:#eef0ff;--muted:#aeb4df;--accent:#8be9ff}
+    :root{
+      --bg:#0f1020;
+      --card:#1a1d35;
+      --line:#3a3f66;
+      --text:#eef0ff;
+      --muted:#aeb4df;
+      --accent:#8be9ff;
+      --accent-soft:#8be9ff33;
+    }
     *{box-sizing:border-box}
-    body{margin:0;font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at 30% -20%,#2a2f59,var(--bg));color:var(--text)}
-    main{max-width:860px;margin:40px auto;padding:0 16px}
-    .card{background:color-mix(in oklab,var(--card) 90%,black);border:1px solid var(--line);border-radius:14px;padding:16px}
-    h1{margin:0 0 6px;font-size:30px}
-    p{margin:0 0 14px;color:var(--muted)}
+    body{
+      margin:0;
+      font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:radial-gradient(circle at 30% -20%,#2a2f59,var(--bg));
+      color:var(--text);
+    }
+    main{max-width:980px;margin:40px auto;padding:0 16px}
+    .card{
+      background:color-mix(in oklab,var(--card) 90%,black);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:16px;
+    }
+    .top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    h1{margin:0;font-size:30px;line-height:1.15}
+    p{margin:8px 0 14px;color:var(--muted)}
+    .hub{
+      display:inline-block;
+      padding:8px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      color:var(--text);
+      text-decoration:none;
+      white-space:nowrap;
+    }
+    .hub:hover{border-color:#8ea0ff}
+
     ul{margin:0;padding-left:18px}
     li{margin:6px 0}
-    a{color:var(--accent);text-decoration:none}
-    a:hover{text-decoration:underline}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-    .hub{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--text);text-decoration:none}
-    .hub:hover{border-color:#8ea0ff}
+    a.memory{
+      color:var(--accent);
+      text-decoration:none;
+      border-bottom:1px dashed transparent;
+      transition:border-color .15s ease, color .15s ease;
+    }
+    a.memory:hover{border-color:var(--accent)}
+    a.memory.active{
+      color:#c8f4ff;
+      border-color:#c8f4ff;
+    }
+
+    .viewer{
+      margin-top:16px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      background:#0a0b18;
+    }
+    .viewer[hidden]{display:none}
+    .viewer-bar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      border-bottom:1px solid var(--line);
+      background:var(--accent-soft);
+      font-size:13px;
+    }
+    .viewer-title{color:var(--text);font-weight:600}
+    .viewer-actions{display:flex;gap:8px;align-items:center}
+    .btn{
+      appearance:none;
+      border:1px solid var(--line);
+      background:#12162d;
+      color:var(--text);
+      border-radius:8px;
+      padding:5px 9px;
+      font:inherit;
+      font-size:12px;
+      cursor:pointer;
+      text-decoration:none;
+    }
+    .btn:hover{border-color:#8ea0ff}
+    iframe{
+      display:block;
+      width:100%;
+      height:min(70vh,760px);
+      border:0;
+      background:#000;
+    }
   </style>
 </head>
-<body></body>
+<body>
   <main>
-    <</main>div class="card">
+    <div class="card">
       <div class="top">
         <h1>Pensieve: Prototype Review</h1>
         <a class="hub" href="/index.html">← Back to Hub</a>
       </div>
-      <p>Quick links to</p> all twelve minigame prototype pages.</p>
-      <ul>
-        <li><a href="/pensieve/01-echo-tide.html">01 · Echo Tide</a></li>
-        <li><a href="/pensieve/02-two-rooms-one-room.html">02 · Two Rooms, One Room</a></li>
-        <li><a href="/pensieve/03-ink-drift.html">03 · Ink Drift</a></li>
-        <li><a href="/pensieve/04-weight-of-things.html">04 · The Weight of Things</a></li>
-        <li><a href="/pensieve/05-lantern-keeper.html">05 · Lantern Keeper</a></li>
-        <li><a href="/pensieve/06-mirror-walk.html">06 · Mirror Walk</a></li>
-        <li><a href="/pensieve/07-falling-upward.html">07 · Falling Upward</a></li>
-        <li><a href="/pensieve/08-the-unspooling.html">08 · The Unspooling</a></li>
-        <li><a href="/pensieve/09-faces-in-fog.html">09 · Faces in Fog</a></li>
-        <li><a href="/pensieve/10-the-lullaby.html">10 · The Lullaby</a></li>
-        <li><a href="/pensieve/11-the-argument.html">11 · The Argument</a></li>
-        <li><a href="/pensieve/12-forgetting-garden.html">12 · The Forgetting Garden</a></li>
+
+      <p>Click any memory to toggle an in-page preview. Click the same link again to close it.</p>
+
+      <ul id="memoryList">
+        <li><a class="memory" href="/pensieve/01-echo-tide.html">01 · Echo Tide</a></li>
+        <li><a class="memory" href="/pensieve/02-two-rooms-one-room.html">02 · Two Rooms, One Room</a></li>
+        <li><a class="memory" href="/pensieve/03-ink-drift.html">03 · Ink Drift</a></li>
+        <li><a class="memory" href="/pensieve/04-weight-of-things.html">04 · The Weight of Things</a></li>
+        <li><a class="memory" href="/pensieve/05-lantern-keeper.html">05 · Lantern Keeper</a></li>
+        <li><a class="memory" href="/pensieve/06-mirror-walk.html">06 · Mirror Walk</a></li>
+        <li><a class="memory" href="/pensieve/07-falling-upward.html">07 · Falling Upward</a></li>
+        <li><a class="memory" href="/pensieve/08-the-unspooling.html">08 · The Unspooling</a></li>
+        <li><a class="memory" href="/pensieve/09-faces-in-fog.html">09 · Faces in Fog</a></li>
+        <li><a class="memory" href="/pensieve/10-the-lullaby.html">10 · The Lullaby</a></li>
+        <li><a class="memory" href="/pensieve/11-the-argument.html">11 · The Argument</a></li>
+        <li><a class="memory" href="/pensieve/12-forgetting-garden.html">12 · The Forgetting Garden</a></li>
       </ul>
+
+      <section id="viewer" class="viewer" hidden>
+        <div class="viewer-bar">
+          <span id="viewerTitle" class="viewer-title">Preview</span>
+          <div class="viewer-actions">
+            <a id="openTab" class="btn" href="#" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+            <button id="closeViewer" class="btn" type="button">Close</button>
+          </div>
+        </div>
+        <iframe id="previewFrame" title="Pensieve memory preview" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </section>
     </div>
   </main>
+
+  <script>
+    (function () {
+      const list = document.getElementById('memoryList');
+      const viewer = document.getElementById('viewer');
+      const frame = document.getElementById('previewFrame');
+      const viewerTitle = document.getElementById('viewerTitle');
+      const openTab = document.getElementById('openTab');
+      const closeViewer = document.getElementById('closeViewer');
+
+      let activeLink = null;
+
+      function closePreview() {
+        if (activeLink) activeLink.classList.remove('active');
+        activeLink = null;
+        viewer.hidden = true;
+        frame.removeAttribute('src');
+        openTab.setAttribute('href', '#');
+        viewerTitle.textContent = 'Preview';
+      }
+
+      function openPreview(link) {
+        const href = link.getAttribute('href');
+        const label = (link.textContent || 'Preview').trim();
+
+        if (activeLink === link) {
+          closePreview();
+          return;
+        }
+
+        if (activeLink) activeLink.classList.remove('active');
+        activeLink = link;
+        activeLink.classList.add('active');
+
+        viewer.hidden = false;
+        frame.src = href;
+        openTab.href = href;
+        viewerTitle.textContent = label;
+      }
+
+      list.addEventListener('click', function (event) {
+        const link = event.target.closest('a.memory');
+        if (!link) return;
+        event.preventDefault();
+        openPreview(link);
+      });
+
+      closeViewer.addEventListener('click', closePreview);
+    })();
+  </script>
 </body>
 </html>

@@ -56,6 +56,8 @@ body{font-family:var(--mono);font-size:12px;font-weight:300;
   background:radial-gradient(ellipse at center,rgba(14,10,28,.35),rgba(14,10,28,.75))}
 .card{max-width:440px;width:100%;background:var(--veil);border:1px solid var(--line);padding:28px 26px;display:flex;flex-direction:column;gap:14px;
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.card-preview{width:100%;aspect-ratio:16/10;border:1px solid var(--line);overflow:hidden;background:rgba(14,10,28,.35)}
+.card-preview iframe{width:100%;height:100%;border:0;display:block}
 .card h1{margin:0;font-family:var(--display);font-weight:400;font-size:52px;line-height:.95;text-wrap:balance}
 .card h1 em{color:var(--rose)}
 .card p{margin:0;font-size:12px;line-height:1.7;color:var(--moon)}
@@ -180,6 +182,9 @@ body.talking .touch, body.talking .hint{display:none!important}
 
 <div class="overlay" id="start">
   <div class="card">
+    <div class="card-preview">
+      <iframe src="/visualizations/particle-triangle-standalone.html" title="Particle triangle visualization" loading="lazy"></iframe>
+    </div>
     <h1>Documenting <em>Pensieve</em></h1>
     <p>A digital pensieve should feel magical and trustworthy: people step into memories, inspect details together, and come back with clearer understanding. This prototype maps that journey across interactive memory scenes.</p>
     <div class="keys" id="keys">

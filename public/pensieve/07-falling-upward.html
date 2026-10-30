@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090c1b">
+  <meta name="description" content="Falling Upward — a two-player dream about opposite gravity, a silver cord, and learning to hold on. Pensieve, memory 07.">
+  <title>Falling Upward · Pensieve 07</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='22' fill='%23090c1b'/%3E%3Cpath d='M20 54Q40 4 60 26M20 54Q40 76 60 26' stroke='%23d0c8ed' stroke-width='2' fill='none'/%3E%3Ccircle cx='20' cy='54' r='7' fill='%23f2cd93'/%3E%3Ccircle cx='60' cy='26' r='7' fill='%239ad4f5'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:dark;--ink:#090c1b;--paper:#f1efef;--muted:#aaaabd;--quiet:#73788e;--line:#c6c6e520;--lavender:#c5baed;--gold:#f3c990;--blue:#99d8f7;--danger:#eeb39e;--safe:#b4d9be;--ui:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--ink)}body{font-family:var(--ui);color:var(--paper);font-size:14px;-webkit-font-smoothing:antialiased;overscroll-behavior:none}button{font:inherit;color:inherit;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}button:disabled{cursor:wait;opacity:.45}button:focus-visible{outline:2px solid var(--gold);outline-offset:5px}button,dialog{touch-action:manipulation}[hidden]{display:none!important}h1,h2,h3,p{margin:0}svg{display:block}button svg{pointer-events:none}#world{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none}.atmosphere{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 54% 44%,transparent 28%,#05071180 100%)}.edge-shade{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,#070914a0,transparent 20%,transparent 65%,#070914d9)}.menu-shade{position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,#090c1bf2 0%,#090c1bda 24%,#090c1b50 46%,transparent 70%);transition:opacity .9s}.playing .menu-shade{opacity:0}
+    .topbar{position:fixed;inset:0 0 auto;height:100px;padding:28px 42px;display:flex;align-items:center;justify-content:space-between;z-index:10;pointer-events:none}.identity,.top-actions{display:flex;align-items:center;pointer-events:auto}.identity{gap:15px}.brand-symbol{width:32px;height:32px;color:var(--lavender)}.brand{font-size:12px;letter-spacing:.24em;font-weight:600}.brand-note{display:block;letter-spacing:.1em;font-size:9px;color:var(--quiet);margin-top:5px}.brand-rule{height:25px;width:1px;background:var(--line);margin:0 4px 0 10px}.memory-number{font-family:Georgia,serif;color:var(--lavender);font-size:27px;font-style:italic}.top-actions{gap:8px}.icon-button{height:38px;min-width:38px;border-radius:50%;display:grid;place-items:center;background:#14172599;border:1px solid #c9c3ed23;color:#d0cce1;transition:background .2s,border-color .2s}.icon-button:hover{background:#272c43;border-color:#c9c3ed55}.icon-button svg{width:16px;height:16px}.sound-label{display:none}.session-label{font-size:10px;letter-spacing:.14em;color:var(--muted);margin-right:15px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    #menuScreen{position:fixed;inset:100px 0 0;z-index:5;display:flex;align-items:center;padding:0 7.2vw 75px}.hero{max-width:470px;position:relative}.eyebrow{color:var(--lavender);font-size:10px;letter-spacing:.22em;line-height:1.7;text-transform:uppercase;display:flex;align-items:center;gap:10px}.eyebrow::before{content:"";height:5px;width:5px;background:var(--lavender);border-radius:50%;box-shadow:0 0 16px #c5baed66}.hero h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(68px,7.8vw,114px);line-height:.97;letter-spacing:-.055em;margin:27px 0 25px}.hero h1 em{font-weight:400;color:var(--lavender);letter-spacing:-.06em}.hero-copy{font-size:14px;line-height:1.9;letter-spacing:.015em;color:#b6b6c8;max-width:325px}.hero-copy strong{color:#dad7e6;font-weight:400}.hero-divider{height:1px;width:72px;background:linear-gradient(90deg,#d6cce977,transparent);margin:27px 0}.mode-picker{display:flex;gap:9px;margin:0 0 14px}.mode-choice{padding:12px 17px;border:1px solid var(--line);background:#0d101db3;border-radius:7px;text-align:left;transition:border-color .2s,background .2s;min-width:151px}.mode-choice[aria-pressed="true"]{border-color:#bdb1dc85;background:#b5a3e018}.mode-choice:hover{background:#b5a3e022}.mode-choice .mode-title{font-size:12px;color:var(--paper);display:flex;align-items:center;gap:9px}.mode-choice .mode-dot{width:5px;height:5px;border-radius:50%;background:#63637c}.mode-choice[aria-pressed="true"] .mode-dot{background:var(--lavender);box-shadow:0 0 8px #c5baed77}.mode-choice small{display:block;font-size:10px;color:var(--quiet);margin-top:5px;margin-left:14px}.primary-button{display:flex;align-items:center;justify-content:space-between;gap:28px;border:1px solid #e6dbf047;background:#d9cfed;color:#171529;min-height:49px;padding:0 20px;border-radius:6px;font-size:12px;font-weight:600;letter-spacing:.035em;transition:background .2s,transform .2s;min-width:313px}.primary-button:hover{background:#efe7fb;transform:translateY(-1px)}.primary-button svg{width:16px;height:16px}.text-button{background:none;color:var(--muted);border-bottom:1px solid #bfb5dd38;padding:5px 0;font-size:11px}.text-button:hover{color:var(--paper);border-color:var(--lavender)}.resume-line{min-height:29px;margin-top:10px;display:flex;align-items:center;gap:12px}.menu-footnote{font-size:10px;color:#85869c;letter-spacing:.04em;margin-top:20px;display:flex;gap:7px;align-items:center}.tiny-star{color:var(--lavender);font-size:13px}.menu-bottom{position:fixed;bottom:27px;left:42px;right:42px;display:flex;justify-content:space-between;gap:20px;font-size:9px;color:#74798f;letter-spacing:.15em;text-transform:uppercase}.menu-bottom .poem{color:#9a9bb0;text-transform:none;letter-spacing:.04em;font-family:Georgia,serif;font-style:italic;font-size:13px}.load-state{color:#9293aa;font-size:10px;min-height:14px;margin-top:12px}.load-state.error{color:var(--danger);line-height:1.7;max-width:340px}.retry-button{margin-left:10px;background:transparent;color:var(--paper);text-decoration:underline}.best-mark{font-size:10px;color:var(--lavender)}
+    #hud{position:fixed;inset:0;pointer-events:none;z-index:6}.room-panel{position:absolute;top:126px;left:43px;max-width:275px}.room-kicker{font-size:9px;letter-spacing:.2em;color:var(--quiet);text-transform:uppercase}.room-panel h2{font:italic 28px/1.15 Georgia,serif;letter-spacing:-.03em;margin:10px 0 10px;color:#e2dcec}.room-panel p{color:#9a9eb5;font-size:11px;line-height:1.8;max-width:245px}.play-mode{display:inline-flex;align-items:center;gap:8px;margin-top:20px;font-size:9px;letter-spacing:.12em;color:#bcb3d9;padding:8px 10px;border:1px solid #c6c6e51c;border-radius:4px;background:#0b0f1b80;pointer-events:auto}.play-mode kbd{font-size:8px;line-height:13px;min-width:23px;opacity:.8}.checkpoint-rail{position:absolute;right:42px;top:50%;transform:translateY(-50%);margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0}.checkpoint-step{height:52px;display:flex;align-items:center;gap:12px;color:#515a75;font-size:9px;letter-spacing:.15em;position:relative}.checkpoint-step:after{content:"";position:absolute;height:26px;width:1px;background:#c6c6e51a;top:38px;right:11px}.checkpoint-step:last-child:after{display:none}.checkpoint-name{opacity:0;transition:opacity .2s}.checkpoint-step.current .checkpoint-name{opacity:1;color:#aaa6c6}.checkpoint-circle{border-radius:50%;border:1px solid #8c8fa331;width:24px;height:24px;display:grid;place-items:center;letter-spacing:0;background:#0b0f1b99;font-size:9px}.checkpoint-step.current .checkpoint-circle{border-color:#c5baed85;color:#d5c9f4;box-shadow:0 0 20px #a78cde1a}.checkpoint-step.done .checkpoint-circle{color:#bdccce;background:#abc9c316;border-color:#abc9c350}.checkpoint-count{position:absolute;right:42px;bottom:164px;font-size:9px;letter-spacing:.16em;color:var(--quiet)}.checkpoint-count strong{font-weight:400;color:#ddd3f1;font-size:19px;font-family:Georgia,serif;margin-right:7px}
+    .hud-bottom{position:absolute;bottom:27px;left:42px;right:42px;display:grid;grid-template-columns:245px 1fr 245px;gap:28px;align-items:end}.player-card{position:relative;border-top:1px solid #c6c6e526;padding-top:14px;transition:opacity .2s}.player-card.active{border-color:#c5baed75}.player-card.inactive{opacity:.58}.player-card.blue{text-align:right}.player-heading{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.13em}.blue .player-heading{justify-content:flex-end}.player-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px #f3c99088}.blue .player-dot{background:var(--blue);box-shadow:0 0 12px #99d8f788}.player-name{color:var(--gold)}.blue .player-name{color:var(--blue)}.gravity-label{font-size:9px;color:#8f94ac;letter-spacing:.08em;margin-left:auto}.blue .gravity-label{margin-left:0;margin-right:auto;order:-1}.player-status{font-size:9px;color:#8b90a7;line-height:20px;margin:5px 0 8px;letter-spacing:.03em;min-height:20px}.player-controls{display:flex;align-items:center;gap:6px;color:#8b90a7;font-size:9px;white-space:nowrap}.blue .player-controls{justify-content:flex-end}kbd{font:10px/18px var(--ui);display:inline-block;min-width:20px;padding:0 4px;text-align:center;border:1px solid #bec0d429;border-bottom:2px solid #bec0d42c;border-radius:3px;background:#b5b3e207;color:#c3c2d0}.control-spacer{width:5px}.thread-panel{text-align:center;max-width:340px;justify-self:center;width:100%;padding-bottom:1px}.thread-caption{display:flex;align-items:center;justify-content:center;gap:10px;color:#bcb6d3;font-size:9px;letter-spacing:.17em;margin-bottom:11px}.thread-caption .thread-icon{width:21px;height:12px;color:#d0c9e0}.tension-track{height:2px;background:#d0c9e01a;width:144px;margin:0 auto 10px;overflow:hidden;border-radius:4px}.tension-fill{height:100%;background:#d2c8ed;width:100%;transform:scaleX(0);transform-origin:left;transition:background .2s}.strain .tension-fill{background:var(--danger)}.fray-indicators{display:flex;align-items:center;justify-content:center;gap:5px;height:10px;margin-bottom:9px}.fray-indicators span{display:block;height:3px;width:15px;background:#c6c6e52c;border-radius:2px}.fray-indicators span.used{background:var(--danger);box-shadow:0 0 10px #eeb39e44}.hint{font-size:10px;line-height:1.6;color:#858ca8;min-height:32px;max-width:340px;margin:auto}.gate-progress{width:120px;height:3px;background:#c5baed20;margin:10px auto;border-radius:4px;overflow:hidden;opacity:0;transition:opacity .2s}.gate-progress.visible{opacity:1}.gate-progress>div{height:100%;width:100%;background:var(--safe);transform:scaleX(0);transform-origin:left}
+    .player-tag{position:fixed;left:0;top:0;z-index:4;pointer-events:none;transform:translate(-50%,-100%);text-align:center;font-size:9px;letter-spacing:.1em;color:var(--gold);text-shadow:0 2px 10px #000;will-change:left,top}.player-tag.blue{color:var(--blue)}.player-tag>span{display:inline-block;background:#090c1b9c;border:1px solid #f3c9902b;padding:5px 7px;border-radius:4px}.player-tag.blue>span{border-color:#99d8f72b}.player-tag.active>span{box-shadow:0 0 16px #c5baed15}.player-tag .tag-anchor{display:block;color:#b6b9cc;font-size:7px;letter-spacing:.15em;margin-top:3px}.notice{position:fixed;top:108px;left:50%;transform:translate(-50%,-7px);background:#101527dd;border:1px solid #c5baed36;border-radius:7px;padding:12px 20px;color:#e5ddf7;font-size:11px;letter-spacing:.04em;z-index:16;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;max-width:min(520px,85vw);text-align:center;line-height:1.7;backdrop-filter:blur(14px)}.notice.visible{opacity:1;transform:translate(-50%,0)}#rewindVeil{position:fixed;inset:0;pointer-events:none;background:#d1c4ed;opacity:0;z-index:18;transition:opacity .6s}.rewinding #rewindVeil{opacity:.2}
+    .touch-controls{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:20px;right:20px;display:none;justify-content:space-between;align-items:end;z-index:8;pointer-events:none;gap:20px}.touch-group{display:flex;gap:9px;pointer-events:auto}.touch-button{width:55px;height:55px;border-radius:16px;border:1px solid #bfc6eb3b;background:#131a32c9;color:#d6daef;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;backdrop-filter:blur(10px);touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 5px 20px #02051333}.touch-button .touch-glyph{font-size:21px;line-height:23px}.touch-button small{font-size:8px;letter-spacing:.06em;color:#a0a8c7}.touch-button.held{background:#4a4f7399;border-color:#c5baed99}.touch-button.anchor-on{border-color:var(--safe);color:var(--safe)}.touch-switch{position:absolute;bottom:72px;left:0;width:auto;height:31px;padding:0 10px;flex-direction:row;gap:8px;font-size:9px;border-radius:8px;pointer-events:auto;color:var(--gold)}.touch-switch.blue{color:var(--blue)}
+    dialog{border:1px solid #c5baed36;border-radius:16px;color:var(--paper);background:linear-gradient(145deg,#181d32,#101525);padding:34px;max-width:540px;width:calc(100% - 36px);box-shadow:0 30px 150px #000a;overflow:auto;max-height:calc(100dvh - 36px)}dialog::backdrop{background:#030611a6;backdrop-filter:blur(9px)}.dialog-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.dialog-eyebrow{font-size:9px;letter-spacing:.2em;color:var(--lavender)}dialog h2{font:italic 34px/1.2 Georgia,serif;letter-spacing:-.03em;margin:9px 0 14px}dialog .dialog-copy{font-size:12px;line-height:1.85;color:#a9afc5}.help-steps{padding:0;list-style:none;counter-reset:steps;display:grid;gap:15px;margin:23px 0}.help-steps li{counter-increment:steps;display:flex;gap:13px;font-size:12px;line-height:1.7;color:#aeb3c8}.help-steps li:before{content:counter(steps,decimal-leading-zero);color:var(--lavender);font-size:10px;border-top:1px solid #c5baed55;padding-top:3px;flex:0 0 21px}.help-steps strong{font-weight:500;color:#e1ddeb}.help-controls{width:100%;border-collapse:collapse;margin:21px 0 15px;font-size:11px}.help-controls th,.help-controls td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left}.help-controls th{font-weight:400;font-size:9px;letter-spacing:.1em;color:var(--quiet)}.help-controls td{color:#c0c5d7}.help-controls .keygroup{white-space:nowrap}.dialog-footer{font-size:10px;line-height:1.85;color:#8e97b3;margin-top:15px}.dialog-actions{display:grid;gap:12px;margin-top:25px}.dialog-actions .primary-button{width:100%;min-width:0}.secondary-button{min-height:43px;border:1px solid #c5baed32;border-radius:6px;background:#c5baed08;color:#c2bfd3;font-size:11px;padding:10px 17px;transition:background .2s}.secondary-button:hover{background:#c5baed19}.pause-details{display:flex;gap:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin:25px 0}.pause-details span{font-size:10px;color:var(--quiet)}.pause-details strong{display:block;font:24px Georgia,serif;color:var(--lavender);margin-bottom:5px;font-weight:400}
+    #completeScreen{position:fixed;inset:0;display:grid;place-items:center;background:#090c1b80;backdrop-filter:blur(9px);z-index:12;padding:25px}.complete-card{max-width:560px;width:100%;text-align:center;background:linear-gradient(160deg,#1a1d31e8,#101526f2);border:1px solid #c5baed36;border-radius:18px;padding:41px 45px;box-shadow:0 20px 140px #0008}.complete-card .eyebrow{justify-content:center}.complete-card h2{font:italic 45px/1.12 Georgia,serif;font-weight:400;letter-spacing:-.04em;margin:22px 0 13px}.complete-copy{font-size:12px;color:#a8adc5;line-height:1.85}.thread-reward{width:220px;height:45px;margin:20px auto 3px;overflow:visible}.clarity-value{font:normal 67px/1.1 Georgia,serif;color:#ded4f1;letter-spacing:-.045em}.clarity-value small{font-size:26px;margin-left:2px}.clarity-label{font-size:9px;letter-spacing:.21em;color:#8f97b2;margin:8px 0 23px}.result-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin-bottom:23px}.result-stats strong{display:block;font:21px Georgia,serif;color:#d4cde3;margin-bottom:6px}.result-stats span{font-size:9px;letter-spacing:.05em;color:#8b93ab}.complete-card .primary-button{width:100%;min-width:0;justify-content:center}.complete-card .text-button{margin-top:16px}.thread-saved{font-size:9px;letter-spacing:.05em;color:#95b8aa;margin-top:22px}.load-error-panel{position:fixed;right:5vw;top:45%;width:300px;z-index:20;padding:25px;border:1px solid #c5baed33;border-radius:12px;background:#13182eea;line-height:1.8;font-size:12px;color:#afb5cc}.load-error-panel h2{font:italic 24px Georgia,serif;color:#e3daef;margin-bottom:12px}.load-error-panel button{margin-top:15px;width:100%}noscript{position:fixed;inset:35%;z-index:30;background:#161b2d;padding:25px;line-height:1.8}
+    @media(min-width:1500px){.hero{max-width:530px}#menuScreen{padding-left:9vw}.hero h1{font-size:119px}.hero-copy{font-size:15px}.room-panel{left:55px;top:135px}.topbar{padding-left:55px;padding-right:55px}}
+    @media(max-width:1050px){.hero h1{font-size:85px}.room-panel{max-width:210px}.room-panel h2{font-size:25px}.room-panel p{max-width:180px}.hud-bottom{grid-template-columns:190px 1fr 190px;gap:16px;left:28px;right:28px}.player-controls{font-size:8px;gap:4px}.control-spacer{width:1px}.hint{font-size:9px}.gravity-label{font-size:8px}.checkpoint-name{display:none}.checkpoint-rail{right:24px}.checkpoint-count{right:24px}.topbar{padding:25px 28px}.room-panel{left:28px}.menu-bottom{left:28px;right:28px}}
+    @media(max-height:730px) and (min-width:761px){#menuScreen{padding-top:0;padding-bottom:40px;inset:85px 0 0}.hero h1{font-size:74px;margin:16px 0}.hero-copy{font-size:12px;line-height:1.8}.hero-divider{margin:17px 0}.menu-footnote{margin-top:8px}.resume-line{min-height:23px;margin-top:5px}.topbar{height:80px;padding-top:20px;padding-bottom:20px}.room-panel{top:101px}.room-panel h2{font-size:22px}.room-panel p{display:none}.checkpoint-step{height:42px}.checkpoint-step:after{height:16px}.hud-bottom{bottom:18px}.checkpoint-count{bottom:149px}.menu-bottom{bottom:17px}.mode-choice{padding:9px 14px}.primary-button{min-height:43px}.load-state{margin-top:7px}}
+    @media(max-width:760px){.topbar{height:77px;padding:20px 21px}.brand{font-size:10px}.brand-note{font-size:8px}.brand-symbol{width:27px;height:27px}.identity{gap:10px}.brand-rule{margin-left:3px}.memory-number{font-size:23px}.top-actions{gap:6px}.icon-button{width:33px;height:33px;min-width:33px}.session-label{display:none}#menuScreen{inset:77px 0 0;padding:0 27px 65px;align-items:center;pointer-events:none}.hero{max-width:370px;pointer-events:auto}.hero h1{font-size:clamp(65px,13vw,90px);margin:23px 0 22px}.hero-copy{font-size:12px;line-height:1.9;max-width:250px}.eyebrow{font-size:9px}.hero-divider{margin:23px 0}.mode-choice{min-width:135px;padding:11px 13px}.mode-choice .mode-title{font-size:11px}.mode-choice small{font-size:9px}.mode-picker{gap:8px}.primary-button{min-width:278px;min-height:47px;font-size:11px}.menu-bottom{left:26px;right:26px;bottom:25px}.menu-bottom .poem{display:none}.menu-footnote{font-size:9px;max-width:280px;line-height:1.7;margin-top:9px}.menu-shade{background:linear-gradient(90deg,#090c1bed 0%,#090c1bd6 45%,#090c1b3b 100%)}.room-panel{top:96px;left:21px;max-width:240px}.room-panel h2{font-size:25px;margin:7px 0}.room-panel p{display:none}.room-kicker{font-size:8px}.play-mode{margin-top:4px;font-size:8px;padding:6px 8px}.checkpoint-rail{right:20px;top:107px;transform:none;flex-direction:row;gap:6px}.checkpoint-step{height:20px}.checkpoint-step:after{display:none}.checkpoint-circle{height:7px;width:7px;font-size:0;border-color:#d5c9f44f}.checkpoint-step.current .checkpoint-circle{background:#d5c9f47c}.checkpoint-step.done .checkpoint-circle{background:var(--safe)}.checkpoint-count{top:127px;right:21px;bottom:auto;font-size:7px;letter-spacing:.1em}.checkpoint-count strong{font-size:14px;margin-right:4px}.hud-bottom{bottom:115px;left:65px;right:65px;display:block}.player-card{display:none}.thread-panel{max-width:300px;margin:auto}.thread-caption{font-size:8px;margin-bottom:7px}.tension-track{margin-bottom:7px;width:100px}.fray-indicators{margin-bottom:5px}.hint{font-size:9px;line-height:1.5;min-height:27px}.touch-controls{display:flex}.gate-progress{margin:7px auto;height:2px}.notice{top:173px;padding:10px 16px;font-size:10px;min-width:260px}.player-tag{font-size:8px}.player-tag>span{padding:4px 6px}.load-error-panel{right:20px;left:20px;top:auto;bottom:30px;width:auto}.complete-card{padding:29px 23px;max-width:420px}.complete-card h2{font-size:37px}.complete-copy{font-size:11px}.clarity-value{font-size:57px}.thread-reward{margin-top:15px}.result-stats{padding:13px 0;margin-bottom:19px}.thread-saved{line-height:1.7}.complete-card .text-button{margin-top:13px}dialog{padding:24px}dialog h2{font-size:30px}.help-controls td{padding:10px 4px;font-size:10px}.help-controls th{padding:10px 4px}.help-controls kbd{min-width:18px;font-size:9px}.help-steps{gap:12px}.help-steps li{font-size:11px}.help-controls .keygroup{white-space:normal}}
+    @media(pointer:coarse) and (min-width:761px){.touch-controls{display:flex}.hud-bottom{bottom:110px}.checkpoint-count{bottom:220px}.player-card{opacity:.65}.thread-panel{padding-bottom:5px}}
+    @media(max-height:580px) and (max-width:900px){.topbar{height:61px;padding:13px 20px}#menuScreen{inset:68px 0 0;padding:0 25px 35px;align-items:center}.hero h1{font-size:49px;margin:11px 0}.hero-copy{font-size:10px;line-height:1.5}.hero-copy br{display:none}.hero-divider{display:none}.mode-picker{margin-top:15px;margin-bottom:8px}.mode-choice{padding:8px 11px}.mode-choice small{display:none}.primary-button{min-height:37px}.menu-footnote,.menu-bottom{display:none}.resume-line{margin-top:3px;min-height:15px}.load-state{margin-top:4px}.room-panel{top:76px}.room-panel h2{font-size:21px}.checkpoint-rail{top:85px}.checkpoint-count{top:102px}.touch-controls{bottom:12px}.touch-button{width:48px;height:48px}.touch-switch{width:auto;height:27px;bottom:60px}.hud-bottom{bottom:75px;left:30%;right:30%}.thread-panel .hint{display:none}.notice{top:78px;min-width:200px;max-width:40vw}.complete-card{max-height:calc(100dvh - 20px);overflow:auto;padding:22px 25px}.complete-card h2{font-size:29px;margin:13px 0}.thread-reward{height:20px;margin-top:8px}.clarity-value{font-size:39px}.clarity-label{margin:4px 0 11px}.result-stats{padding:9px 0;margin-bottom:12px}.thread-saved{margin-top:11px}}
+    .checkpoint-step{justify-content:flex-end}.touch-glyph svg{width:23px;height:23px}
+    @media(max-width:760px){.playing .brand-note{display:none}.playing .identity{gap:10px}.playing .brand-rule{margin-left:7px}.playing .brand{white-space:nowrap}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <canvas id="world" aria-label="A floating tower with two spirits joined by a silver cord. Use the keyboard or touch controls to play."></canvas>
+  <div class="atmosphere" aria-hidden="true"></div><div class="edge-shade" aria-hidden="true"></div><div class="menu-shade" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="identity">
+      <svg class="brand-symbol" viewBox="0 0 40 40" fill="none" aria-hidden="true"><ellipse cx="20" cy="20" rx="16" ry="7" transform="rotate(-35 20 20)" stroke="currentColor" stroke-width=".8"/><ellipse cx="20" cy="20" rx="16" ry="7" transform="rotate(35 20 20)" stroke="currentColor" stroke-width=".8"/><circle cx="20" cy="20" r="2" fill="currentColor"/></svg>
+      <div class="brand">PENSIEVE<span class="brand-note">A PLACE FOR WHAT REMAINS</span></div><span class="brand-rule"></span><span class="memory-number">07</span>
+    </div>
+    <div class="top-actions">
+      <span id="sessionLabel" class="session-label">ACT II · THE DEPTHS</span>
+      <button id="soundButton" class="icon-button" type="button" aria-label="Turn sound on" title="Sound · M" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M9 4 5 7H2v6h3l4 3V4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path id="soundWaves" d="m13 7 5 6m0-6-5 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+      <button id="helpButton" class="icon-button" type="button" aria-label="How to play" title="How to play · H"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7.2 6.8a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.1-2.8 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="10" cy="15" r=".8" fill="currentColor"/></svg></button>
+      <button id="pauseButton" class="icon-button" type="button" aria-label="Pause the game" title="Pause · Esc" hidden><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 5v10M13 5v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+  </header>
+  <main id="menuScreen">
+    <section class="hero" aria-labelledby="gameTitle">
+      <p class="eyebrow">Memory seven · a dream for two</p>
+      <h1 id="gameTitle">Falling<br><em>upward.</em></h1>
+      <p class="hero-copy">You fall toward the earth.<br>They fall toward the sky.<br><strong>A silver thread is all that holds you together.</strong></p>
+      <div class="hero-divider" aria-hidden="true"></div>
+      <div class="mode-picker" role="group" aria-label="Choose how to play">
+        <button id="couchMode" class="mode-choice" type="button" aria-pressed="true" data-mode="couch"><span class="mode-title"><span class="mode-dot"></span>Two players</span><small>Share a keyboard</small></button>
+        <button id="soloMode" class="mode-choice" type="button" aria-pressed="false" data-mode="solo"><span class="mode-title"><span class="mode-dot"></span>One player</span><small>Switch between both</small></button>
+      </div>
+      <button id="startButton" class="primary-button" type="button" disabled><span>Enter the memory</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 10h13m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="resume-line"><button id="continueButton" class="text-button" type="button" hidden>Continue your memory</button><span id="bestMark" class="best-mark"></span></div>
+      <p class="menu-footnote"><span class="tiny-star" aria-hidden="true">✧</span> Six checkpoints. No game over. Take your time.</p>
+      <p id="loadState" class="load-state" role="status">Gathering the silver thread…</p>
+    </section>
+    <div class="menu-bottom" aria-hidden="true"><span>Stairwell / Library / Playground</span><span class="poem">Some things only make sense together.</span></div>
+  </main>
+  <section id="hud" aria-label="Game status" hidden>
+    <div class="room-panel"><p id="roomKicker" class="room-kicker">01 / THE STAIRWELL</p><h2 id="roomTitle">A different kind of falling.</h2><p id="objective">Find the next circle together.<br>Let one hold on while the other climbs.</p><button id="playMode" class="play-mode" type="button" title="Switch the active player in solo or touch mode"><span id="modeText">TWO PLAYERS · SHARED KEYBOARD</span><kbd id="tabHint" hidden>Tab</kbd></button></div>
+    <ol id="checkpointRail" class="checkpoint-rail" aria-label="Six checkpoints"></ol>
+    <div class="checkpoint-count"><strong id="checkpointCount">0 / 6</strong> REMEMBERED</div>
+    <div class="hud-bottom">
+      <div id="playerCardA" class="player-card"><div class="player-heading"><span class="player-dot"></span><span class="player-name">SOL / A</span><span id="gravityA" class="gravity-label">↓ FALLS DOWN</span></div><div id="statusA" class="player-status">Find a surface to hold.</div><div class="player-controls"><kbd>A</kbd><kbd>D</kbd><span>move</span><span class="control-spacer"></span><kbd>W</kbd><span>jump / pull</span><span class="control-spacer"></span><kbd>S</kbd><span>anchor</span></div></div>
+      <div id="threadPanel" class="thread-panel"><div class="gate-progress" id="gateProgress" aria-hidden="true"><div id="gateProgressFill"></div></div><div class="thread-caption"><svg class="thread-icon" viewBox="0 0 24 12" fill="none" aria-hidden="true"><path d="M1 6c4-9 8 9 12 0s8 9 10 0" stroke="currentColor" stroke-width=".8"/></svg><span id="threadLabel">A LITTLE GIVE. A LITTLE TRUST.</span></div><div class="tension-track" role="meter" aria-label="Cord tension" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="tensionMeter"><div id="tensionFill" class="tension-fill"></div></div><div class="fray-indicators" id="frayIndicators" aria-label="No frays"><span></span><span></span><span></span></div><p id="hintText" class="hint">Anchor above. Hold jump to draw your partner closer.</p></div>
+      <div id="playerCardB" class="player-card blue"><div class="player-heading"><span class="player-dot"></span><span class="player-name">LUNE / B</span><span id="gravityB" class="gravity-label">↑ FALLS UP</span></div><div id="statusB" class="player-status">Find a surface to hold.</div><div class="player-controls"><kbd>←</kbd><kbd>→</kbd><span>move</span><span class="control-spacer"></span><kbd>↑</kbd><span>jump / pull</span><span class="control-spacer"></span><kbd>↓</kbd><span>anchor</span></div></div>
+    </div>
+  </section>
+  <div id="playerTagA" class="player-tag" hidden><span>A ↓</span><small class="tag-anchor"></small></div><div id="playerTagB" class="player-tag blue" hidden><span>B ↑</span><small class="tag-anchor"></small></div>
+  <div id="touchControls" class="touch-controls" aria-label="Touch controls" hidden><button id="touchSwitch" class="touch-button touch-switch" type="button" aria-label="Switch controlled player">A · SOL <span>⇄</span></button><div class="touch-group"><button class="touch-button" data-touch="left" type="button" aria-label="Move left"><span class="touch-glyph">←</span></button><button class="touch-button" data-touch="right" type="button" aria-label="Move right"><span class="touch-glyph">→</span></button></div><div class="touch-group"><button class="touch-button" data-touch="anchor" type="button" aria-label="Toggle anchor"><span class="touch-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg></span><small>hold on</small></button><button class="touch-button" data-touch="jump" type="button" aria-label="Jump, or hold to pull toward an anchored partner"><span class="touch-glyph">↟</span><small>jump / pull</small></button></div></div>
+  <p id="notice" class="notice" role="status" aria-live="polite"></p><div id="rewindVeil" aria-hidden="true"></div>
+  <dialog id="helpDialog" aria-labelledby="helpTitle"><div class="dialog-top"><span class="dialog-eyebrow">HOW TO HOLD ON</span><button id="closeHelp" class="icon-button" type="button" aria-label="Close instructions">×</button></div><h2 id="helpTitle">Take turns being the anchor.</h2><p class="dialog-copy">Sol falls down. Lune falls up. Your cord stretches, but neither of you can leave the other behind.</p><ol class="help-steps"><li><span><strong>Find a higher hold.</strong> Move around the edge of a shelf to rise past it. Press anchor near any surface to stay there. A small halo shows when a hold is within reach. Dream shelves catch your falling side; you can jump or pull through their backs.</span></li><li><span><strong>Bring your partner with you.</strong> Jump opposite your gravity. When your partner is anchored, hold jump to pull yourself toward them. Steer left or right to swing. Tap anchor again to let go.</span></li><li><span><strong>Meet inside each silver circle.</strong> Both of you must be inside together. Six circles lead through the memory. In the upside-down library, your gravity swaps.</span></li></ol><table class="help-controls"><thead><tr><th>ACTION</th><th>SOL / PLAYER A</th><th>LUNE / PLAYER B</th></tr></thead><tbody><tr><td>Move / swing</td><td class="keygroup"><kbd>A</kbd> <kbd>D</kbd></td><td class="keygroup"><kbd>←</kbd> <kbd>→</kbd></td></tr><tr><td>Jump / hold to pull</td><td><kbd>W</kbd></td><td><kbd>↑</kbd></td></tr><tr><td>Anchor / release</td><td><kbd>S</kbd></td><td><kbd>↓</kbd></td></tr></tbody></table><p class="dialog-footer"><strong>One player:</strong> use either set of keys. <kbd>Tab</kbd> switches characters. Anchor one before switching; they stay exactly where you left them.<br><strong>Touch:</strong> use the arrows, hold-on, and jump / pull buttons. Tap the name to switch characters.<br><kbd>R</kbd> rewinds to your checkpoint · <kbd>Esc</kbd> pauses · <kbd>M</kbd> toggles sound.<br>Pulling apart at full stretch frays the cord. Three frays return you to the last circle. Your saved checkpoints remain.</p></dialog>
+  <dialog id="pauseDialog" aria-labelledby="pauseTitle"><span class="dialog-eyebrow">THE MEMORY IS WAITING</span><h2 id="pauseTitle">The dream can wait.</h2><p class="dialog-copy">A moment to breathe. The thread will hold.</p><div class="pause-details"><div><strong id="pauseCheckpoints">0 / 6</strong><span>circles remembered</span></div><div><strong id="pauseTime">0:00</strong><span>time together</span></div></div><div class="dialog-actions"><button id="resumeButton" class="primary-button" type="button">Keep climbing <span>→</span></button><button id="rewindButton" class="secondary-button" type="button">Return to the last checkpoint</button><button id="titleButton" class="secondary-button" type="button">Return to the title</button></div><p class="dialog-footer">Checkpoints save automatically on this browser.</p></dialog>
+  <section id="completeScreen" aria-labelledby="completeTitle" hidden><div class="complete-card"><p class="eyebrow">A silver thread, remembered</p><h2 id="completeTitle">You carried<br>each other.</h2><p class="complete-copy">Through all the ways the world turned over,<br>you found a way to hold on.</p><svg class="thread-reward" viewBox="0 0 240 45" fill="none" aria-hidden="true"><defs><linearGradient id="threadGradient"><stop stop-color="#f3c990"/><stop offset=".5" stop-color="#e2d7fa"/><stop offset="1" stop-color="#99d8f7"/></linearGradient></defs><path d="M14 27C55-19 59 68 121 22S180 64 226 18" stroke="url(#threadGradient)" stroke-width="1.3"/><path d="M14 27C55-11 59 60 121 22S180 56 226 18" stroke="url(#threadGradient)" stroke-width=".4" opacity=".5"/><circle cx="14" cy="27" r="3" fill="#f3c990"/><circle cx="226" cy="18" r="3" fill="#99d8f7"/></svg><div class="clarity-value"><span id="resultClarity">100</span><small>%</small></div><p class="clarity-label">MEMORY CLARITY</p><div class="result-stats"><div><strong>6 / 6</strong><span>circles remembered</span></div><div><strong id="resultFrays">0</strong><span>frays along the way</span></div><div><strong id="resultTime">0:00</strong><span>time together</span></div></div><button id="againButton" class="primary-button" type="button">Dream again</button><button id="finishTitleButton" class="text-button" type="button">Return to the title</button><p id="threadSaved" class="thread-saved">Your silver thread has been saved.</p></div></section>
+  <aside id="loadErrorPanel" class="load-error-panel" hidden><h2>The dream needs a moment.</h2><p id="errorExplanation">The 3D engine could not load. Check your connection and try again.</p><button id="retryLoad" class="secondary-button" type="button">Try again</button></aside>
+  <noscript>This memory needs JavaScript and a browser with WebGL 2. Please enable JavaScript, then reload the page.</noscript>
+  <!--
+    Falling Upward — Pensieve game 07.
+    One HTML file. Three.js 0.180.0 is loaded from jsDelivr with an unpkg fallback.
+    Procedural geometry, synthesized audio, local two-player co-op and solo switching.
+    Physics is fixed-step and independent of rendering. No server or account required.
+
+    Completion integration:
+      window.addEventListener('pensieve:complete', e => saveThread(e.detail.thread));
+    An embedded game also sends { type:'pensieve:complete', ...result } to its same-origin parent.
+    thread = { game:7, clarity:0..1, sync:0..1, color:'silver' }.
+    Results: localStorage['pensieve:07:result:v1']; progress: ['pensieve:07:progress:v1'].
+    Both writes are optional; the game remains playable if storage is unavailable.
+    This standalone file implements local play; it does not include an online game server.
+    Add ?debug=1 for a read-only state/level/render-statistics inspector for browser QA.
+  -->
+  <script type="module">
+  function createFallingUpwardSimulation() {
+  'use strict';
+  const R = 0.34, GRAVITY = 12, REST = 4.8, MAX = 7.4;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const copy = value => JSON.parse(JSON.stringify(value));
+  const titles = ['The first step', 'A stair to nowhere', 'Between the pages', 'The other way down', 'A borrowed sky', 'Together, upward'];
+  const subtitles = ['Take turns holding on.', 'One holds. One reaches.', 'A memory has more than one side.', 'The room turns. The thread remembers.', 'Trust the distance between you.', 'Some things are easier to carry together.'];
+  const platforms = [{id:'basin-floor',x:0,y:0,w:16,h:0.6,kind:'floor',stage:0}];
+  for (let stage = 0; stage < 6; stage++) {
+    const xs = stage % 2 ? [3.3, 0, -3.3, 0, 3.3] : [-3.3, 0, 3.3, 0, -3.3];
+    for (let j = 0; j < 5; j++) platforms.push({id:'ledge-'+stage+'-'+j,x:xs[j],y:stage*10+1+j*2,w:j===4?5:4.6,h:0.4,kind:'ledge',stage});
+    for (const side of [-1,1]) platforms.push({id:'rail-'+stage+'-'+side,x:side*7.85,y:stage*10+4.8,w:0.3,h:6.4,kind:'wall',stage});
+  }
+  const level = {width:16,height:66,playerRadius:R,cordRest:REST,cordMax:MAX,platforms,
+    checkpoints:titles.map((title,i)=>({x:0,y:i*10+8.8,radius:5.4,heightRadius:3.2,title,subtitle:subtitles[i],theme:i<2?'stairwell':i<4?'library':'playground',inverted:i===3||i===4})),
+    start:{players:[{x:-0.2,y:0.64},{x:0.6,y:2.46}]}};
+  const state = {};
+  let events = [], checkpointSave, strainClock = 0, frayCooldown = 0, rewindCooldown = 0;
+  function makePlayer(position,i) {
+    return {...position,vx:0,vy:0,gravity:i===0?-1:1,grounded:false,anchor:null,nearAnchor:null,facing:i===0?1:-1,coyote:0,jumpBuffer:0};
+  }
+  function reset() {
+    Object.assign(state,{players:level.start.players.map(makePlayer),checkpoint:0,frays:0,totalFrays:0,rewinds:0,elapsed:0,tension:0,stress:0,checkpointCharge:0,completed:false,gravityFlip:false});
+    strainClock=frayCooldown=rewindCooldown=0;events=[];
+    for (const p of state.players) p.nearAnchor=findAnchor(p);
+    checkpointSave=capturePosition();
+    return state;
+  }
+  function capturePosition() {
+    return {players:copy(state.players),checkpoint:state.checkpoint,gravityFlip:state.gravityFlip};
+  }
+  function snapshot() {
+    return {version:1,state:copy(state),checkpointSave:copy(checkpointSave),strainClock,frayCooldown,rewindCooldown};
+  }
+  function restore(value) {
+    const finite=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max;
+    const integer=(n,min,max)=>Number.isInteger(n)&&n>=min&&n<=max;
+    const pointOK=(point,p,held)=>{
+      if(point===null)return true;
+      if(!point||!finite(point.x,-20,20)||!finite(point.y,-20,90))return false;
+      const q=platforms.find(q=>q.id===point.platformId);
+      if(!q||Math.abs(point.x-q.x)>q.w/2+0.00001||Math.abs(point.y-q.y)>q.h/2+0.00001)return false;
+      if(Math.min(Math.abs(Math.abs(point.x-q.x)-q.w/2),Math.abs(Math.abs(point.y-q.y)-q.h/2))>0.00001)return false;
+      if(Math.hypot(p.x-point.x,p.y-point.y)>1.151)return false;
+      return !held||(finite(point.holdX,-20,20)&&finite(point.holdY,-20,90)&&Math.abs(point.holdX-p.x)<0.001&&Math.abs(point.holdY-p.y)<0.001);
+    };
+    const playersOK=(players,flipped)=>Array.isArray(players)&&players.length===2&&players.every((p,i)=>p&&
+      finite(p.x,-20,20)&&finite(p.y,-20,90)&&finite(p.vx,-100,100)&&finite(p.vy,-100,100)&&
+      p.gravity===(i===0?-1:1)*(flipped?-1:1)&&typeof p.grounded==='boolean'&&[1,-1].includes(p.facing)&&
+      finite(p.coyote,0,0.15)&&finite(p.jumpBuffer,0,0.2)&&pointOK(p.anchor,p,true)&&pointOK(p.nearAnchor,p,false));
+    if(!value||value.version!==1||!value.state||!value.checkpointSave)return false;
+    const s=value.state,save=value.checkpointSave;
+    if(!integer(s.checkpoint,0,6)||!integer(s.frays,0,2)||!integer(s.totalFrays,0,1000000)||!integer(s.rewinds,0,1000000)||
+      s.totalFrays<s.frays||!finite(s.elapsed,0,1e12)||typeof s.completed!=='boolean'||s.completed!==(s.checkpoint===6)||
+      typeof s.gravityFlip!=='boolean'||s.gravityFlip!==(s.checkpoint===3||s.checkpoint===4)||
+      ![s.tension,s.stress,s.checkpointCharge].every(n=>finite(n,0,1))||!playersOK(s.players,s.gravityFlip)||
+      save.checkpoint!==s.checkpoint||save.gravityFlip!==s.gravityFlip||!playersOK(save.players,save.gravityFlip)||
+      !finite(value.strainClock,0,1)||!finite(value.frayCooldown,0,2)||!finite(value.rewindCooldown,0,2))return false;
+    const cleanPoint=p=>p===null?null:{x:p.x,y:p.y,platformId:p.platformId,...('holdX'in p?{holdX:p.holdX,holdY:p.holdY}:{})};
+    const cleanPlayers=players=>players.map(p=>({x:p.x,y:p.y,vx:p.vx,vy:p.vy,gravity:p.gravity,grounded:p.grounded,anchor:cleanPoint(p.anchor),nearAnchor:cleanPoint(p.nearAnchor),facing:p.facing,coyote:p.coyote,jumpBuffer:p.jumpBuffer}));
+    const clean={players:cleanPlayers(s.players)};
+    for(const key of ['checkpoint','frays','totalFrays','rewinds','elapsed','tension','stress','checkpointCharge','completed','gravityFlip'])clean[key]=s[key];
+    Object.assign(state,clean);checkpointSave={players:cleanPlayers(save.players),checkpoint:save.checkpoint,gravityFlip:save.gravityFlip};
+    strainClock=value.strainClock;frayCooldown=value.frayCooldown;rewindCooldown=value.rewindCooldown;events=[];
+    return true;
+  }
+  function rewind(reason='remember') {
+    if(state.completed) return;
+    Object.assign(state,copy(checkpointSave));
+    for(const p of state.players) {p.vx=p.vy=0;p.anchor=null;p.nearAnchor=findAnchor(p);}
+    state.rewinds++;state.frays=0;state.stress=0;state.tension=0;state.checkpointCharge=0;
+    strainClock=0;frayCooldown=1;rewindCooldown=1;
+    events.push({type:'rewind',reason,checkpoint:state.checkpoint});
+  }
+  function findAnchor(p) {
+    let result=null,best=1.15;
+    for(const q of platforms) {
+      if(Math.abs(q.y-p.y)>q.h/2+1.3)continue;
+      const l=q.x-q.w/2,r=q.x+q.w/2,b=q.y-q.h/2,t=q.y+q.h/2;
+      const points=[{x:clamp(p.x,l,r),y:t},{x:clamp(p.x,l,r),y:b},{x:l,y:clamp(p.y,b,t)},{x:r,y:clamp(p.y,b,t)}];
+      for(const pt of points) {
+        const dist=Math.hypot(p.x-pt.x,p.y-pt.y);
+        if(dist<best){best=dist;result={x:pt.x,y:pt.y,platformId:q.id};}
+      }
+    }
+    return result;
+  }
+  function collision(p,previousX,previousY) {
+    for(const q of platforms) {
+      if(Math.abs(q.y-p.y)>q.h/2+R+0.1||Math.abs(q.x-p.x)>q.w/2+R+0.1)continue;
+      const l=q.x-q.w/2-R,r=q.x+q.w/2+R,b=q.y-q.h/2-R,t=q.y+q.h/2+R;
+      if(p.x<=l||p.x>=r||p.y<=b||p.y>=t)continue;
+      // Dream ledges catch the falling side of each opposite gravity field.
+      // Passing through their backs makes the closely layered rooms traversable.
+      if(q.kind==='ledge'){
+        if(p.gravity<0&&previousY>=t-0.025&&p.vy<=0){p.y=t;p.vy=0;p.grounded=true;}
+        else if(p.gravity>0&&previousY<=b+0.025&&p.vy>=0){p.y=b;p.vy=0;p.grounded=true;}
+        continue;
+      }
+      let side;
+      if(previousY>=t-0.02&&p.vy<=0)side='top';
+      else if(previousY<=b+0.02&&p.vy>=0)side='bottom';
+      else if(previousX<=l+0.02&&p.vx>=0)side='left';
+      else if(previousX>=r-0.02&&p.vx<=0)side='right';
+      else {const distances=[t-p.y,p.y-b,p.x-l,r-p.x];side=['top','bottom','left','right'][distances.indexOf(Math.min(...distances))];}
+      if(side==='top'){p.y=t;p.vy=Math.max(0,p.vy);if(p.gravity<0)p.grounded=true;}
+      if(side==='bottom'){p.y=b;p.vy=Math.min(0,p.vy);if(p.gravity>0)p.grounded=true;}
+      if(side==='left'){p.x=l;p.vx=Math.min(0,p.vx);}
+      if(side==='right'){p.x=r;p.vx=Math.max(0,p.vx);}
+    }
+    const limit=level.width/2-R;
+    if(p.x<-limit){p.x=-limit;p.vx=Math.max(0,p.vx);}
+    if(p.x>limit){p.x=limit;p.vx=Math.min(0,p.vx);}
+  }
+  function step(dt,inputs=[{},{}]) {
+    if(state.completed||!Number.isFinite(dt)||dt<=0)return;
+    dt=Math.min(dt,1/60);state.elapsed+=dt;
+    frayCooldown=Math.max(0,frayCooldown-dt);rewindCooldown=Math.max(0,rewindCooldown-dt);
+    const commands=[0,1].map(i=>({move:clamp(Number(inputs[i]?.move)||0,-1,1),jump:!!inputs[i]?.jump,anchor:!!inputs[i]?.anchor,reel:!!inputs[i]?.reel}));
+    const [a,b]=state.players;
+    for(let i=0;i<2;i++){
+      const p=state.players[i],cmd=commands[i];p.nearAnchor=findAnchor(p);
+      if(cmd.anchor){
+        if(p.anchor){p.anchor=null;events.push({type:'anchor',player:i,anchored:false});}
+        else if(p.nearAnchor){p.anchor={...p.nearAnchor,holdX:p.x,holdY:p.y};p.vx=p.vy=0;events.push({type:'anchor',player:i,anchored:true});}
+      }
+      if(cmd.jump)p.jumpBuffer=0.14;
+      else p.jumpBuffer=Math.max(0,p.jumpBuffer-dt);
+      p.coyote=p.grounded?0.1:Math.max(0,p.coyote-dt);
+      if(p.jumpBuffer>0&&(p.grounded||p.anchor||p.coyote>0)){
+        p.anchor=null;p.vy=-p.gravity*9;p.grounded=false;p.coyote=0;p.jumpBuffer=0;
+        events.push({type:'jump',player:i});
+      }
+      if(cmd.move)p.facing=Math.sign(cmd.move);
+    }
+    // Substeps keep thin shelves and the tether stable at high swing speeds.
+    const h=dt/3;let maxExtension=0;
+    for(let sub=0;sub<3;sub++){
+      let dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy)||0.001;
+      const nx=dx/distance,ny=dy/distance;
+      const separating=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+      const spring=clamp(Math.max(0,(distance-REST)*12+separating*3.4),0,95);
+      const before=state.players.map(p=>({x:p.x,y:p.y}));
+      for(let i=0;i<2;i++){
+        const p=state.players[i],other=state.players[1-i],cmd=commands[i],sign=i===0?1:-1;
+        if(p.anchor){p.x=p.anchor.holdX??p.x;p.y=p.anchor.holdY??p.y;p.vx=p.vy=0;continue;}
+        p.grounded=false;
+        p.vx+=(cmd.move*30-p.vx*(cmd.move?4.8:6.5)+sign*nx*spring)*h;
+        p.vy+=(p.gravity*GRAVITY+sign*ny*spring)*h;
+        if(cmd.reel&&other.anchor){
+          const tx=other.x-p.x,ty=other.y-p.y,td=Math.hypot(tx,ty)||1;
+          const closing=(p.vx-other.vx)*tx/td+(p.vy-other.vy)*ty/td;
+          const pull=clamp((td-0.45)*45-closing*9,0,48);
+          p.vx+=tx/td*pull*h;p.vy+=ty/td*pull*h;
+        }
+        p.vx=clamp(p.vx,-10,10);p.vy=clamp(p.vy,-13,13);
+        p.x+=p.vx*h;p.y+=p.vy*h;
+        collision(p,before[i].x,before[i].y);
+      }
+      dx=b.x-a.x;dy=b.y-a.y;distance=Math.hypot(dx,dy)||0.001;maxExtension=Math.max(maxExtension,distance);
+      if(distance>MAX){
+        const invA=a.anchor?0:1,invB=b.anchor?0:1,total=invA+invB;
+        if(total){
+          const ux=dx/distance,uy=dy/distance,over=distance-MAX;
+          a.x+=ux*over*invA/total;a.y+=uy*over*invA/total;
+          b.x-=ux*over*invB/total;b.y-=uy*over*invB/total;
+          const speed=(b.vx-a.vx)*ux+(b.vy-a.vy)*uy;
+          if(speed>0){a.vx+=ux*speed*invA/total;a.vy+=uy*speed*invA/total;b.vx-=ux*speed*invB/total;b.vy-=uy*speed*invB/total;}
+          state.players.forEach((p,i)=>{if(!p.anchor)collision(p,before[i].x,before[i].y);});
+        }
+      }
+    }
+    const dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy)||0.001;
+    state.tension=clamp((Math.max(distance,maxExtension)-REST)/(MAX-REST),0,1);
+    const pullingA=commands[0].move*(-dx/distance)>0.13;
+    const pullingB=commands[1].move*(dx/distance)>0.13;
+    if(state.tension>0.94&&pullingA&&pullingB&&!a.anchor&&!b.anchor&&frayCooldown===0)strainClock+=dt;
+    else strainClock=Math.max(0,strainClock-dt*1.8);
+    state.stress=clamp(strainClock/0.8,0,1);
+    if(strainClock>=0.8){
+      state.frays++;state.totalFrays++;strainClock=0;state.stress=0;frayCooldown=1.5;
+      events.push({type:'fray',frays:state.frays,totalFrays:state.totalFrays});
+      if(state.frays>=3){rewind('frayed');return;}
+    }
+    for(const p of state.players)p.nearAnchor=findAnchor(p);
+    const cp=level.checkpoints[state.checkpoint];
+    if(cp){
+      const inside=state.players.every(p=>((p.x-cp.x)/cp.radius)**2+((p.y-cp.y)/cp.heightRadius)**2<1);
+      state.checkpointCharge=clamp(state.checkpointCharge+(inside?dt/0.7:-dt*2),0,1);
+      if(state.checkpointCharge>=1){
+        state.checkpoint++;state.checkpointCharge=0;state.frays=0;strainClock=0;state.stress=0;
+        events.push({type:'checkpoint',checkpoint:state.checkpoint,title:cp.title});
+        const nextFlip=state.checkpoint<6?level.checkpoints[state.checkpoint].inverted:state.gravityFlip;
+        if(nextFlip!==state.gravityFlip){
+          state.gravityFlip=nextFlip;
+          state.players.forEach((p,i)=>{p.gravity=(i===0?-1:1)*(nextFlip?-1:1);p.vy*=0.25;p.grounded=false;});
+          events.push({type:'flip',inverted:nextFlip});
+        }
+        checkpointSave=capturePosition();
+        if(state.checkpoint===6){state.completed=true;events.push({type:'complete',clarity:getClarity(),elapsed:state.elapsed});}
+      }
+    }
+    const low=state.checkpoint?level.checkpoints[state.checkpoint-1].y-9:-4;
+    if(rewindCooldown===0&&state.players.some(p=>!Number.isFinite(p.x+p.y+p.vx+p.vy)||p.y<low||p.y>level.height+7))rewind('drifted');
+  }
+  function getClarity(){return Math.round(clamp(state.checkpoint/6*100-state.totalFrays*1.5-state.rewinds*2,0,100));}
+  function drainEvents(){const result=events;events=[];return result;}
+  reset();
+  return {level,state,step,reset,rewind,drainEvents,getClarity,snapshot,restore};
+}
+
+
+  /* Procedural art and presentation. Gameplay lives entirely in the simulation. */
+function createFallingUpwardScene(THREE, canvas, level) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#080c1b');
+  scene.fog = new THREE.FogExp2('#101329', 0.023);
+  const camera = new THREE.OrthographicCamera(-15, 15, 10, -10, 0.1, 150);
+  scene.add(new THREE.HemisphereLight('#b8ccff', '#22182d', 2.15));
+  const moonlight = new THREE.DirectionalLight('#c1c9ff', 3.6);
+  moonlight.position.set(-7, 10, 14); scene.add(moonlight);
+  const warmLight = new THREE.DirectionalLight('#e6b88a', 1.1);
+  warmLight.position.set(8, 1, 3); scene.add(warmLight);
+  const materials = [], geometries = [], textures = [], batches = new Map();
+  const mat = (color, roughness = .8, metalness = .05, emissive = '#000000') => {
+    const m = new THREE.MeshStandardMaterial({ color, roughness, metalness, emissive });
+    materials.push(m); return m;
+  };
+  const basic = (color, opacity = 1) => {
+    const m = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity === 1 });
+    materials.push(m); return m;
+  };
+  const palettes = [
+    [mat('#505a74'), mat('#8b94a7'), mat('#303c57')],
+    [mat('#535d79'), mat('#969ab3'), mat('#35445b')],
+    [mat('#615064'), mat('#b49a8a'), mat('#3b344d')],
+    [mat('#565275'), mat('#9d9bc6'), mat('#39354f')],
+    [mat('#49677a'), mat('#9ab8b6'), mat('#2c465d')],
+    [mat('#58677f'), mat('#c0c2b7'), mat('#34445c')]
+  ];
+  palettes.forEach(p => { p[1].emissive.copy(p[1].color); p[1].emissiveIntensity = .12; });
+  const architecture = mat('#283047'), farArchitecture = mat('#1c243c'), detail = mat('#46506a');
+  const brass = mat('#a38b72', .36, .65), wood = mat('#463c52');
+  const books = ['#a99cbd', '#a87772', '#667c95', '#a19a77', '#526875'].map(c => mat(c));
+  const page = mat('#b8aba7'), powderBlue = mat('#718d9c'), lilac = mat('#8c7f9d');
+  const unitBox = new THREE.BoxGeometry(1, 1, 1);
+  const vec = new THREE.Vector3(), quat = new THREE.Quaternion(), scale = new THREE.Vector3(), matrix = new THREE.Matrix4();
+  const euler = new THREE.Euler();
+  function batch(geometry, material, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, room = 0) {
+    matrix.compose(vec.set(x,y,z), quat.setFromEuler(euler.set(rx,ry,rz)), scale.set(sx,sy,sz));
+    const g = geometry.clone().applyMatrix4(matrix), key = room + ':' + material.id;
+    if (!batches.has(key)) batches.set(key, { material, position: [], normal: [], index: [] });
+    const b = batches.get(key), offset = b.position.length / 3;
+    b.position.push(...g.attributes.position.array); b.normal.push(...g.attributes.normal.array);
+    if (g.index) for (const index of g.index.array) b.index.push(index + offset);
+    else for (let i = 0; i < g.attributes.position.count; i++) b.index.push(i + offset);
+    g.dispose();
+  }
+  function box(w,h,d,x,y,z,material,room=0,rz=0) { batch(unitBox,material,x,y,z,w,h,d,0,0,rz,room); }
+  const tubeGeos = [];
+  function pole(a,b,r,material,room=0) {
+    const start = new THREE.Vector3(...a), end = new THREE.Vector3(...b), delta = end.clone().sub(start);
+    const g = new THREE.CylinderGeometry(r,r,delta.length(),7);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+    g.applyQuaternion(q);
+    start.add(end).multiplyScalar(.5); batch(g,material,start.x,start.y,start.z,1,1,1,0,0,0,room); g.dispose();
+  }
+  for (const p of level.platforms) {
+    const k = Math.max(0, Math.min(5, p.stage || 0)), palette = palettes[k];
+    const depth = p.kind === 'wall' ? 1.6 : 2.1;
+    box(p.w,p.h,depth,p.x,p.y,-.58,palette[0],k);
+    box(p.w+.035,.035,depth+.035,p.x,p.y+p.h/2+.008,-.58,palette[1],k);
+    box(p.w,.045,.035,p.x,p.y-p.h/2+.02,.49,palette[2],k);
+    if (p.kind !== 'wall' && p.w > 1.6) {
+      const seams = Math.floor(p.w/1.8);
+      for (let i=1;i<=seams;i++) box(.016,p.h,.012,p.x-p.w/2+i*p.w/(seams+1),p.y,.481,palette[2],k);
+    }
+  }
+  // The deep architectural layer is deliberately behind the gameplay plane.
+  const archGeo = new THREE.TorusGeometry(6.55,.12,6,44,Math.PI);
+  const littleArchGeo = new THREE.TorusGeometry(1.2,.055,5,24,Math.PI);
+  for (let k=0;k<6;k++) {
+    const y = k*10;
+    box(.35,9.2,.45,-6.55,y+2,-4.7,architecture,k);
+    box(.35,9.2,.45,6.55,y+2,-4.7,architecture,k);
+    batch(archGeo,architecture,0,y+6.6,-4.7,1,1,1,0,0,0,k);
+    batch(archGeo,farArchitecture,0,y+6.9,-7.1,1.22,1.08,1,0,0,0,k);
+    for (const side of [-1,1]) {
+      box(.65,.17,.65,side*6.55,y+6.4,-4.7,detail,k);
+      box(.68,.3,.65,side*6.55,y-2.5,-4.7,architecture,k);
+      box(.12,6,.2,side*7.2,y+1.5,-8.4,farArchitecture,k);
+    }
+    if (k < 2) {
+      for (let i=0;i<5;i++) box(1.1,.14,1.2,-5.1+i*.65,y+1.2+i*.55,-4.3,architecture,k);
+      for (const side of [-1,1]) {
+        batch(littleArchGeo,detail,side*4.8,y+5.6,-6.4,1,1,1,0,0,0,k);
+        box(.06,2.4,.1,side*4.8-1.2,y+4.4,-6.4,detail,k);
+        box(.06,2.4,.1,side*4.8+1.2,y+4.4,-6.4,detail,k);
+        box(.045,3.5,.1,side*4.8,y+4.9,-6.45,architecture,k);
+        box(2.4,.045,.1,side*4.8,y+4.6,-6.45,architecture,k);
+      }
+    } else if (k < 4) {
+      for (const side of [-1,1]) {
+        const x = side*5.4;
+        box(.12,6.5,.6,x-1.1,y+4,-4.2,wood,k); box(.12,6.5,.6,x+1.1,y+4,-4.2,wood,k);
+        for (let row=0;row<4;row++) {
+          const by=y+(k===3?8.1-row*1.55:1.1+row*1.55), bookDirection=k===3?-1:1;
+          box(2.3,.13,.7,x,by,-4.15,wood,k);
+          for (let b=0;b<7;b++) {
+            const h=.65+((b*3+row)%5)*.09;
+            box(.19,h,.35,x-.85+b*.28,by+bookDirection*(h/2+.08),-4.05,books[(b+row+k)%books.length],k,(b===6?.1:0));
+            box(.195,.035,.012,x-.85+b*.28,by+bookDirection*(h*.65+.08),-3.866,brass,k);
+          }
+        }
+      }
+    } else {
+      const x = k===4?-3.9:3.7;
+      pole([x-1.65,y+1.6,-4.6],[x-1.3,y+7,-4.6],.075,powderBlue,k);
+      pole([x+1.65,y+1.6,-4.6],[x+1.3,y+7,-4.6],.075,powderBlue,k);
+      pole([x-1.4,y+7,-4.6],[x+1.4,y+7,-4.6],.08,powderBlue,k);
+      const ropeY=k===4?1.7:6.9,seatY=k===4?5.1:3.5;
+      pole([x-.58,y+ropeY,-4.5],[x-.58,y+seatY,-4.5],.016,brass,k);
+      pole([x+.58,y+ropeY,-4.5],[x+.58,y+seatY,-4.5],.016,brass,k);
+      box(1.55,.13,.6,x,y+seatY+(k===4?.05:-.05),-4.5,lilac,k,k===4?.08:-.08);
+      const ladderX=-x;
+      for (const side of [-1,1]) pole([ladderX+side*.75,y+1.5,-5.8],[ladderX+side*.75,y+5.2,-5.8],.055,lilac,k);
+      for (let j=0;j<7;j++) pole([ladderX-.75,y+1.8+j*.48,-5.8],[ladderX+.75,y+1.8+j*.48,-5.8],.045,lilac,k);
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(ladderX,y+5.25,-6),new THREE.Vector3(ladderX+1.1,y+4.7,-6),new THREE.Vector3(ladderX+2,y+2.3,-6),new THREE.Vector3(ladderX+3,y+1.8,-6)]);
+      const slide = new THREE.TubeGeometry(curve,20,.15,6,false); batch(slide,powderBlue,0,0,0,1,1,1,0,0,0,k); slide.dispose();
+    }
+  }
+  for (const b of batches.values()) {
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(b.position,3));
+    g.setAttribute('normal',new THREE.Float32BufferAttribute(b.normal,3)); g.setIndex(b.index); g.computeBoundingSphere();
+    geometries.push(g); scene.add(new THREE.Mesh(g,b.material));
+  }
+  unitBox.dispose(); archGeo.dispose(); littleArchGeo.dispose(); batches.clear();
+  function radialTexture() {
+    const c=document.createElement('canvas'); c.width=c.height=128; const ctx=c.getContext('2d');
+    const g=ctx.createRadialGradient(64,64,0,64,64,64); g.addColorStop(0,'rgba(255,255,255,.7)');
+    g.addColorStop(.2,'rgba(255,255,255,.24)'); g.addColorStop(.55,'rgba(255,255,255,.06)'); g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(c); textures.push(t); return t;
+  }
+  const glowTexture=radialTexture();
+  function glow(color,size,opacity=.5) {
+    const material=new THREE.SpriteMaterial({map:glowTexture,color,transparent:true,opacity,depthWrite:false,blending:THREE.AdditiveBlending});
+    materials.push(material); const s=new THREE.Sprite(material); s.scale.set(size,size,1); return s;
+  }
+  // A few broad pools of light keep the tower legible without flattening its depth.
+  for (let k=0;k<6;k++) {
+    const haze=glow(k<2?'#435585':k<4?'#665378':'#37617c',19,.32);
+    haze.position.set(k%2?3:-3,k*10+6,-10); scene.add(haze);
+  }
+  const crescentCanvas=document.createElement('canvas'); crescentCanvas.width=crescentCanvas.height=256;
+  const moonctx=crescentCanvas.getContext('2d'); moonctx.fillStyle='#dce4f3'; moonctx.beginPath(); moonctx.arc(128,128,97,0,Math.PI*2); moonctx.fill();
+  moonctx.globalCompositeOperation='destination-out'; moonctx.beginPath(); moonctx.arc(162,102,91,0,Math.PI*2); moonctx.fill();
+  const moonTexture=new THREE.CanvasTexture(crescentCanvas); textures.push(moonTexture);
+  const moonMaterial=new THREE.SpriteMaterial({map:moonTexture,transparent:true,opacity:.55,depthWrite:false}); materials.push(moonMaterial);
+  for (const [x,y] of [[3.7,13.1],[-2.8,62.5]]) {
+    const moon=new THREE.Sprite(moonMaterial); moon.position.set(x,y,-10); moon.scale.set(2.8,2.8,1); scene.add(moon);
+    const halo=glow('#b8c4ea',7,.12); halo.position.set(x,y,-10.1); scene.add(halo);
+  }
+  const rings=level.checkpoints.map((cp,i)=> {
+    const group=new THREE.Group(), radius=cp.radius || 2.8;
+    const ringMat=basic('#b6c0d8',.24), innerMat=basic('#838faa',.14);
+    const ringGeo=new THREE.TorusGeometry(radius,.022,6,96), innerGeo=new THREE.TorusGeometry(radius-.12,.008,4,96);
+    geometries.push(ringGeo,innerGeo); group.add(new THREE.Mesh(ringGeo,ringMat),new THREE.Mesh(innerGeo,innerMat));
+    for (let j=0;j<8;j++) { const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.065),ringMat); geometries.push(gem.geometry); gem.position.set(Math.cos(j*Math.PI/4)*radius,Math.sin(j*Math.PI/4)*radius,0); group.add(gem); }
+    const halo=glow('#9cabe4',radius*3.4,.12); halo.position.z=-.12; group.add(halo);
+    group.position.set(cp.x,cp.y,-1.45); group.scale.y=(cp.heightRadius||3.2)/radius; scene.add(group);
+    return {group,ringMat,innerMat,halo,radius};
+  });
+  const starCount=350, starPositions=new Float32Array(starCount*3), starColors=new Float32Array(starCount*3);
+  let seed=2047; function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+  for(let i=0;i<starCount;i++){starPositions[i*3]=(random()-.5)*35;starPositions[i*3+1]=random()*82-6;starPositions[i*3+2]=-2-random()*20;const c=.35+random()*.6;starColors.set([c*.8,c*.86,c],i*3);}
+  const starGeo=new THREE.BufferGeometry(); starGeo.setAttribute('position',new THREE.BufferAttribute(starPositions,3));starGeo.setAttribute('color',new THREE.BufferAttribute(starColors,3));geometries.push(starGeo);
+  const starMat=new THREE.PointsMaterial({size:.055,vertexColors:true,transparent:true,opacity:.65,depthWrite:false,sizeAttenuation:true});materials.push(starMat);
+  const stars=new THREE.Points(starGeo,starMat);scene.add(stars);
+  const nearMotes=[];
+  for(let i=0;i<14;i++) {
+    const mote=glow(i%3===0?'#f4d7a3':i%3===1?'#aadced':'#d2d3f1',.08+random()*.11,.5);
+    mote.material.fog=false; scene.add(mote);
+    nearMotes.push({sprite:mote,x:(random()-.5)*14,y:random()*24,phase:random()*Math.PI*2});
+  }
+  function actor(color) {
+    const group=new THREE.Group(), bodyMaterial=mat(color,.55,.12), shadow=mat('#222b42'), eyeMaterial=basic('#fff5dd');
+    bodyMaterial.emissive.set(color); bodyMaterial.emissiveIntensity=.58;
+    const body=new THREE.Mesh(new THREE.ConeGeometry(.31,.62,12),bodyMaterial); body.position.y=-.1; group.add(body); geometries.push(body.geometry);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.235,20,14),bodyMaterial); head.position.y=.17;group.add(head);geometries.push(head.geometry);
+    const face=new THREE.Mesh(new THREE.SphereGeometry(.177,16,10),shadow);face.scale.set(.98,.8,.55);face.position.set(0,.175,.154);group.add(face);geometries.push(face.geometry);
+    for(const side of [-1,1]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.026,8,6),eyeMaterial);eye.position.set(side*.065,.19,.247);group.add(eye);geometries.push(eye.geometry);}
+    const sash=new THREE.Mesh(new THREE.TorusGeometry(.21,.017,5,18),basic(color));sash.rotation.x=Math.PI/2;sash.position.y=-.07;group.add(sash);geometries.push(sash.geometry);
+    const halo=glow(color,2.2,.72);halo.material.fog=false;halo.position.z=-.06;group.add(halo);
+    const orbitMat=basic(color,.55), orbitGeo=new THREE.TorusGeometry(.49,.009,5,48);geometries.push(orbitGeo);
+    const orbit=new THREE.Mesh(orbitGeo,orbitMat);orbit.position.z=-.04;group.add(orbit);
+    const anchorMaterial=basic(color,.9), anchorGeo=new THREE.TorusGeometry(.17,.028,6,28);geometries.push(anchorGeo);
+    const anchor=new THREE.Mesh(anchorGeo,anchorMaterial);scene.add(anchor);
+    const linkGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);geometries.push(linkGeo);
+    const linkMat=new THREE.LineBasicMaterial({color,transparent:true,opacity:.7});materials.push(linkMat);
+    const link=new THREE.Line(linkGeo,linkMat);scene.add(link);
+    const lamp=new THREE.PointLight(color,3,5.5,2);group.add(lamp);
+    scene.add(group);return{group,body,halo,orbit,anchor,link,anchorMaterial};
+  }
+  const actors=[actor('#f2ce9a'),actor('#a2d9ee')];
+  const cordSegments=72, cords=[];
+  for(let k=0;k<3;k++) {
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array((cordSegments+1)*3),3));g.boundingSphere=new THREE.Sphere(new THREE.Vector3(0,33,0),100);geometries.push(g);
+    const material=new THREE.LineBasicMaterial({color:'#e1e0ee',transparent:true,opacity:k===0?1:.5,depthWrite:false,fog:false});materials.push(material);
+    const line=new THREE.Line(g,material);scene.add(line);cords.push(line);
+  }
+  const sparks=[];
+  for(let i=0;i<5;i++){const spark=glow('#f7efdf',.3,.8);spark.material.fog=false;scene.add(spark);sparks.push(spark);}
+  const frayBursts=[];
+  for(let i=0;i<2;i++){
+    const positions=[];for(let j=0;j<7;j++){const a=j*2.399;positions.push(0,0,0,Math.cos(a)*(.11+j*.014),Math.sin(a)*(.11+j*.014),.02);}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometries.push(geo);
+    const material=new THREE.LineBasicMaterial({color:'#ffbaab',transparent:true,opacity:.9});materials.push(material);
+    const mesh=new THREE.LineSegments(geo,material);scene.add(mesh);frayBursts.push(mesh);
+  }
+  let width=1,height=1,aspect=1,cx=-4.5,cy=6.4,lastMode='menu', lastState=null;
+  const projection=new THREE.Vector3(), silver=new THREE.Color('#e1e0ee'), coral=new THREE.Color('#f9a899');
+  function resize(){
+    width=Math.max(1,canvas.clientWidth||window.innerWidth);height=Math.max(1,canvas.clientHeight||window.innerHeight);aspect=width/height;
+    renderer.setSize(width,height,false);const h=aspect<.85?Math.max(24,13/aspect):20;
+    camera.left=-h*aspect/2;camera.right=h*aspect/2;camera.top=h/2;camera.bottom=-h/2;camera.updateProjectionMatrix();
+  }
+  resize();
+  function cordPoint(a,b,t,time,sag,strand=0){
+    const bend=Math.sin(Math.PI*t);return [a.x+(b.x-a.x)*t+strand*.014*Math.cos(t*42+time),a.y+(b.y-a.y)*t-sag*bend+strand*.025*Math.sin(t*42+time),.88+strand*.015];
+  }
+  function render(state,view){
+    lastState=state;const time=view.time||0, dt=Math.min(view.dt||1/60,.05), still=!!view.reducedMotion;
+    const p=state.players, ax=(p[0].x+p[1].x)/2,ay=(p[0].y+p[1].y)/2;
+    const menu=view.mode==='menu', portrait=aspect<.85;
+    let tx=menu&&!portrait?-4.7:(portrait?ax:ax*.24),ty=menu?6.4:Math.max(5.2,ay+2.1);
+    if(view.mode==='complete')ty=ay+1;
+    const follow=still?1:1-Math.exp(-dt*3.6);cx+=(tx-cx)*follow;cy+=(ty-cy)*follow;
+    camera.position.set(cx+3.5,cy+2.1,29);camera.lookAt(cx,cy,0);camera.updateMatrixWorld();
+    stars.position.y=still?0:Math.sin(time*.08)*.22;
+    nearMotes.forEach((m,i)=>m.sprite.position.set(m.x+(still?0:Math.sin(time*.22+m.phase)*.2),cy+((m.y+(still?0:time*.1*(i%2?1:-1))+2400)%24)-12,1.2));
+    for(let i=0;i<2;i++){
+      const a=actors[i],q=p[i],bob=menu&&!still?Math.sin(time*1.6+i*2)*.045:0;
+      a.group.position.set(q.x,q.y+bob,.85);
+      const target=(q.gravity>0?Math.PI:0)-(q.vx||0)*.018;
+      let diff=((target-a.group.rotation.z+Math.PI*3)%(Math.PI*2))-Math.PI;
+      a.group.rotation.z+=diff*(still?1:1-Math.exp(-dt*8));
+      a.halo.material.opacity=.68+(still?0:Math.sin(time*1.8+i)*.065);
+      a.orbit.visible=!!q.anchor||(view.solo&&view.activePlayer===i);
+      a.orbit.rotation.z=still?0:time*.35;
+      a.orbit.material.opacity=q.anchor?.8:.32;
+      const point=q.anchor||q.nearAnchor;a.anchor.visible=!!point;a.link.visible=!!q.anchor;
+      if(point){a.anchor.position.set(point.x,point.y,.91);a.anchor.rotation.z=time*.5;a.anchorMaterial.opacity=q.anchor?.95:.22;a.anchor.scale.setScalar(q.anchor?1: .7);}
+      if(q.anchor){const pos=a.link.geometry.attributes.position;pos.setXYZ(0,q.x,q.y,.87);pos.setXYZ(1,q.anchor.x,q.anchor.y,.91);pos.needsUpdate=true;a.link.geometry.computeBoundingSphere();}
+    }
+    const distance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),sag=Math.max(.015,(6.1-distance)*.12);
+    for(let k=0;k<cords.length;k++){
+      const pos=cords[k].geometry.attributes.position;
+      for(let j=0;j<=cordSegments;j++){const v=cordPoint(p[0],p[1],j/cordSegments,still?0:time*.8,sag,k-1);pos.setXYZ(j,v[0],v[1],v[2]);}
+      pos.needsUpdate=true;cords[k].material.color.copy(silver).lerp(coral,state.stress||0);
+    }
+    sparks.forEach((s,i)=>{const t=still?i/5:(time*.09+i/5)%1,v=cordPoint(p[0],p[1],t,time,sag);s.position.set(...v);});
+    frayBursts.forEach((f,i)=>{f.visible=state.frays>i;const v=cordPoint(p[0],p[1],.35+i*.3,time,sag);f.position.set(...v);f.rotation.z=still?0:Math.sin(time*2+i)*.3;});
+    rings.forEach((r,i)=>{
+      const done=i<state.checkpoint,active=i===state.checkpoint;
+      r.ringMat.color.set(done?'#c8e8cf':active?'#c5c7ed':'#5c6b91');r.innerMat.color.copy(r.ringMat.color);
+      r.ringMat.opacity=done?.44:active?.47+(still?0:Math.sin(time*1.3)*.09):.14;
+      r.innerMat.opacity=done?.25:active?.2:.06;r.halo.material.opacity=done?.15:active?.15+(state.checkpointCharge||0)*.2:.025;
+    });
+    renderer.render(scene,camera);lastMode=view.mode;
+  }
+  function projectPlayer(index){
+    if(!lastState)return{x:0,y:0,visible:false};const p=lastState.players[index];projection.set(p.x,p.y+.67,1).project(camera);
+    return{x:(projection.x*.5+.5)*width,y:(-.5*projection.y+.5)*height,visible:projection.z>=-1&&projection.z<=1&&Math.abs(projection.x)<1.1&&Math.abs(projection.y)<1.1};
+  }
+  function dispose(){geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();}
+  return {render,resize,projectPlayer,dispose,renderer};
+}
+
+
+  const $ = id => document.getElementById(id);
+  const SAVE_KEY = 'pensieve:07:progress:v1';
+  const RESULT_KEY = 'pensieve:07:result:v1';
+  const PREF_KEY = 'pensieve:07:preferences:v1';
+  const FIXED_DT = 1 / 60;
+  const usesTouchLayout = () => innerWidth <= 760 || matchMedia('(pointer: coarse)').matches;
+  const STAGES = [
+    {area:'THE STAIRWELL', title:'A different kind of falling.', hint:'Lune rises. Let her find a higher hold, then help Sol climb.'},
+    {area:'THE BROKEN STAIRS', title:'The space between.', hint:'One holds. One swings. Steer around the edge of the next ledge.'},
+    {area:'THE FLOATING LIBRARY', title:'Stories without shelves.', hint:'A high anchor makes a good beginning. Hold jump to pull closer.'},
+    {area:'THE INVERTED LIBRARY', title:'The world turns over.', hint:'Your gravity has swapped. Sol rises now; Lune needs a hand.'},
+    {area:'THE SUSPENDED PLAYGROUND', title:'Where we used to play.', hint:'Find a hold, take a swing, and leave room for each other.'},
+    {area:'THE SKY PLAYGROUND', title:'Let the sky remember.', hint:'The last circle is waiting. Bring both of you into its light.'}
+  ];
+  const safeStore = {
+    read(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}},
+    write(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}},
+    remove(key){try{localStorage.removeItem(key);}catch{}}
+  };
+  const prefs = safeStore.read(PREF_KEY) || {};
+  let playMode = prefs.mode === 'solo' ? 'solo' : 'couch';
+  let activePlayer = 0;
+  let phase = 'menu', sim, art, ready = false, failed = false;
+  let lastFrame = 0, accumulator = 0, uiElapsed = 0, nowTime = 0;
+  let helpWasPlaying = false, noticeUntil = 0, rewindUntil = 0;
+  let saveAvailable = null, storageWarned = false, resultSent = false;
+  const keys = new Set();
+  const edges = [{jump:false,anchor:false},{jump:false,anchor:false}];
+  const touch = [{left:false,right:false,reel:false},{left:false,right:false,reel:false}];
+  const pointers = new Map();
+  const reducedQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  let reducedMotion = reducedQuery.matches;
+  reducedQuery.addEventListener?.('change', e => reducedMotion = e.matches);
+  
+  // Sound is synthesized after a user gesture; no audio assets or permissions.
+  const sound = {
+    enabled: prefs.sound === true, ctx:null, master:null,
+    init(){
+      if(!this.enabled) return;
+      try{
+        if(!this.ctx){
+          const Audio = window.AudioContext || window.webkitAudioContext;
+          if(!Audio) return;
+          this.ctx = new Audio(); this.master = this.ctx.createGain();
+          this.master.gain.value = 0.2; this.master.connect(this.ctx.destination);
+        }
+        if(this.ctx.state==='suspended') this.ctx.resume().catch(()=>{});
+      }catch{}
+    },
+    note(frequency,duration=.7,delay=0,volume=.15){
+      if(!this.enabled || !this.ctx || this.ctx.state!=='running') return;
+      const t=this.ctx.currentTime+delay, osc=this.ctx.createOscillator(), gain=this.ctx.createGain();
+      osc.type='sine';osc.frequency.setValueAtTime(frequency,t);
+      gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(volume,t+.025);
+      gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+      osc.connect(gain);gain.connect(this.master);osc.start(t);osc.stop(t+duration+.02);
+      osc.onended=()=>{osc.disconnect();gain.disconnect();};
+    },
+    play(type){
+      if(type==='checkpoint'){[293.66,369.99,440,587.33].forEach((f,i)=>this.note(f,1.9,i*.12,.15));}
+      else if(type==='complete'){[220,293.66,369.99,440,587.33,739.99].forEach((f,i)=>this.note(f,3,i*.15,.17));}
+      else if(type==='anchor')this.note(440,.4,0,.1);
+      else if(type==='jump')this.note(293.66,.25,0,.04);
+      else if(type==='fray'){this.note(146.83,.7,0,.13);this.note(155.56,.7,.03,.08);}
+      else if(type==='flip'){[440,329.63,261.63,220].forEach((f,i)=>this.note(f,1.4,i*.12,.12));}
+      else if(type==='rewind'){this.note(164.81,1.4,0,.12);this.note(220,1.5,.1,.1);}
+    },
+    toggle(){
+      this.enabled=!this.enabled;
+      if(this.enabled){this.init();this.note(440,.6,0,.1);}
+      if(this.master&&this.ctx) this.master.gain.setTargetAtTime(this.enabled?.2:0,this.ctx.currentTime,.07);
+      updateSoundButton();savePrefs();
+    }
+  };
+  function savePrefs(){safeStore.write(PREF_KEY,{mode:playMode,sound:sound.enabled});}
+  function updateSoundButton(){
+    $('soundButton').setAttribute('aria-label',sound.enabled?'Turn sound off':'Turn sound on');
+    $('soundButton').setAttribute('aria-pressed',String(sound.enabled));
+    $('soundWaves').setAttribute('d',sound.enabled?'M12.5 6.5a5 5 0 0 1 0 7M15 4a8.5 8.5 0 0 1 0 12':'m13 7 5 6m0-6-5 6');
+  }
+  function selectMode(mode){
+    playMode=mode;document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+    savePrefs();updateMode();
+  }
+  function updateMode(){
+    const solo=playMode==='solo';
+    $('modeText').textContent=solo?`SOLO · ${activePlayer===0?'SOL':'LUNE'} IN YOUR HANDS`:'TWO PLAYERS · SHARED KEYBOARD';
+    $('tabHint').hidden=!solo;
+    $('playMode').disabled=!solo&&!matchMedia('(pointer: coarse)').matches&&innerWidth>760;
+    $('touchSwitch').innerHTML=`${activePlayer===0?'A · SOL':'B · LUNE'} <span>⇄</span>`;
+    $('touchSwitch').classList.toggle('blue',activePlayer===1);
+    ['A','B'].forEach((p,i)=>{
+      $('playerCard'+p).classList.toggle('active',solo&&activePlayer===i);
+      $('playerCard'+p).classList.toggle('inactive',solo&&activePlayer!==i);
+      $('playerTag'+p).classList.toggle('active',solo&&activePlayer===i);
+    });
+  }
+  function clearInputs(){
+    keys.clear();pointers.clear();
+    for(let i=0;i<2;i++){edges[i].jump=false;edges[i].anchor=false;touch[i].left=false;touch[i].right=false;touch[i].reel=false;}
+    document.querySelectorAll('.touch-button.held').forEach(el=>el.classList.remove('held'));
+  }
+  function switchPlayer(){
+    if(phase!=='playing')return;
+    clearInputs();activePlayer=1-activePlayer;updateMode();
+    const held=sim.state.players[1-activePlayer].anchor;
+    tell(`${activePlayer===0?'Sol':'Lune'} is in your hands.${held?' Your partner is holding on.':' Anchor your partner before switching to keep them steady.'}`,3.4);
+  }
+  function readInputs(){
+    const result=[0,1].map(i=>({move:(touch[i].right?1:0)-(touch[i].left?1:0),jump:edges[i].jump,anchor:edges[i].anchor,reel:touch[i].reel}));
+    if(playMode==='solo'){
+      const r=result[activePlayer];r.move+=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);r.reel ||= keys.has('KeyW')||keys.has('ArrowUp')||keys.has('Space');
+    }else{
+      result[0].move+=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);result[0].reel ||= keys.has('KeyW')||(activePlayer===0&&keys.has('Space'));
+      result[1].move+=(keys.has('ArrowRight')?1:0)-(keys.has('ArrowLeft')?1:0);result[1].reel ||= keys.has('ArrowUp')||(activePlayer===1&&keys.has('Space'));
+    }
+    for(let i=0;i<2;i++){result[i].move=Math.max(-1,Math.min(1,result[i].move));edges[i].jump=false;edges[i].anchor=false;}
+    return result;
+  }
+  function tell(message,seconds=4){$('notice').textContent=message;$('notice').classList.add('visible');noticeUntil=performance.now()/1000+seconds;}
+  function timeString(s){const seconds=Math.max(0,Math.floor(s));return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}
+  function refreshSaved(){
+    const saved=safeStore.read(SAVE_KEY);
+    saveAvailable=saved&&saved.version===1&&saved.checkpoint>0&&saved.checkpoint<6&&saved.snapshot?saved:null;
+    $('continueButton').hidden=!saveAvailable||!ready;
+    if(saveAvailable)$('continueButton').textContent=`Continue · ${saveAvailable.checkpoint} of 6 circles remembered`;
+    $('startButton').querySelector('span').textContent=saveAvailable?'Begin a new memory':'Enter the memory';
+    const last=safeStore.read(RESULT_KEY);
+    $('bestMark').textContent=last&&Number.isFinite(last.bestClarity)?`Best ${Math.round(last.bestClarity*100)}%`:'';
+  }
+  function saveProgress(){
+    if(!sim||sim.state.checkpoint<1||sim.state.completed)return;
+    const saved=safeStore.write(SAVE_KEY,{version:1,checkpoint:sim.state.checkpoint,mode:playMode,snapshot:sim.snapshot(),savedAt:new Date().toISOString()});
+    if(!saved&&!storageWarned){storageWarned=true;tell('Your browser cannot save progress. You can still finish this memory.',5);}
+    refreshSaved();
+  }
+  function setPhase(next){
+    phase=next;document.body.classList.toggle('playing',next!=='menu');
+    $('menuScreen').hidden=next!=='menu';$('hud').hidden=next==='menu'||next==='complete';
+    $('pauseButton').hidden=next==='menu'||next==='complete';$('touchControls').hidden=next!=='playing';
+    $('completeScreen').hidden=next!=='complete';
+    $('sessionLabel').textContent=next==='menu'?'ACT II · THE DEPTHS':next==='complete'?'MEMORY HELD':'OPPOSITE GRAVITY · SHARED THREAD';
+    clearInputs();accumulator=0;
+    if(next==='menu'||next==='complete'){$('notice').classList.remove('visible');noticeUntil=0;}
+    if(next==='menu')refreshSaved();
+  }
+  function startGame(resume=false){
+    if(!ready)return;
+    resultSent=false;sim.reset();activePlayer=0;let restored=false,restoreFailed=false;
+    if(resume&&saveAvailable){
+      try{if(!sim.restore(saveAvailable.snapshot))throw new Error('Invalid saved memory');selectMode(saveAvailable.mode==='solo'?'solo':'couch');restored=true;}
+      catch{sim.reset();safeStore.remove(SAVE_KEY);restoreFailed=true;}
+    }else{safeStore.remove(SAVE_KEY);}
+    sim.drainEvents();setPhase('playing');updateMode();sound.init();
+    updateHUD();
+    const welcome=usesTouchLayout()?'Tap the name to switch spirits. Anchor one, then use jump / pull with the other.':playMode==='solo'?'Press Tab to switch spirits. Anchor one, then climb with the other.':'Sol: A D · W · S. Lune: ← → · ↑ · ↓. Hold jump to pull.';
+    tell(restoreFailed?'That saved memory could not be restored. A new one is ready.':restored?'The thread remembers where you left it.':welcome,6);
+  }
+  function pauseGame(){
+    if(phase!=='playing')return;
+    setPhase('paused');$('pauseCheckpoints').textContent=`${sim.state.checkpoint} / 6`;$('pauseTime').textContent=timeString(sim.state.elapsed);
+    saveProgress();$('pauseDialog').showModal();
+  }
+  function resumeGame(){
+    if($('pauseDialog').open)$('pauseDialog').close();
+    if(phase==='paused'&&!$('helpDialog').open)setPhase('playing');
+  }
+  function openHelp(){
+    if($('helpDialog').open)return;
+    helpWasPlaying=phase==='playing';
+    if(helpWasPlaying)setPhase('paused');
+    $('helpDialog').showModal();
+  }
+  function closeHelp(){
+    if($('helpDialog').open)$('helpDialog').close();
+    if(helpWasPlaying&&phase==='paused'){helpWasPlaying=false;setPhase('playing');}
+  }
+  function rewind(){
+    if(!sim||phase==='menu'||phase==='complete')return;
+    clearInputs();sim.rewind('manual');handleEvents();updateHUD();
+  }
+  function returnToTitle(){
+    if($('pauseDialog').open)$('pauseDialog').close();
+    if(sim){sim.reset();sim.drainEvents();}
+    setPhase('menu');$('startButton').focus();
+  }
+  function finishGame(){
+    if(resultSent)return;resultSent=true;
+    const s=sim.state,clarity=Math.round(Math.max(0,Math.min(100,sim.getClarity())));
+    const thread={game:7,clarity:clarity/100,sync:Math.max(0,Math.min(1,1-s.totalFrays*.035-s.rewinds*.025)),color:'silver'};
+    const old=safeStore.read(RESULT_KEY);
+    const result={game:7,thread,checkpoints:6,frays:s.totalFrays,rewinds:s.rewinds,elapsedSeconds:Math.round(s.elapsed),mode:playMode,completedAt:new Date().toISOString(),bestClarity:Math.max(thread.clarity,Number(old?.bestClarity)||0)};
+    const saved=safeStore.write(RESULT_KEY,result);safeStore.remove(SAVE_KEY);
+    $('resultClarity').textContent=String(clarity);$('resultFrays').textContent=String(s.totalFrays);$('resultTime').textContent=timeString(s.elapsed);
+    $('threadSaved').textContent=saved?'Your silver thread has been saved on this browser.':'Silver thread earned. Browser storage is unavailable for this run.';
+    setPhase('complete');sound.play('complete');
+    window.dispatchEvent(new CustomEvent('pensieve:complete',{detail:result}));
+    if(window.parent!==window&&location.origin!=='null')window.parent.postMessage({type:'pensieve:complete',...result},location.origin);
+    setTimeout(()=>$('againButton').focus({preventScroll:true}),150);
+  }
+  function handleEvents(){
+    for(const event of sim.drainEvents()){
+      if(event.type==='checkpoint'){
+        sound.play('checkpoint');saveProgress();
+        if(sim.state.checkpoint<6)tell(`Circle ${sim.state.checkpoint} remembered. The thread holds.`,4);
+      }else if(event.type==='fray'){
+        sound.play('fray');if(event.frays<3)tell(`A thread frayed. ${3-event.frays} more before the memory rewinds. Move toward each other.`,4);
+      }else if(event.type==='rewind'){
+        sound.play('rewind');document.body.classList.add('rewinding');rewindUntil=performance.now()/1000+.23;
+        tell('The dream loops gently. Your last checkpoint is still here.',4);
+      }else if(event.type==='flip'){
+        sound.play('flip');tell(sim.state.gravityFlip?'The library turns over. Sol falls up; Lune falls down.':'The world settles. Sol falls down; Lune falls up.',5);
+      }else if(event.type==='complete')finishGame();
+      else if(event.type==='anchor'||event.type==='jump')sound.play(event.type);
+    }
+    if(sim.state.completed&&phase==='playing')finishGame();
+  }
+  function updateHUD(){
+    if(!sim)return;
+    const s=sim.state,stage=STAGES[Math.min(s.checkpoint,5)];
+    $('roomKicker').textContent=`${String(Math.min(s.checkpoint+1,6)).padStart(2,'0')} / ${stage.area}`;$('roomTitle').textContent=stage.title;
+    $('checkpointCount').textContent=`${s.checkpoint} / 6`;
+    document.querySelectorAll('.checkpoint-step').forEach((el,i)=>{el.classList.toggle('done',i<s.checkpoint);el.classList.toggle('current',i===s.checkpoint);if(i===s.checkpoint)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');el.querySelector('.checkpoint-circle').textContent=i<s.checkpoint?'✓':String(i+1).padStart(2,'0');});
+    const strain=s.stress>.1;
+    $('threadPanel').classList.toggle('strain',strain);$('tensionFill').style.transform=`scaleX(${Math.max(0,Math.min(1,s.tension))})`;
+    $('tensionMeter').setAttribute('aria-valuenow',String(Math.round(s.tension*100)));
+    $('threadLabel').textContent=strain?'GENTLY. YOU ARE PULLING APART.':s.frays?'THE THREAD STILL HOLDS.':'A LITTLE GIVE. A LITTLE TRUST.';
+    $('frayIndicators').setAttribute('aria-label',`${s.frays} of 3 frays`);Array.from($('frayIndicators').children).forEach((el,i)=>el.classList.toggle('used',i<s.frays));
+    let hint=stage.hint;
+    if(strain)hint='Ease toward each other. Three frays return you to the last circle.';
+    else if(s.players[1-activePlayer].anchor&&playMode==='solo')hint='Your partner is holding. Hold jump / pull to climb toward them.';
+    else if(playMode==='solo'&&s.players[activePlayer].anchor)hint=usesTouchLayout()?'You are holding on. Tap the name to climb with your partner.':'You are holding on. Press Tab to climb with your partner.';
+    $('hintText').textContent=hint;
+    $('gateProgress').classList.toggle('visible',s.checkpointCharge>.01);$('gateProgressFill').style.transform=`scaleX(${s.checkpointCharge||0})`;
+    ['A','B'].forEach((name,i)=>{
+      const p=s.players[i],up=p.gravity>0;
+      $('gravity'+name).textContent=up?'↑ FALLS UP':'↓ FALLS DOWN';
+      $('status'+name).textContent=p.anchor?'Anchored · tap anchor to let go.':p.nearAnchor?'A surface is within reach · anchor here.':p.grounded?'A place to stand. A place to begin.':'In the air · steer gently.';
+      const tag=$('playerTag'+name);tag.querySelector('span').textContent=`${name} ${up?'↑':'↓'}${playMode==='solo'&&activePlayer===i?' · YOU':''}`;tag.querySelector('small').textContent=p.anchor?'HOLDING ON':'';
+    });
+    document.querySelector('[data-touch="anchor"]').classList.toggle('anchor-on',!!s.players[activePlayer].anchor);
+  }
+  function updateTags(){
+    for(let i=0;i<2;i++){
+      const tag=$(i===0?'playerTagA':'playerTagB');
+      if(!art||phase==='menu'||phase==='complete'){tag.hidden=true;continue;}
+      const pos=art.projectPlayer(i);tag.hidden=!pos||pos.visible===false;
+      if(pos){tag.style.left=`${pos.x}px`;tag.style.top=`${pos.y-3}px`;}
+    }
+  }
+  function frame(milliseconds){
+    if(failed)return;
+    requestAnimationFrame(frame);nowTime=milliseconds/1000;
+    const delta=lastFrame?Math.min(.05,(milliseconds-lastFrame)/1000):0;lastFrame=milliseconds;
+    if(phase==='playing'){
+      accumulator+=delta;
+      while(accumulator>=FIXED_DT){sim.step(FIXED_DT,readInputs());accumulator-=FIXED_DT;}
+      handleEvents();
+    }
+    art.render(sim.state,{time:nowTime,dt:delta,mode:phase,activePlayer,solo:playMode==='solo',reducedMotion});
+    updateTags();uiElapsed+=delta;
+    if(uiElapsed>.09){uiElapsed=0;if(phase!=='menu')updateHUD();}
+    if(noticeUntil&&nowTime>noticeUntil){$('notice').classList.remove('visible');noticeUntil=0;}
+    if(rewindUntil&&nowTime>rewindUntil){document.body.classList.remove('rewinding');rewindUntil=0;}
+  }
+  function fatalError(error){
+    failed=true;ready=false;$('startButton').disabled=true;$('continueButton').hidden=true;
+    $('loadState').textContent='The memory could not open.';$('loadState').classList.add('error');
+    $('loadErrorPanel').hidden=false;
+    $('errorExplanation').textContent=/WebGL|context|GPU/i.test(String(error))?'This memory needs WebGL 2. Try a current browser with graphics acceleration enabled.':'The 3D engine could not load. Check your internet connection, then try again. The file loads Three.js from a CDN.';
+    console.error('Falling Upward:',error);
+  }
+  async function loadThree(){
+    const urls=['https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js','https://unpkg.com/three@0.180.0/build/three.module.js'];
+    let lastError;
+    for(const url of urls){
+      let timeout;
+      try{return await Promise.race([import(url),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(new Error('Three.js download timed out')),14000);})]);}
+      catch(error){lastError=error;}finally{clearTimeout(timeout);}
+    }
+    throw lastError;
+  }
+  async function boot(){
+    try{
+      const THREE=await loadThree();sim=createFallingUpwardSimulation();art=createFallingUpwardScene(THREE,$('world'),sim.level);
+      $('checkpointRail').innerHTML=STAGES.map((stage,i)=>`<li class="checkpoint-step${i===0?' current':''}" aria-label="Checkpoint ${i+1}: ${stage.area.toLowerCase()}"><span class="checkpoint-name">${stage.area.replace('THE ','')}</span><span class="checkpoint-circle">${String(i+1).padStart(2,'0')}</span></li>`).join('');
+      ready=true;$('startButton').disabled=false;$('loadState').textContent='Keyboard & touch · sound optional';refreshSaved();
+      if(new URLSearchParams(location.search).get('debug')==='1'){
+        Object.defineProperty(window,'fallingUpwardDebug',{value:Object.freeze({
+          getState:()=>structuredClone(sim.state),getLevel:()=>structuredClone(sim.level),
+          getUI:()=>({phase,mode:playMode,activePlayer,ready,sound:sound.enabled}),
+          getRenderStats:()=>({calls:art.renderer.info.render.calls,triangles:art.renderer.info.render.triangles,geometries:art.renderer.info.memory.geometries,textures:art.renderer.info.memory.textures})
+        }),writable:false,configurable:false});
+      }
+      art.render(sim.state,{time:0,dt:0,mode:'menu',activePlayer:0,solo:false,reducedMotion});
+      requestAnimationFrame(frame);
+    }catch(error){fatalError(error);}
+  }
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>selectMode(b.dataset.mode)));
+  $('startButton').addEventListener('click',()=>startGame(false));$('continueButton').addEventListener('click',()=>startGame(true));
+  $('soundButton').addEventListener('click',()=>sound.toggle());$('helpButton').addEventListener('click',openHelp);$('closeHelp').addEventListener('click',closeHelp);
+  $('pauseButton').addEventListener('click',pauseGame);$('resumeButton').addEventListener('click',resumeGame);
+  $('rewindButton').addEventListener('click',()=>{resumeGame();rewind();});
+  $('titleButton').addEventListener('click',()=>{saveProgress();returnToTitle();});
+  $('againButton').addEventListener('click',()=>startGame(false));$('finishTitleButton').addEventListener('click',returnToTitle);
+  $('playMode').addEventListener('click',switchPlayer);$('touchSwitch').addEventListener('click',switchPlayer);
+  $('retryLoad').addEventListener('click',()=>location.reload());
+  $('helpDialog').addEventListener('cancel',e=>{e.preventDefault();closeHelp();});$('pauseDialog').addEventListener('cancel',e=>{e.preventDefault();resumeGame();});
+  window.addEventListener('keydown',e=>{
+    const inDialog=$('helpDialog').open||$('pauseDialog').open;
+    if(inDialog)return;
+    if(e.code==='KeyM'&&!e.repeat){sound.toggle();return;}
+    if((e.code==='KeyH'||e.code==='Slash')&&!e.repeat){e.preventDefault();openHelp();return;}
+    if(phase!=='playing')return;
+    const handled=['KeyA','KeyD','KeyW','KeyS','KeyE','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','Tab','KeyR','Escape','KeyP'];
+    if(!handled.includes(e.code))return;
+    e.preventDefault();
+    if(e.code==='Escape'||e.code==='KeyP'){if(!e.repeat)pauseGame();return;}
+    if(e.code==='Tab'){if(!e.repeat)switchPlayer();return;}
+    if(e.code==='KeyR'){if(!e.repeat)rewind();return;}
+    const wasHeld=keys.has(e.code);keys.add(e.code);
+    if(wasHeld||e.repeat)return;
+    const target=playMode==='solo'?activePlayer:e.code.startsWith('Arrow')?1:e.code==='Space'||e.code==='KeyE'?activePlayer:0;
+    if(['KeyW','ArrowUp','Space'].includes(e.code))edges[target].jump=true;
+    if(['KeyS','ArrowDown','KeyE'].includes(e.code))edges[target].anchor=true;
+  });
+  window.addEventListener('keyup',e=>keys.delete(e.code));
+  for(const button of document.querySelectorAll('[data-touch]')){
+    button.addEventListener('pointerdown',e=>{
+      if(phase!=='playing')return;e.preventDefault();button.setPointerCapture(e.pointerId);
+      const action=button.dataset.touch,index=activePlayer;pointers.set(e.pointerId,{index,action,button});button.classList.add('held');
+      if(action==='left'||action==='right')touch[index][action]=true;
+      if(action==='jump'){touch[index].reel=true;edges[index].jump=true;}
+      if(action==='anchor')edges[index].anchor=true;
+    });
+    const release=e=>{
+      const pointer=pointers.get(e.pointerId);if(!pointer)return;
+      const {index,action,button:heldButton}=pointer;
+      if(action==='left'||action==='right')touch[index][action]=false;
+      if(action==='jump')touch[index].reel=false;
+      heldButton.classList.remove('held');pointers.delete(e.pointerId);
+    };
+    button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);
+    button.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  window.addEventListener('blur',()=>{clearInputs();if(phase==='playing')pauseGame();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInputs();if(phase==='playing')pauseGame();}lastFrame=0;});
+  window.addEventListener('resize',()=>{if(art)art.resize();updateMode();});
+  window.addEventListener('pagehide',()=>{if(sim&&!sim.state.completed)saveProgress();});
+  $('world').addEventListener('webglcontextlost',event=>{event.preventDefault();clearInputs();fatalError(new Error('WebGL context lost'));});
+  window.addEventListener('error',e=>{if(ready&&!failed)fatalError(e.error||e.message);});
+  selectMode(playMode);updateSoundButton();refreshSaved();boot();
+  </script>
+</body>
+</html>
