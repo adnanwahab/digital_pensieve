@@ -257,32 +257,48 @@
       }
     }
 
-    const visualizationFiles = [
-      'Giza in Particles.html',
-      'Navy Orbit Field.html',
-      'Neon Cybernetic Queen Portrait.png',
-      'Ocean Jump.html',
-      'Skyfall.html',
-      'The Thinning Room.html',
-      'Thought Exchange.html',
-      'Vision Sketchbook.html',
-      'energy-sphere-impact.html',
-      'energy_sphere_million_particle_impact.html',
-      'globe-painting.html',
-      'globe_three_phase_energy_cycle_fixed.html',
-      'glowing_wheel_of_becoming_threejs.html',
-      'memory_basin_swirl.html',
-      'neon_honey_bear_animated.html',
-      'neuro_probe_memory_voyage_3d.html',
-      'particle-triangle-standalone.html',
-      'particle_city_absorbed_into_light_bow.html',
-      'pensieve_launch_people_by_day_grid.html',
-      'projector-curtain.html',
-      'rainbow-archons.html',
-      'rainbow_particle_yoga_silhouette.html',
-      'tapestry_weaving_from_threads.html',
-      'thousand_minds_shared_picture.html'
-    ];
+    async function loadVisualizationFiles(){
+      try {
+        const res = await fetch('/api/visualizations', { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        if (Array.isArray(payload?.files) && payload.files.length) return payload.files;
+      } catch (err) {
+        console.warn('Failed to load /api/visualizations, using fallback list.', err);
+      }
+
+      return [
+        'Giza in Particles.html',
+        'Navy Orbit Field.html',
+        'Neon Cybernetic Queen Portrait.png',
+        'Ocean Jump.html',
+        'Skyfall.html',
+        'The Thinning Room.html',
+        'Thought Exchange.html',
+        'Vision Sketchbook.html',
+        'brain-forest-fire.html',
+        'distant_particle_heart_purple.html',
+        'energy-sphere-impact.html',
+        'energy_sphere_million_particle_impact.html',
+        'globe-painting.html',
+        'globe_three_phase_energy_cycle_fixed.html',
+        'glowing_wheel_of_becoming_threejs.html',
+        'memory_basin_swirl.html',
+        'neon_honey_bear_animated.html',
+        'neuro_probe_memory_voyage_3d.html',
+        'particle-triangle-standalone.html',
+        'particle_city_absorbed_into_light_bow.html',
+        'pensieve_launch_people_by_day_grid.html',
+        'projector-curtain.html',
+        'rainbow-archons.html',
+        'rainbow_particle_yoga_silhouette.html',
+        'synchronized-swimming.html',
+        'tapestry_weaving_from_threads.html',
+        'thousand_minds_shared_picture.html'
+      ];
+    }
+
+    const visualizationFiles = await loadVisualizationFiles();
 
     const paintings = visualizationFiles.map((file, i) => ({
       src: encodeURI(`/visualizations/${file}`),
@@ -418,7 +434,22 @@
     function setInteraction(enabled){
       interactOn = enabled;
       document.body.classList.toggle('interact-on', enabled);
-      if (enabled && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+
+      if (enabled) {
+        if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+      } else {
+        // Leaving iframe interaction: reclaim focus + pointer lock for walk controls.
+        const active = document.activeElement;
+        if (active && typeof active.blur === 'function') active.blur();
+        if (stage && stage.focus) stage.focus({ preventScroll: true });
+
+        if (!locked && renderer.domElement.requestPointerLock) {
+          try {
+            renderer.domElement.requestPointerLock();
+          } catch {}
+        }
+      }
+
       updateControlsText();
     }
 
