@@ -86,13 +86,21 @@
     .crosshair::after{left:0;top:8px;width:18px;height:2px}
     body.locked:not(.interact-on) .crosshair{opacity:.9}
 
+    /* Museum geometry is scenery and should never capture pointer events */
+    .wall,
+    .floor,
+    .ceiling,
+    .frame,
+    .frame::before{
+      pointer-events:none !important;
+    }
+
     .frame{
       width:620px;
       height:400px;
       box-sizing:border-box;
       position:relative;
       padding:16px;
-      pointer-events:none;
       background:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 28%,var(--gold-3) 52%,var(--gold-2) 76%,var(--gold-4) 100%);
       border:8px solid #7c5818;
       border-radius:6px;
@@ -101,7 +109,9 @@
         0 0 0 2px rgba(255,225,146,.34),
         inset 0 0 0 2px rgba(116,79,18,.65),
         inset 0 0 22px rgba(255,233,152,.2);
-      overflow:hidden;
+      /* No overflow:hidden here: on a 3D-transformed CSS3DObject, Chromium's
+         overflow clip breaks hit testing into the iframe from most camera
+         angles. The 16px padding already keeps the iframe inside the frame. */
     }
 
     .frame::before{
@@ -111,9 +121,9 @@
       border:2px solid rgba(255,236,170,.55);
       border-radius:3px;
       box-shadow:inset 0 0 0 1px rgba(107,72,15,.6), inset 0 0 18px rgba(71,46,10,.35);
-      pointer-events:none;
     }
 
+    /* Disabled while walking */
     .frame iframe{
       width:100%;
       height:100%;
@@ -121,15 +131,20 @@
       display:block;
       background:#090b16;
       box-shadow:0 0 0 1px rgba(255,236,180,.22);
-      pointer-events:none;
+      pointer-events:none !important;
       transform:none;
       will-change:auto;
       backface-visibility:visible;
       -webkit-backface-visibility:visible;
     }
 
-    body.interact-on .frame,
-    body.interact-on .frame iframe{ pointer-events:auto; }
+    /* iframe is the only interactive surface in interact mode */
+    body.interact-on .frame{
+      pointer-events:none;
+    }
+    body.interact-on .frame iframe{
+      pointer-events:auto !important;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +185,11 @@
       el.style.width = w + 'px';
       el.style.height = h + 'px';
       el.style.cssText += cssText;
+
+      if (className === 'wall' || className === 'floor' || className === 'ceiling') {
+        el.style.pointerEvents = 'none';
+      }
+
       return el;
     }
 
@@ -302,12 +322,51 @@
     });
 
     const iframeEntries = [];
+    const preloadFrustum = new THREE.Frustum();
+    const preloadProjectionMatrix = new THREE.Matrix4();
+    const preloadWorldPos = new THREE.Vector3();
+    const preloadBoundsSphere = new THREE.Sphere(new THREE.Vector3(), 430);
+    const PRELOAD_DISTANCE_SQ = 7200 * 7200;
+    const PRELOAD_CHECK_MS = 100;
+    let nextPreloadCheck = 0;
+
+    function mountIframeOnce(entry){
+      if (entry.loaded) return;
+      const iframe = entry.iframe;
+      if (!iframe.dataset.src) return;
+      iframe.src = iframe.dataset.src;
+      iframe.dataset.active = '1';
+      entry.loaded = true;
+    }
+
+    function updateIframePreload(now){
+      if (now < nextPreloadCheck) return;
+      nextPreloadCheck = now + PRELOAD_CHECK_MS;
+
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+      preloadProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      preloadFrustum.setFromProjectionMatrix(preloadProjectionMatrix);
+
+      for (let i = 0; i < iframeEntries.length; i++){
+        const entry = iframeEntries[i];
+        if (entry.loaded) continue;
+
+        entry.object.getWorldPosition(preloadWorldPos);
+        preloadBoundsSphere.center.copy(preloadWorldPos);
+
+        const inFrustum = preloadFrustum.intersectsSphere(preloadBoundsSphere);
+        const nearEnough = camera.position.distanceToSquared(preloadWorldPos) < PRELOAD_DISTANCE_SQ;
+
+        if (inFrustum && nearEnough) mountIframeOnce(entry);
+      }
+    }
 
     paintings.forEach((painting, i) => {
       const frameEl = cssPanel('frame', FRAME_W, FRAME_H);
       const iframe = document.createElement('iframe');
-      iframe.src = painting.src;
-      iframe.dataset.active = '1';
+      iframe.dataset.src = painting.src;
+      iframe.dataset.active = '0';
       iframe.title = painting.title || `Mueseum painting ${i + 1}`;
       if (painting.allow) iframe.allow = painting.allow;
       if (painting.referrerPolicy) iframe.referrerPolicy = painting.referrerPolicy;
@@ -320,7 +379,7 @@
       frame.rotation.y = slot.ry;
       scene.add(frame);
 
-      iframeEntries.push({ el: frameEl, iframe, object: frame, lastSeenAt: performance.now() });
+      iframeEntries.push({ el: frameEl, iframe, object: frame, loaded: false });
     });
 
     // FPS-style controls (WASD + mouse look + jump), with E interaction toggle
@@ -373,11 +432,32 @@
       }
     }
 
-    renderer.domElement.addEventListener('click', () => {
-      if (stage && stage.focus) stage.focus();
+    renderer.domElement.addEventListener('click', (e) => {
       if (interactOn || locked) return;
+
+      // Don't grab pointer lock if the click landed on interactive content.
+      if (
+        e.target.closest?.('iframe') ||
+        e.target.closest?.('.frame') ||
+        e.target.closest?.('a, button, input')
+      ) {
+        return;
+      }
+
+      if (stage && stage.focus) stage.focus();
       if (renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
     });
+
+    // Temporary diagnostic: verify what receives pointer events in interact mode.
+    document.addEventListener('pointerdown', (e) => {
+      if (!interactOn) return;
+      console.log(
+        'CLICK TARGET:',
+        e.target,
+        'elementFromPoint:',
+        document.elementFromPoint(e.clientX, e.clientY)
+      );
+    }, true);
 
     document.addEventListener('pointerlockchange', () => {
       setLocked(document.pointerLockElement === renderer.domElement);
@@ -499,6 +579,7 @@
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       updateWalk(dt);
+      updateIframePreload(now);
       renderer.render(scene, camera);
       requestAnimationFrame(frame);
     }
