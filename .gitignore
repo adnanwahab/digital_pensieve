@@ -1,0 +1,6 @@
+# Environment files
+.env
+.env.local
+
+# OS/editor
+.DS_Store

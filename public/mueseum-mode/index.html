@@ -2,306 +2,228 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Mueseum Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400;1,6..96,500&family=IBM+Plex+Mono:wght@400&family=Manrope:wght@400;600&display=swap">
   <style>
+    *,*::before,*::after{box-sizing:border-box}
+    [hidden]{display:none!important}
+
     :root{
-      --bg:#6d6d6d;
-      --text:#e8e8e8;
-      --dim:#cfcfcf;
-      --shadow:rgba(0,0,0,.38);
-      --gold-1:#f6df92;
-      --gold-2:#d9b75a;
-      --gold-3:#9d7422;
-      --gold-4:#f3d983;
+      --night:#0b0f13;
+      --label:#ebe6dc;
+      --label-ink:#1b1814;
+      --brass:#c9a46a;
+      --mist:#a9b6bf;
+      --glass:rgba(11,15,19,.62);
+      --rule:rgba(235,230,220,.16);
+      --display:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+      --body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+      color-scheme:dark;
     }
 
-    html,body{
-      margin:0;
-      width:100%;
-      height:100%;
-      overflow:hidden;
-      background:var(--bg);
-      color:var(--text);
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    }
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--night);color:var(--label);font-family:var(--body);-webkit-font-smoothing:antialiased}
 
-    body::before,
-    body::after{
-      content:'';
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      z-index:1;
-    }
+    /* Two stacked layers:
+       - cssLayer (bottom): CSS3D iframes = the live paintings, receives all pointer input
+       - glLayer (top): WebGL hall, pointer-events:none, with transparent "holes" where paintings hang */
+    #stage{position:fixed;inset:0;outline:none}
+    #cssLayer,#glLayer{position:absolute;inset:0}
+    #cssLayer{z-index:1}
+    #glLayer{z-index:2;pointer-events:none}
+    #glLayer canvas{display:block;width:100%;height:100%}
 
-    /* subtle cinematic grading to get closer to the reference style */
-    body::before{
-      background:
-        radial-gradient(90% 65% at 50% 12%, rgba(255,228,167,.18), transparent 58%),
-        radial-gradient(110% 85% at 50% 105%, rgba(0,0,0,.48), rgba(0,0,0,.62));
-      mix-blend-mode:soft-light;
-      opacity:.75;
+    .canvas-slot{background:#090b16}
+    .canvas-slot iframe{
+      width:100%;height:100%;border:0;display:block;background:#090b16;
+      pointer-events:auto !important;
+      backface-visibility:visible;-webkit-backface-visibility:visible;
     }
-
-    body::after{
-      background:
-        linear-gradient(110deg, rgba(255,226,164,.12) 12%, transparent 26%),
-        linear-gradient(72deg, rgba(255,214,138,.08) 14%, transparent 28%);
-      opacity:.6;
-    }
-
-    #stage{position:fixed;inset:0;outline:none;z-index:2}
 
     .back{
-      position:fixed;
-      top:16px;
-      left:16px;
-      z-index:12;
-      text-decoration:none;
-      color:#ececec;
-      font-size:13px;
-      background:rgba(0,0,0,.28);
-      border:1px solid rgba(255,255,255,.25);
-      padding:7px 10px;
-      border-radius:8px;
-      backdrop-filter:blur(4px);
-      -webkit-backdrop-filter:blur(4px);
+      position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));z-index:12;
+      text-decoration:none;color:var(--label);font:600 12px/1 var(--body);letter-spacing:.03em;
+      background:var(--glass);border:1px solid var(--rule);padding:10px 13px;border-radius:999px;
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     }
+    .back:hover{border-color:rgba(201,164,106,.6)}
 
-    .controls{
-      position:fixed;
-      left:20px;
-      right:20px;
-      bottom:16px;
-      z-index:12;
-      text-align:left;
-      font-size:52px;
-      letter-spacing:.01em;
-      color:var(--dim);
-      text-shadow:0 2px 7px var(--shadow);
-      pointer-events:none;
-      user-select:none;
-      line-height:1.15;
-      font-weight:500;
-      transform-origin:left bottom;
-      transform:scale(.34);
-      white-space:nowrap;
-    }
+    .brand{position:fixed;top:calc(62px + env(safe-area-inset-top,0px));left:max(18px,env(safe-area-inset-left,0px));z-index:11;display:flex;flex-direction:column;gap:4px;pointer-events:none;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+    .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass)}
+    .brand h1{margin:0;font-family:var(--display);font-style:italic;font-weight:400;font-size:clamp(26px,3.6vw,38px);line-height:1.05;color:var(--label)}
+    .brand .sub{font-size:12px;color:var(--mist);letter-spacing:.02em}
 
-    .crosshair{
-      position:fixed;
-      left:50%;
-      top:50%;
-      width:18px;
-      height:18px;
-      transform:translate(-50%,-50%);
-      pointer-events:none;
-      opacity:0;
-      transition:opacity .15s ease;
-      z-index:12;
-    }
-    .crosshair::before,.crosshair::after{
-      content:'';
-      position:absolute;
-      background:rgba(240,240,240,.9);
-      box-shadow:0 0 6px rgba(0,0,0,.55);
-    }
+    .crosshair{position:fixed;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .15s ease;z-index:12}
+    .crosshair::before,.crosshair::after{content:'';position:absolute;background:rgba(240,240,240,.9);box-shadow:0 0 6px rgba(0,0,0,.55)}
     .crosshair::before{left:8px;top:0;width:2px;height:18px}
     .crosshair::after{left:0;top:8px;width:18px;height:2px}
     body.locked .crosshair{opacity:.9}
 
-    /* Museum geometry is scenery and should never capture pointer events */
-    .wall,
-    .floor,
-    .ceiling,
-    .frame,
-    .frame::before{
-      pointer-events:none !important;
-    }
-
-    .wall,
-    .floor,
-    .ceiling{
-      transform-style:preserve-3d;
-      will-change:transform;
-    }
-
-    /* Section walls should be visible from both directions. */
-    .wall{
-      backface-visibility:visible;
-      -webkit-backface-visibility:visible;
-    }
-
-    /* Horizontal slabs are safer with hidden backfaces. */
-    .floor,
-    .ceiling{
-      backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;
-    }
-
-    .frame{
-      width:620px;
-      height:400px;
-      box-sizing:border-box;
-      position:relative;
-      padding:16px;
-      background:linear-gradient(145deg,var(--gold-1) 0%,var(--gold-2) 28%,var(--gold-3) 52%,var(--gold-2) 76%,var(--gold-4) 100%);
-      border:8px solid #7c5818;
-      border-radius:6px;
-      box-shadow:
-        0 16px 28px rgba(0,0,0,.36),
-        0 0 0 2px rgba(255,225,146,.34),
-        inset 0 0 0 2px rgba(116,79,18,.65),
-        inset 0 0 22px rgba(255,233,152,.2);
-      /* No overflow:hidden here: on a 3D-transformed CSS3DObject, Chromium's
-         overflow clip breaks hit testing into the iframe from most camera
-         angles. The 16px padding already keeps the iframe inside the frame. */
-    }
-
-    .frame::before{
-      content:'';
-      position:absolute;
-      inset:9px;
-      border:2px solid rgba(255,236,170,.55);
-      border-radius:3px;
-      box-shadow:inset 0 0 0 1px rgba(107,72,15,.6), inset 0 0 18px rgba(71,46,10,.35);
-    }
-
-    /* Paintings are always interactive; the cursor is free whenever you're not looking around */
-    .frame iframe{
-      width:100%;
-      height:100%;
-      border:0;
-      display:block;
-      background:#090b16;
-      box-shadow:0 0 0 1px rgba(255,236,180,.22);
-      pointer-events:auto !important;
-      transform:none;
-      will-change:auto;
-      backface-visibility:visible;
-      -webkit-backface-visibility:visible;
-    }
-
-    .painting-label{
-      box-sizing:border-box;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:4px 10px;
-      font-size:12px;
-      letter-spacing:.03em;
-      color:#efe5cb;
-      background:rgba(22,18,12,.72);
-      border:1px solid rgba(247,219,149,.45);
-      border-radius:6px;
-      text-shadow:0 1px 6px rgba(0,0,0,.75);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      pointer-events:none !important;
-      user-select:none;
-    }
+    /* Ballot */
     .ballot{
-      position:fixed;
-      right:16px;
-      top:16px;
-      z-index:12;
-      width:min(360px,calc(100vw - 32px));
-      max-height:calc(100vh - 32px);
-      overflow:auto;
-      background:rgba(12,10,10,.66);
-      border:1px solid rgba(248,224,161,.45);
-      border-radius:10px;
-      padding:12px;
-      backdrop-filter:blur(6px);
-      -webkit-backdrop-filter:blur(6px);
-      box-shadow:0 12px 28px rgba(0,0,0,.36);
+      position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(16px + env(safe-area-inset-top,0px));z-index:12;
+      width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 200px);overflow:auto;
+      background:var(--glass);border:1px solid var(--rule);border-radius:14px;padding:14px;
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 18px 40px rgba(0,0,0,.4);
     }
-    .ballot h2{
-      margin:0 0 8px;
-      font-size:14px;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color:#f6e2af;
-    }
-    .ballot p{
-      margin:0 0 10px;
-      font-size:12px;
-      color:#e9e2d4;
-      line-height:1.45;
-    }
+    .ballot-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .ballot h2{margin:0;font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass)}
+    .ballot-collapse{background:transparent;border:0;color:var(--mist);font:600 12px/1 var(--body);cursor:pointer;padding:6px}
+    .ballot.collapsed .ballot-body{display:none}
+    .ballot p{margin:8px 0 10px;font-size:12px;color:var(--mist);line-height:1.45}
     .ballot-row{display:flex;gap:8px;align-items:center}
-    .ballot select,
-    .ballot input,
-    .ballot textarea,
-    .ballot button{
-      width:100%;
-      border:1px solid rgba(255,230,171,.3);
-      background:rgba(28,22,14,.6);
-      color:#f4efe4;
-      border-radius:7px;
-      font:12px/1.35 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      padding:8px;
+    .ballot select,.ballot input,.ballot textarea,.ballot button.act{
+      width:100%;border:1px solid var(--rule);background:rgba(235,230,220,.06);color:var(--label);
+      border-radius:8px;font:12px/1.35 var(--body);padding:9px;
     }
-    .ballot button{
-      width:auto;
-      cursor:pointer;
-      background:rgba(129,96,39,.7);
-      font-weight:600;
-      min-width:90px;
-    }
-    .ballot button:hover{background:rgba(149,111,47,.82)}
-    .ballot-stats{font-size:12px;color:#ecdcb8;white-space:nowrap}
-    .ballot textarea{resize:vertical;min-height:74px}
-    .ballot-comments{
-      list-style:none;
-      margin:10px 0 0;
-      padding:0;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      max-height:220px;
-      overflow:auto;
-    }
-    .ballot-comments li{
-      border:1px solid rgba(255,224,160,.22);
-      background:rgba(18,14,8,.5);
-      border-radius:8px;
-      padding:8px;
-    }
-    .ballot-comments .meta{font-size:10px;letter-spacing:.02em;color:#d8c9a7;margin-bottom:4px}
-    .ballot-comments .text{font-size:12px;line-height:1.45;color:#f4efe4;white-space:pre-wrap;word-break:break-word}
-    .ballot-empty{font-size:11px;color:#cfbea0}
-    .ballot-status{min-height:16px;font-size:11px;color:#f1dfb3;margin-top:6px}
+    .ballot select option{background:#14191e}
+    .ballot input{margin-bottom:6px}
+    .ballot button.act{width:auto;cursor:pointer;background:var(--label);color:var(--label-ink);font-weight:600;min-width:96px;border-color:transparent}
+    .ballot button.act:hover{background:#fff}
+    .ballot button:focus-visible,.ballot select:focus-visible,.ballot input:focus-visible,.ballot textarea:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+    .ballot-stats{font-family:var(--mono);font-size:11px;color:var(--brass);white-space:nowrap}
+    .ballot textarea{resize:vertical;min-height:70px;margin-bottom:8px}
+    .ballot-comments{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:200px;overflow:auto}
+    .ballot-comments li{border-top:1px solid var(--rule);padding:8px 2px 2px}
+    .ballot-comments .meta{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--mist);margin-bottom:4px}
+    .ballot-comments .text{font-size:12px;line-height:1.45;color:var(--label);white-space:pre-wrap;word-break:break-word}
+    .ballot-empty{font-size:11px;color:var(--mist)}
+    .ballot-status{min-height:16px;font-size:11px;color:var(--brass);margin-top:6px}
+
+    /* Wall label */
+    #placard{position:fixed;left:max(18px,env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:11;width:min(330px,calc(100vw - 120px));background:var(--label);color:var(--label-ink);padding:16px 18px 15px;border-radius:2px;box-shadow:0 18px 40px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:3px;transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+    #placard.fade{opacity:0;transform:translateY(6px)}
+    #placard .acc{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:#6b6258;text-transform:uppercase}
+    #placard h2{margin:2px 0 0;font-family:var(--display);font-style:italic;font-weight:500;font-size:23px;line-height:1.15;overflow-wrap:anywhere}
+    #placard .artist{margin:0;font-weight:600;font-size:13px}
+    #placard .meta{margin:0;font-size:12.5px;color:#4a433c;line-height:1.45}
+    #placard .note{margin:7px 0 0;padding-top:8px;border-top:1px solid rgba(27,24,20,.15);font-size:12.5px;line-height:1.5;color:#2e2924}
+
+    /* Lighting controls + hint */
+    .dock{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+    .dock-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .seg{display:flex;border:1px solid var(--rule);border-radius:999px;background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:3px}
+    .seg button,.pill{font:600 12px/1 var(--body);letter-spacing:.03em;color:var(--mist);background:transparent;border:0;border-radius:999px;padding:9px 13px;cursor:pointer}
+    .seg button[aria-pressed="true"]{background:var(--label);color:var(--label-ink)}
+    .pill{border:1px solid var(--rule);background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:12px 14px}
+    .pill[aria-pressed="true"]{color:var(--label);border-color:rgba(201,164,106,.6)}
+    .pill[aria-pressed="true"]::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brass);margin-right:7px;vertical-align:1px}
+    .dock button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+    .hint{font-size:12px;color:var(--mist);background:var(--glass);border:1px solid var(--rule);border-radius:999px;padding:9px 14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:opacity .6s;max-width:min(560px,calc(100vw - 380px))}
+    .hint kbd{font-family:var(--mono);font-size:11px;color:var(--label)}
+
+    .walk{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px));z-index:12;display:none;flex-direction:column;gap:8px}
+    .walk button{width:54px;height:54px;border-radius:50%;border:1px solid var(--rule);background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--label);display:grid;place-items:center;touch-action:none;-webkit-user-select:none;user-select:none}
+    .walk button:active{background:rgba(201,164,106,.35)}
+
+    .minimap{position:fixed;left:max(18px,env(safe-area-inset-left,0px));top:calc(130px + env(safe-area-inset-top,0px));z-index:12;display:flex;flex-direction:column;gap:7px;padding:10px;border:1px solid var(--rule);border-radius:12px;background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 12px 24px rgba(0,0,0,.35)}
+    .minimap h3{margin:0;font:400 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+    .minimap canvas{display:block;width:220px;height:148px;border-radius:8px;border:1px solid rgba(235,230,220,.14);background:rgba(5,7,9,.75);cursor:crosshair;touch-action:none}
+    .minimap canvas.small{height:124px;cursor:default}
+    .minimap .coord{margin:0;font:400 11px/1.2 var(--mono);color:var(--mist)}
+    .minimap .tip{margin:0;font-size:11px;color:var(--mist);opacity:.9}
+    .minimap .const-note{margin:2px 0 0;font-size:10.5px;line-height:1.45;color:rgba(235,230,220,.86);max-width:220px}
+    .minimap .sep{height:1px;background:var(--rule);margin:2px 0}
+
+    @media (pointer:coarse){ .walk{display:flex} .hint{display:none} }
+
+    #err{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px;text-align:center;font-size:15px;color:var(--label);background:var(--night)}
 
     @media (max-width:900px){
-      .ballot{top:62px;max-height:calc(100vh - 78px)}
+      .brand .sub{display:none}
+      .hint{display:none}
+      .ballot{top:auto;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-height:45vh}
+      #placard .note{display:none}
+      .minimap{top:calc(92px + env(safe-area-inset-top,0px));padding:8px}
+      .minimap canvas{width:180px;height:120px}
+      .minimap canvas.small{height:102px}
+      .minimap .tip{display:none}
+      .minimap .const-note{font-size:10px;max-width:180px}
+    }
+    @media (max-width:520px){
+      #placard{display:none}
+      .minimap{display:none}
     }
   </style>
 </head>
 <body>
-  <div id="stage" aria-label="Mueseum mode 3D gallery" tabindex="0"></div>
-  <a class="back" href="/">← Back to pensieve</a>
-  <div class="controls" id="controlsText">WASD move · Shift sprint · Space jump · hold right-click (or drag empty space) to look · click paintings to interact</div>
+  <div id="stage" aria-label="Mueseum mode 3D gallery" tabindex="0">
+    <div id="cssLayer"></div>
+    <div id="glLayer"></div>
+  </div>
+
+  <a class="back" href="/visualizations/documenting-pensieve.html">← Back to pensieve</a>
+
+  <header class="brand">
+    <span class="eyebrow">Pensieve · Museum mode</span>
+    <h1>The Long Hall</h1>
+    <span class="sub" id="brandSub">Live paintings under one skylight</span>
+  </header>
+
   <div class="crosshair" aria-hidden="true"></div>
 
-  <aside class="ballot" aria-label="Open ballot for museum paintings">
-    <h2>Open Ballot</h2>
-    <p>Vote and comment on each artwork.</p>
-    <select id="ballotArtwork" aria-label="Select artwork"></select>
-    <div class="ballot-row" style="margin-top:8px;">
-      <button id="ballotVote" type="button">Vote</button>
-      <span class="ballot-stats" id="ballotVotes">Votes: 0</span>
+  <aside class="ballot" id="ballotPanel" aria-label="Open ballot for museum paintings">
+    <div class="ballot-head">
+      <h2>Open Ballot</h2>
+      <button class="ballot-collapse" id="ballotCollapse" type="button" aria-expanded="true">Hide</button>
     </div>
-    <form id="ballotForm" style="margin-top:10px;">
-      <input id="ballotName" type="text" maxlength="80" placeholder="Your name (optional)" />
-      <textarea id="ballotComment" maxlength="600" required placeholder="Share your thoughts on this artwork"></textarea>
-      <button type="submit">Post comment</button>
-    </form>
-    <div id="ballotStatus" class="ballot-status" aria-live="polite"></div>
-    <ul id="ballotComments" class="ballot-comments"></ul>
+    <div class="ballot-body">
+      <p>Vote and comment on each artwork. Click a painting and the ballot follows it.</p>
+      <select id="ballotArtwork" aria-label="Select artwork"></select>
+      <div class="ballot-row" style="margin-top:8px;">
+        <button id="ballotVote" class="act" type="button">Vote</button>
+        <span class="ballot-stats" id="ballotVotes">Votes: 0</span>
+      </div>
+      <form id="ballotForm" style="margin-top:10px;">
+        <input id="ballotName" type="text" maxlength="80" placeholder="Your name (optional)" />
+        <textarea id="ballotComment" maxlength="600" required placeholder="Share your thoughts on this artwork"></textarea>
+        <button type="submit" class="act">Post comment</button>
+      </form>
+      <div id="ballotStatus" class="ballot-status" aria-live="polite"></div>
+      <ul id="ballotComments" class="ballot-comments"></ul>
+    </div>
   </aside>
+
+  <aside id="placard" class="fade" aria-live="polite">
+    <div class="acc" id="pl-acc">Acc. —</div>
+    <h2 id="pl-title">Walk toward a work</h2>
+    <p class="artist" id="pl-artist">Its label appears here</p>
+    <p class="meta" id="pl-meta"></p>
+    <p class="note" id="pl-note"></p>
+  </aside>
+
+  <aside class="minimap" aria-label="Hall minimap">
+    <h3>Hall Map</h3>
+    <canvas id="minimap" width="220" height="148"></canvas>
+    <p class="coord" id="minimapCoord">X 0 · Z 0</p>
+    <p class="tip">Click map to teleport</p>
+    <div class="sep" aria-hidden="true"></div>
+    <h3>③ Memory Constellation</h3>
+    <canvas id="constellationMap" class="small" width="220" height="124"></canvas>
+    <p class="coord" id="constellationFocus">Focus: Voting</p>
+    <p class="const-note">Make the privacy floor visible. Where too few people share in an area, nearby cells blur together into one soft color, so nobody can be singled out. The blur reads as protection, not missing data.</p>
+  </aside>
+
+  <div class="dock">
+    <div class="dock-row">
+      <div class="seg" role="group" aria-label="Skylight">
+        <button id="b-moon" type="button" aria-pressed="true">Moonlight</button>
+        <button id="b-sun" type="button" aria-pressed="false">Daylight</button>
+      </div>
+      <button id="b-beams" class="pill" type="button" aria-pressed="true">Light beams</button>
+    </div>
+    <div class="hint" id="hint"><kbd>W A S D</kbd> walk · <kbd>Shift</kbd> sprint · <kbd>Space</kbd> jump · drag or hold right-click to look · click a frame or statue to approach · click inside a painting to interact</div>
+  </div>
+
+  <div class="walk" aria-label="Walk">
+    <button id="w-f" type="button" aria-label="Walk forward"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l6-6 6 6"/></svg></button>
+    <button id="w-b" type="button" aria-label="Walk back"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l6 6 6-6"/></svg></button>
+  </div>
+
+  <div id="err" hidden></div>
 
   <script type="importmap">
     {
@@ -315,148 +237,26 @@
     import * as THREE from 'three';
     import { CSS3DRenderer, CSS3DObject } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/renderers/CSS3DRenderer.js';
 
-    const stage = document.getElementById('stage');
+    const T = THREE;
+    const errEl = document.getElementById('err');
+    function fail(msg){ errEl.hidden = false; errEl.textContent = msg; }
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 1, 9000);
+    const coarse = matchMedia('(pointer:coarse)').matches;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const renderer = new CSS3DRenderer();
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.inset = '0';
-    renderer.domElement.style.touchAction = 'none';
-    renderer.domElement.style.pointerEvents = 'auto';
-    stage.appendChild(renderer.domElement);
-
-    function cssPanel(className, w, h, cssText=''){
-      const el = document.createElement('div');
-      el.className = className;
-      el.style.width = w + 'px';
-      el.style.height = h + 'px';
-      el.style.cssText += cssText;
-
-      if (className === 'wall' || className === 'floor' || className === 'ceiling') {
-        el.style.pointerEvents = 'none';
-      }
-
-      return el;
-    }
+    // Wait briefly for label fonts so the wall plaques render in the right face.
+    try {
+      await Promise.race([
+        Promise.all([
+          document.fonts.load('italic 500 40px "Bodoni Moda"'),
+          document.fonts.load('600 20px "Manrope"'),
+          document.fonts.load('400 16px "IBM Plex Mono"')
+        ]),
+        new Promise(r => setTimeout(r, 1800))
+      ]);
+    } catch {}
 
     const visualizationFiles = await loadVisualizationFiles();
-
-    // Multi-room shell
-    const PAINTINGS_PER_WALL = 4;
-    const WALLS_PER_ROOM = 2;
-    const ROOM_COUNT = Math.max(1, Math.ceil(visualizationFiles.length / (PAINTINGS_PER_WALL * WALLS_PER_ROOM)));
-    const ROOM_WIDTH = 4300;
-    const ROOM_DEPTH = 2200;
-    const ROOM_FRONT_Z = 900;
-    const ROOM_SIDE_X = 2140;
-    const DOOR_GAP = 1100;
-    const WALL_HEIGHT = 2600;
-
-    // Doorway opening in section separators (so sections stay connected).
-    const FLOOR_Y = -260;
-    const DOOR_CLEAR_HEIGHT = 860;
-
-    // Avoid coplanar/overlapping shell surfaces between adjacent rooms.
-    // CSS3D has no depth buffer, so overlapping planes can create cutout/flicker artifacts.
-    const ROOM_SHELL_WIDTH = ROOM_WIDTH;
-    const ROOM_SHELL_DEPTH = ROOM_DEPTH - 120;
-
-    const WALL_TEXTURE_URL = '/visualizations/Seamless%20Warm%20Plaster%20Wall%20Texture.png';
-
-    function wallMaterial(bg){
-      return `
-        background:
-          linear-gradient(180deg, rgba(255,245,214,.10) 0%, rgba(0,0,0,.20) 100%),
-          url("${WALL_TEXTURE_URL}"),
-          ${bg};
-        background-size:
-          100% 100%,
-          880px 880px,
-          auto;
-        background-repeat:
-          no-repeat,
-          repeat,
-          no-repeat;
-        background-position:
-          center,
-          center,
-          center;
-        box-shadow:
-          inset 0 0 0 2px rgba(0,0,0,.34),
-          inset 0 140px 220px rgba(255,221,167,.10),
-          inset 0 -220px 260px rgba(0,0,0,.24);
-      `;
-    }
-
-    const roomMeta = [];
-
-    for (let i = 0; i < ROOM_COUNT; i++){
-      const frontZ = ROOM_FRONT_Z - i * ROOM_DEPTH;
-      const backZ = frontZ - ROOM_DEPTH;
-      const centerZ = (frontZ + backZ) / 2;
-      roomMeta.push({ frontZ, backZ, centerZ });
-
-      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, WALL_HEIGHT, wallMaterial('#3f3b35')));
-      sideWallL.position.set(-ROOM_SIDE_X, 310, centerZ);
-      sideWallL.rotation.y = Math.PI / 2;
-      scene.add(sideWallL);
-
-      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, WALL_HEIGHT, wallMaterial('#443f38')));
-      sideWallR.position.set(ROOM_SIDE_X, 310, centerZ);
-      sideWallR.rotation.y = -Math.PI / 2;
-      scene.add(sideWallR);
-
-
-      if (i === ROOM_COUNT - 1){
-        const backWall = new CSS3DObject(cssPanel('wall', ROOM_SHELL_WIDTH, WALL_HEIGHT, wallMaterial('#4b463f')));
-        backWall.position.set(0, 310, backZ);
-        scene.add(backWall);
-      } else {
-        const segW = (ROOM_SHELL_WIDTH - DOOR_GAP) / 2;
-        const leftDivider = new CSS3DObject(cssPanel('wall', segW, WALL_HEIGHT, wallMaterial('#4a453f')));
-        leftDivider.position.set(-(DOOR_GAP / 2 + segW / 2), 310, backZ);
-        scene.add(leftDivider);
-
-        const rightDivider = new CSS3DObject(cssPanel('wall', segW, WALL_HEIGHT, wallMaterial('#4a453f')));
-        rightDivider.position.set(DOOR_GAP / 2 + segW / 2, 310, backZ);
-        scene.add(rightDivider);
-
-        // Add a top lintel so each room boundary reads as a true section wall.
-        const wallTopY = 310 + WALL_HEIGHT / 2;
-        const doorwayTopY = FLOOR_Y + DOOR_CLEAR_HEIGHT;
-        const lintelHeight = Math.max(120, wallTopY - doorwayTopY);
-        const lintelY = wallTopY - lintelHeight / 2;
-        const topDivider = new CSS3DObject(cssPanel('wall', DOOR_GAP, lintelHeight, wallMaterial('#49443d')));
-        topDivider.position.set(0, lintelY, backZ);
-        scene.add(topDivider);
-      }
-    }
-
-    const galleryFrontZ = ROOM_FRONT_Z + 420;
-    const galleryBackZ = roomMeta[roomMeta.length - 1].backZ - 260;
-    const galleryDepth = galleryFrontZ - galleryBackZ;
-    const galleryCenterZ = (galleryFrontZ + galleryBackZ) / 2;
-
-    const floor = new CSS3DObject(cssPanel('floor', ROOM_SHELL_WIDTH, galleryDepth,
-      'background:' +
-      'linear-gradient(90deg, rgba(0,0,0,.18) 2px, transparent 2px) 0 0 / 700px 700px,' +
-      'linear-gradient(0deg, rgba(0,0,0,.16) 2px, transparent 2px) 0 0 / 700px 700px,' +
-      '#4a4d50;'));
-    floor.position.set(0, FLOOR_Y, galleryCenterZ);
-    floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
-
-    const ceiling = new CSS3DObject(cssPanel('ceiling', ROOM_SHELL_WIDTH, galleryDepth,
-      'background:' +
-      'radial-gradient(ellipse at 50% 10%, rgba(255,231,178,.10), transparent 52%),' +
-      'repeating-linear-gradient(90deg, rgba(33,31,29,.95) 0 150px, rgba(57,54,50,.95) 150px 220px),' +
-      '#2f2c2a;'));
-    ceiling.position.set(0, 920, galleryCenterZ);
-    ceiling.rotation.x = Math.PI / 2;
-    scene.add(ceiling);
 
     async function loadVisualizationFiles(){
       try {
@@ -499,12 +299,595 @@
       ];
     }
 
-    const paintings = visualizationFiles.map((file, i) => ({
-      artwork: file,
-      src: encodeURI(`/visualizations/${file}`),
-      title: `Mueseum painting ${i + 1}: ${file}`
-    }));
+    /* ============================================================
+       Hall layout (world units are centimetres)
+       One painting per section, alternating walls; the last artwork
+       hangs large on the end wall. Statues stand on the centre line.
+       ============================================================ */
+    const W = 900;          // hall width
+    const H = 600;          // wall height
+    const S = 240;          // skylight strip width
+    const SEC = 640;        // section length
+    const EYE = 165;        // eye height
+    const BORDER = 60;      // dark marble border along the walls
+    const SLAT_GAP = 110, SLAT_HALF = 9;
 
+    const N = visualizationFiles.length;
+    const sideCount = N > 1 ? N - 1 : 0;
+    const Z_START = 320;
+    const Z_END = -sideCount * SEC - 760;
+    const L = Z_START - Z_END;
+    const Z_MID = (Z_START + Z_END) / 2;
+    const sectionZ = k => -(k + 0.5) * SEC;
+
+    document.getElementById('brandSub').textContent =
+      `${N} live painting${N === 1 ? '' : 's'}, one skylight`;
+
+    const conceptChain = ['Voting','Collective Intelligence','Democracy','Humanity','Shared Consciousness'];
+    const conceptPoints = [
+      { x: 20, y: 36 },
+      { x: 64, y: 84 },
+      { x: 110, y: 40 },
+      { x: 158, y: 86 },
+      { x: 200, y: 44 }
+    ];
+    const conceptCounts = conceptChain.map((_, idx) => visualizationFiles.reduce((n, file, i) => n + ((i % conceptChain.length) === idx ? 1 : 0), 0));
+    let activeConceptIndex = 0;
+
+    /* ---------- renderers ---------- */
+    const stage = document.getElementById('stage');
+    const cssLayer = document.getElementById('cssLayer');
+    const glLayer = document.getElementById('glLayer');
+
+    let gl;
+    try {
+      gl = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    } catch (e) {
+      fail('This browser could not start WebGL, which the hall needs. Try a recent desktop browser.');
+      throw e;
+    }
+    gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 1.75));
+    gl.setSize(innerWidth, innerHeight);
+    gl.shadowMap.enabled = true;
+    gl.shadowMap.type = T.PCFSoftShadowMap;
+    gl.outputEncoding = T.sRGBEncoding;
+    gl.toneMapping = T.ACESFilmicToneMapping;
+    gl.toneMappingExposure = 1.1;
+    glLayer.appendChild(gl.domElement);
+    const aniso = gl.capabilities.getMaxAnisotropy();
+
+    const cssRenderer = new CSS3DRenderer();
+    cssRenderer.setSize(innerWidth, innerHeight);
+    const dom = cssRenderer.domElement;
+    dom.style.position = 'absolute';
+    dom.style.inset = '0';
+    dom.style.touchAction = 'none';
+    dom.style.pointerEvents = 'auto';
+    dom.style.cursor = 'grab';
+    cssLayer.appendChild(dom);
+
+    const scene = new T.Scene();
+    scene.background = new T.Color(0x0a1426);
+    scene.fog = new T.FogExp2(0x0b0f14, 0.00016);
+    const cssScene = new T.Scene();
+
+    const camera = new T.PerspectiveCamera(60, innerWidth / innerHeight, 5, 14000);
+    camera.rotation.order = 'YXZ';
+
+    /* ---------- helpers ---------- */
+    function rngFrom(seed){ let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    function mesh(geo, mat, cast = true, recv = true){ const m = new T.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; return m; }
+    function addBox(w, h, d, mat, x, y, z, cast = true, recv = true){ const m = mesh(new T.BoxGeometry(w, h, d), mat, cast, recv); m.position.set(x, y, z); scene.add(m); return m; }
+    function canvasTex(c){ const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = aniso; return t; }
+    const noRaycast = () => {};
+
+    /* ---------- environment map (built in metres, used for reflections only) ---------- */
+    const pmrem = new T.PMREMGenerator(gl);
+    const envScene = new T.Scene();
+    envScene.add(new T.Mesh(new T.BoxGeometry(20, 8, 40), new T.MeshBasicMaterial({ color: 0x1b2328, side: T.BackSide })));
+    const envWarm = new T.MeshBasicMaterial({ color: new T.Color(1, .85, .66).multiplyScalar(7) });
+    const envCool = new T.MeshBasicMaterial({ color: new T.Color(.55, .7, 1).multiplyScalar(4) });
+    for (let z = -16; z <= 16; z += 8) { const p = new T.Mesh(new T.PlaneGeometry(1.2, .6), envWarm); p.position.set(z % 16 ? 3 : -3, 3.9, z); p.rotation.x = Math.PI / 2; envScene.add(p); }
+    const envStrip = new T.Mesh(new T.PlaneGeometry(2.5, 36), envCool); envStrip.position.set(0, 3.95, 0); envStrip.rotation.x = Math.PI / 2; envScene.add(envStrip);
+    const envMap = pmrem.fromScene(envScene, 0.04).texture;
+
+    /* ---------- procedural marble ---------- */
+    function makeNoise(seed){
+      const r = rngFrom(seed), perm = new Uint16Array(512), p = [];
+      for (let i = 0; i < 256; i++) p.push(i);
+      for (let i = 255; i > 0; i--) { const j = (r() * (i + 1)) | 0; [p[i], p[j]] = [p[j], p[i]]; }
+      for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+      const V = new Float32Array(256); for (let i = 0; i < 256; i++) V[i] = r();
+      return (x, y) => {
+        const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, X = xi & 255, Y = yi & 255;
+        const a = V[perm[perm[X] + Y]], b = V[perm[perm[X + 1] + Y]], c = V[perm[perm[X] + Y + 1]], d = V[perm[perm[X + 1] + Y + 1]];
+        const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+        return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+      };
+    }
+    function marbleCanvas({ w, h, tilesX, tilesY, base, vein, cloud, seed, veinFreq, sharp, grout }){
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
+      const n = makeNoise(seed), r = rngFrom(seed + 5);
+      const tw = w / tilesX, th = h / tilesY, tiles = [];
+      for (let i = 0; i < tilesX * tilesY; i++) {
+        const a = r() * Math.PI;
+        tiles.push({ ca: Math.cos(a), sa: Math.sin(a), ox: r() * 600, oy: r() * 600, f: veinFreq * (.7 + r() * .6), tone: (r() - .5) * .07 });
+      }
+      for (let y = 0; y < h; y++) {
+        const ty = Math.min(tilesY - 1, (y / th) | 0);
+        for (let x = 0; x < w; x++) {
+          const tile = tiles[ty * tilesX + Math.min(tilesX - 1, (x / tw) | 0)];
+          const sx = (x + tile.ox) / 90, sy = (y + tile.oy) / 90;
+          let f = 0, amp = .5, fr = 1;
+          for (let o = 0; o < 4; o++) { f += amp * n(sx * fr, sy * fr); amp *= .5; fr *= 2.03; }
+          const t1 = (x * tile.ca + y * tile.sa) / w * tile.f * 6.283 + f * 7;
+          const t2 = (x * tile.sa - y * tile.ca) / w * tile.f * 15 + f * 11;
+          const v = Math.max(Math.pow(1 - Math.abs(Math.sin(t1)), sharp), Math.pow(1 - Math.abs(Math.sin(t2)), sharp * 2.5) * .5);
+          const k = Math.min(1, v * .85), cl = 1 + (f - .45) * cloud + tile.tone;
+          const o = (y * w + x) * 4;
+          px[o]     = base[0] * cl * (1 - k) + vein[0] * k;
+          px[o + 1] = base[1] * cl * (1 - k) + vein[1] * k;
+          px[o + 2] = base[2] * cl * (1 - k) + vein[2] * k;
+          px[o + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+      if (grout) {
+        g.strokeStyle = 'rgba(110,104,96,.55)'; g.lineWidth = 2;
+        for (let i = 0; i <= tilesX; i++) { g.beginPath(); g.moveTo(i * tw, 0); g.lineTo(i * tw, h); g.stroke(); }
+        for (let j = 0; j <= tilesY; j++) { g.beginPath(); g.moveTo(0, j * th); g.lineTo(w, j * th); g.stroke(); }
+      }
+      return c;
+    }
+
+    /* ---------- materials ---------- */
+    const carraraTex = canvasTex(marbleCanvas({ w: 1024, h: 1024, tilesX: 2, tilesY: 2, base: [218, 213, 205], vein: [112, 110, 116], cloud: .1, seed: 7, veinFreq: 3, sharp: 18, grout: true }));
+    carraraTex.wrapS = carraraTex.wrapT = T.RepeatWrapping;
+    carraraTex.repeat.set((W - 2 * BORDER) / 200, L / 200);   // one canvas = 2×2 tiles of 1 m
+    const floorMat = new T.MeshStandardMaterial({ map: carraraTex, roughness: .14, metalness: 0, envMap, envMapIntensity: .45 });
+
+    const neroCanvas = marbleCanvas({ w: 256, h: 512, tilesX: 1, tilesY: 1, base: [24, 24, 27], vein: [198, 190, 176], cloud: .25, seed: 41, veinFreq: 2.2, sharp: 28, grout: false });
+    const neroTex = canvasTex(neroCanvas);
+    neroTex.wrapS = neroTex.wrapT = T.RepeatWrapping;
+    neroTex.repeat.set(1, L / 120);
+    const neroMat = new T.MeshStandardMaterial({ map: neroTex, roughness: .12, envMap, envMapIntensity: .6 });
+
+    const wallMat  = new T.MeshStandardMaterial({ color: 0x1e292f, roughness: .92 });
+    const pilMat   = new T.MeshStandardMaterial({ color: 0x24313a, roughness: .85 });
+    const ceilMat  = new T.MeshStandardMaterial({ color: 0x121619, roughness: 1 });
+    const beamMat  = new T.MeshStandardMaterial({ color: 0x1a1d20, roughness: .9 });
+    const baseMat  = new T.MeshStandardMaterial({ color: 0x0f1316, roughness: .6 });
+    const railMat  = new T.MeshStandardMaterial({ color: 0x15181b, roughness: .4, metalness: .6, envMap, envMapIntensity: .5 });
+    const woodMat  = new T.MeshStandardMaterial({ color: 0x2b1d14, roughness: .55 });
+    const blackMat = new T.MeshStandardMaterial({ color: 0x0e0e0f, roughness: .45 });
+    const goldMat  = new T.MeshStandardMaterial({ color: 0xb98d4c, roughness: .32, metalness: 1, envMap, envMapIntensity: .9 });
+    const marble   = new T.MeshStandardMaterial({ color: 0xf0ebe3, roughness: .3, envMap, envMapIntensity: .35 });
+    const brass    = new T.MeshStandardMaterial({ color: 0xcaa266, roughness: .26, metalness: 1, envMap, envMapIntensity: 1.1 });
+    const basalt   = new T.MeshStandardMaterial({ color: 0x2b2b2e, roughness: .5, envMap, envMapIntensity: .45 });
+    const plinthMat= new T.MeshStandardMaterial({ color: 0xd9d3c9, roughness: .85 });
+    const benchMat = new T.MeshStandardMaterial({ color: 0x3a2a1e, roughness: .5 });
+    const lensMat  = new T.MeshBasicMaterial({ color: 0xfff1d8 });
+
+    // Your warm plaster texture becomes the wall relief (bump), so the walls keep the hall's dark tone.
+    new T.TextureLoader().load('/visualizations/Seamless%20Warm%20Plaster%20Wall%20Texture.png', tex => {
+      tex.wrapS = tex.wrapT = T.RepeatWrapping;
+      tex.repeat.set(L / 320, (H + 60) / 320);
+      wallMat.bumpMap = tex; wallMat.bumpScale = 1.4; wallMat.needsUpdate = true;
+    }, undefined, () => {});
+
+    /* ---------- architecture ---------- */
+    const floor = mesh(new T.PlaneGeometry(W - 2 * BORDER, L), floorMat, false, true);
+    floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, Z_MID); scene.add(floor);
+    [-1, 1].forEach(s => {
+      const b = mesh(new T.PlaneGeometry(BORDER, L), neroMat, false, true);
+      b.rotation.x = -Math.PI / 2; b.position.set(s * (W / 2 - BORDER / 2), 0, Z_MID); scene.add(b);
+    });
+
+    // Dark inlay bands mark each section boundary
+    const bandTex = neroTex.clone(); bandTex.needsUpdate = true; bandTex.repeat.set((W - 2 * BORDER) / 60, 28 / 120);
+    const bandMat = neroMat.clone(); bandMat.map = bandTex; bandMat.polygonOffset = true; bandMat.polygonOffsetFactor = -2; bandMat.polygonOffsetUnits = -2;
+    const bandGeo = new T.PlaneGeometry(W - 2 * BORDER, 28); bandGeo.rotateX(-Math.PI / 2);
+    const boundaryZs = []; for (let k = 0; k <= sideCount; k++) boundaryZs.push(-k * SEC);
+    const dummy = new T.Object3D();
+    const bands = new T.InstancedMesh(bandGeo, bandMat, boundaryZs.length);
+    boundaryZs.forEach((z, i) => { dummy.position.set(0, .4, z); dummy.updateMatrix(); bands.setMatrixAt(i, dummy.matrix); });
+    bands.receiveShadow = true; scene.add(bands);
+
+    // Walls
+    addBox(40, H + 60, L + 80, wallMat, -W / 2 - 20, (H + 60) / 2, Z_MID);
+    addBox(40, H + 60, L + 80, wallMat,  W / 2 + 20, (H + 60) / 2, Z_MID);
+    addBox(W, H + 60, 40, wallMat, 0, (H + 60) / 2, Z_END - 20);
+    addBox(W, H + 60, 40, wallMat, 0, (H + 60) / 2, Z_START + 20);
+    addBox(4, 14, L, baseMat, -W / 2 + 2, 7, Z_MID, false); addBox(4, 14, L, baseMat, W / 2 - 2, 7, Z_MID, false);
+    addBox(W, 14, 4, baseMat, 0, 7, Z_END + 2, false); addBox(W, 14, 4, baseMat, 0, 7, Z_START - 2, false);
+
+    // Pilasters between sections
+    const pilasters = new T.InstancedMesh(new T.BoxGeometry(18, H, 46), pilMat, boundaryZs.length * 2);
+    boundaryZs.forEach((z, i) => [-1, 1].forEach((s, j) => {
+      dummy.position.set(s * (W / 2 - 9), H / 2, z); dummy.updateMatrix(); pilasters.setMatrixAt(i * 2 + j, dummy.matrix);
+    }));
+    pilasters.castShadow = pilasters.receiveShadow = true; scene.add(pilasters);
+
+    // Ceiling with one long skylight strip and slats
+    const sideW = W / 2 - S / 2;
+    addBox(sideW, 30, L, ceilMat, -(S / 2 + sideW / 2), H + 15, Z_MID);
+    addBox(sideW, 30, L, ceilMat,  (S / 2 + sideW / 2), H + 15, Z_MID);
+    const slatStart = Z_START - 60;
+    const slatZs = []; for (let z = slatStart; z > Z_END; z -= SLAT_GAP) slatZs.push(z);
+    const slats = new T.InstancedMesh(new T.BoxGeometry(S + 10, 42, SLAT_HALF * 2), beamMat, slatZs.length);
+    slatZs.forEach((z, i) => { dummy.position.set(0, H + 12, z); dummy.updateMatrix(); slats.setMatrixAt(i, dummy.matrix); });
+    slats.castShadow = true; scene.add(slats);
+    addBox(6, 90, L, beamMat, -S / 2, H + 15, Z_MID); addBox(6, 90, L, beamMat, S / 2, H + 15, Z_MID);
+    [-200, 200].forEach(x => addBox(7, 5, L - 150, railMat, x, H - 2.5, Z_MID, false, false));
+
+    /* ---------- lights ---------- */
+    const hemi = new T.HemisphereLight(0x5a6e8a, 0x15100c, .32); scene.add(hemi);
+    const LDIR = new T.Vector3(5, 22, 6).normalize();
+    const sky = new T.DirectionalLight(0x9db8ff, .95);
+    sky.castShadow = true;
+    sky.shadow.mapSize.set(2048, 2048);
+    Object.assign(sky.shadow.camera, { left: -1600, right: 1600, top: 1600, bottom: -1600, near: 100, far: 6000 });
+    sky.shadow.bias = -0.0004; sky.shadow.normalBias = 3;
+    scene.add(sky, sky.target);
+    let skyZ = NaN;
+    function placeSky(z){ if (z === skyZ) return; skyZ = z; sky.target.position.set(0, 0, z); sky.position.set(0, 0, z).addScaledVector(LDIR, 3000); }
+    placeSky(Math.round((Z_START - 200) / 400) * 400);
+
+    /* ---------- additive light effects ----------
+       Custom blending adds colour but leaves destination alpha untouched,
+       so beams glow over the live iframes instead of covering them. */
+    const fogU = { value: scene.fog.density };
+    const ADD = {
+      transparent: true, depthWrite: false,
+      blending: T.CustomBlending, blendEquation: T.AddEquation, blendSrc: T.OneFactor, blendDst: T.OneFactor,
+      blendEquationAlpha: T.AddEquation, blendSrcAlpha: T.ZeroFactor, blendDstAlpha: T.OneFactor
+    };
+    const fxVS = `varying vec2 vUv; varying float vDepth;
+      void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`;
+
+    const beams = [];
+    const beamVS = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; varying float vDepth;
+      void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`;
+    const beamFS = `uniform vec3 color; uniform float strength; uniform float fogDensity; varying vec2 vUv; varying vec3 vN; varying vec3 vV; varying float vDepth;
+      void main(){ float along = pow(vUv.y, 1.7); float rim = pow(abs(dot(normalize(vN), normalize(vV))), 2.2);
+        float f = exp(-fogDensity*fogDensity*vDepth*vDepth);
+        gl_FragColor = vec4(color * along * rim * strength * f, 1.0); }`;
+    function addBeam(from, to, angle, strength, color){
+      const dir = to.clone().sub(from); const len = dir.length() * 1.04; dir.normalize();
+      const geo = new T.ConeGeometry(len * Math.tan(angle), len, 48, 1, true); geo.translate(0, -len / 2, 0);
+      const mat = new T.ShaderMaterial({ uniforms: { color: { value: new T.Color(color) }, strength: { value: strength }, fogDensity: fogU },
+        vertexShader: beamVS, fragmentShader: beamFS, side: T.DoubleSide, ...ADD });
+      const m = new T.Mesh(geo, mat); m.position.copy(from); m.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), dir);
+      m.renderOrder = 3; m.raycast = noRaycast; scene.add(m); beams.push(m);
+    }
+
+    const washFS = `uniform vec3 color; uniform float strength; uniform vec2 size; uniform float spread; uniform float fogDensity; varying vec2 vUv; varying float vDepth;
+      void main(){
+        vec2 p = (vUv - vec2(0.5, 0.0)) * size;
+        vec2 d = p - vec2(0.0, -30.0);
+        float r = length(d);
+        float a = abs(d.x) / max(d.y, 1.0);
+        float cone = smoothstep(spread, spread * 0.55, a);
+        float fall = 1.0 / (1.0 + pow(r / 280.0, 2.0));
+        float top = smoothstep(size.y, size.y * 0.6, p.y);
+        float side = smoothstep(size.x * 0.5, size.x * 0.38, abs(p.x));
+        float hot = exp(-pow(r / 60.0, 2.0)) * 0.8;
+        float f = exp(-fogDensity*fogDensity*vDepth*vDepth);
+        gl_FragColor = vec4(color * strength * (cone * fall + hot) * top * side * f, 1.0);
+      }`;
+    const washMats = [];
+    function washMaterial(w, h, spread){
+      const m = new T.ShaderMaterial({ uniforms: { color: { value: new T.Color(0xffd7a3) }, strength: { value: .42 }, size: { value: new T.Vector2(w, h) }, spread: { value: spread }, fogDensity: fogU },
+        vertexShader: fxVS, fragmentShader: washFS, ...ADD });
+      washMats.push(m); return m;
+    }
+
+    const poolMat = new T.ShaderMaterial({
+      uniforms: { color: { value: new T.Color(0xffd3a0) }, strength: { value: .3 }, fogDensity: fogU },
+      vertexShader: fxVS,
+      fragmentShader: `uniform vec3 color; uniform float strength; uniform float fogDensity; varying vec2 vUv; varying float vDepth;
+        void main(){ vec2 d = (vUv - 0.5) * 2.0; float g = exp(-dot(d, d) * 3.5); float f = exp(-fogDensity*fogDensity*vDepth*vDepth);
+          gl_FragColor = vec4(color * strength * g * f, 1.0); }`,
+      ...ADD
+    });
+    const poolGeo = new T.PlaneGeometry(150, 150); poolGeo.rotateX(-Math.PI / 2);
+
+    // A brass floor uplight under each painting: fixture, upward beam, and a warm pool on the marble
+    const puckGeo = new T.CylinderGeometry(10, 12, 6, 24), lensGeo = new T.CircleGeometry(7, 24);
+    function addUplight(base, target, halfAngle){
+      const puck = mesh(puckGeo, brass, false, true); puck.position.set(base.x, 3, base.z); scene.add(puck);
+      const lens = new T.Mesh(lensGeo, lensMat); lens.rotation.x = -Math.PI / 2; lens.position.set(base.x, 6.2, base.z); scene.add(lens);
+      addBeam(new T.Vector3(base.x, 6, base.z), target, halfAngle * .92, .07, 0xffe6c4);
+      const pool = new T.Mesh(poolGeo, poolMat); pool.position.set(base.x, 1, base.z); pool.renderOrder = 2; pool.raycast = noRaycast; scene.add(pool);
+    }
+
+    // Ceiling can for statue spotlights
+    function addCeilingFixture(at, target){
+      const dir = target.clone().sub(at).normalize();
+      const g = new T.Group(); g.position.copy(at);
+      const stem = mesh(new T.CylinderGeometry(1.2, 1.2, 14, 8), railMat, false, false); stem.position.y = 7; g.add(stem);
+      const can = mesh(new T.CylinderGeometry(7.5, 9, 30, 20, 1, true), blackMat, false, false);
+      can.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), dir); can.position.copy(dir.clone().multiplyScalar(10)); g.add(can);
+      const lens = new T.Mesh(new T.CircleGeometry(8.2, 20), lensMat);
+      lens.position.copy(dir.clone().multiplyScalar(24.5)); lens.lookAt(at.clone().add(dir.clone().multiplyScalar(200))); g.add(lens);
+      scene.add(g);
+    }
+
+    /* ---------- skylight shaft (sheared volume striped by the slats) ---------- */
+    const kx = LDIR.x / LDIR.y, kz = LDIR.z / LDIR.y;
+    const shaftGeo = new T.BoxGeometry(S, H, L - 60); shaftGeo.translate(0, H / 2, Z_MID);
+    const sp = shaftGeo.attributes.position;
+    for (let i = 0; i < sp.count; i++) { const up = H - sp.getY(i); sp.setX(i, sp.getX(i) - up * kx); sp.setZ(i, sp.getZ(i) - up * kz); }
+    const shaftMat = new T.ShaderMaterial({
+      uniforms: { color: { value: new T.Color(0x9db8ff) }, strength: { value: .055 }, H: { value: H }, k: { value: new T.Vector2(kx, kz) },
+        zs: { value: slatStart }, period: { value: SLAT_GAP }, hw: { value: SLAT_HALF }, S: { value: S }, fogDensity: fogU },
+      vertexShader: `varying vec3 vW; varying float vDepth; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; vec4 mv = viewMatrix * w; vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform vec3 color; uniform float strength; uniform float H; uniform vec2 k; uniform float zs; uniform float period; uniform float hw; uniform float S; uniform float fogDensity; varying vec3 vW; varying float vDepth;
+        void main(){ float up = H - vW.y; float x0 = vW.x + up * k.x; float z0 = vW.z + up * k.y;
+          float d = abs(fract((z0 - zs) / period + 0.5) - 0.5) * period;
+          float lit = smoothstep(hw, hw + 10.0, d);
+          float edge = smoothstep(S * 0.5, S * 0.5 - 40.0, abs(x0));
+          float fall = 0.3 + 0.7 * (vW.y / H);
+          float f = exp(-fogDensity*fogDensity*vDepth*vDepth);
+          gl_FragColor = vec4(color * strength * lit * edge * fall * f, 1.0); }`,
+      side: T.DoubleSide, ...ADD
+    });
+    const shaft = new T.Mesh(shaftGeo, shaftMat); shaft.renderOrder = 4; shaft.raycast = noRaycast; scene.add(shaft);
+
+    /* ---------- paintings: WebGL frame + transparent hole + CSS3D iframe behind it ---------- */
+    // The hole punches the canvas to alpha 0 (so the iframe shows through) while still
+    // writing depth, so statues in front correctly hide the painting. It also fogs and
+    // slightly dims the iframe so distant canvases sit in the same atmosphere.
+    const holeMat = new T.ShaderMaterial({
+      uniforms: { fogColor: { value: scene.fog.color }, fogDensity: fogU, dim: { value: .14 } },
+      vertexShader: `varying float vDepth; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform vec3 fogColor; uniform float fogDensity; uniform float dim; varying float vDepth;
+        void main(){ float f = clamp(1.0 - exp(-fogDensity*fogDensity*vDepth*vDepth), 0.0, 1.0);
+          float a = 1.0 - (1.0 - f) * (1.0 - dim);
+          gl_FragColor = vec4(fogColor * f, a); }`,
+      transparent: true, blending: T.NoBlending, depthWrite: true, depthTest: true
+    });
+
+    function prettyTitle(file){
+      let name = file;
+      try { name = decodeURI(file); } catch {}
+      const base = name.replace(/\/index\.html$/i, '').replace(/\.[^./]+$/, '').split('/').filter(Boolean).pop() || 'Untitled';
+      return base.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
+    }
+    const isImage = f => /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(f);
+
+    function labelTex(ex){
+      const c = document.createElement('canvas'); c.width = 640; c.height = 320; const g = c.getContext('2d');
+      g.fillStyle = '#ebe6dc'; g.fillRect(0, 0, 640, 320);
+      g.font = '400 22px "IBM Plex Mono", monospace'; g.fillStyle = '#6b6258'; g.fillText('ACC. ' + ex.acc, 34, 52);
+      g.fillStyle = '#1b1814'; g.font = 'italic 500 46px "Bodoni Moda", Georgia, serif'; g.fillText(ex.title, 34, 118, 572);
+      g.font = '600 26px Manrope, sans-serif'; g.fillText(ex.byline, 34, 170, 572);
+      g.font = '400 24px Manrope, sans-serif'; g.fillStyle = '#4a433c'; g.fillText(ex.year + '  ·  ' + ex.medium, 34, 214, 572); g.fillText(ex.dims, 34, 252, 572);
+      return canvasTex(c);
+    }
+
+    const exhibits = [], obstacles = [], iframeEntries = [];
+    const plaqueGeo = new T.PlaneGeometry(34, 17);
+
+    function hangPainting({ artwork, index, pos, rotY, pxW, pxH, scale, frame, cy, uplights, viewDist, srcUrl = null, iframeTitle = null, ballotArtwork = true }){
+      const w = pxW * scale, h = pxH * scale;
+      const g = new T.Group(); g.position.copy(pos); g.rotation.y = rotY; scene.add(g);
+      const fw = frame === 'gold' ? 12 : 8, depth = 8;
+      const fmat = frame === 'gold' ? goldMat : frame === 'wood' ? woodMat : blackMat;
+      [[w + 2 * fw, fw, 0, h / 2 + fw / 2], [w + 2 * fw, fw, 0, -h / 2 - fw / 2], [fw, h, -w / 2 - fw / 2, 0], [fw, h, w / 2 + fw / 2, 0]]
+        .forEach(([bw, bh, bx, by]) => { const m = mesh(new T.BoxGeometry(bw, bh, depth), fmat); m.position.set(bx, by, depth / 2); g.add(m); });
+      const back = mesh(new T.BoxGeometry(w, h, depth * .5), woodMat); back.position.z = depth * .25; g.add(back);
+      const hole = new T.Mesh(new T.PlaneGeometry(w - 1, h - 1), holeMat); hole.position.z = depth * .52; hole.renderOrder = 1; g.add(hole);
+
+      const ex = {
+        kind: 'painting', artwork: ballotArtwork ? artwork : null, index,
+        title: prettyTitle(artwork),
+        byline: 'Pensieve Collection',
+        year: 2026,
+        medium: isImage(artwork) ? 'Digital image' : 'Live web visualization',
+        dims: Math.round(h) + ' × ' + Math.round(w) + ' cm',
+        acc: 'PEN-' + String(index + 1).padStart(3, '0'),
+        note: isImage(artwork) ? 'A still image. Click the frame to step up to it.' : 'This one is alive. Click inside the frame to play with it.'
+      };
+      const plq = mesh(plaqueGeo, new T.MeshStandardMaterial({ map: labelTex(ex), roughness: .6 }), false, true);
+      plq.position.set(w / 2 + fw + 32, 145 - cy, 1.2); g.add(plq);
+
+      // Wall wash rising from the uplight(s)
+      const washW = Math.max(w * 1.9, w + 160), washH = cy + h / 2 + 90;
+      const wash = new T.Mesh(new T.PlaneGeometry(washW, washH), washMaterial(washW, washH, (w / 2 + 30) / (cy + 35)));
+      wash.position.set(0, -cy + washH / 2, .8); wash.renderOrder = 2; wash.raycast = noRaycast; g.add(wash);
+
+      g.updateMatrixWorld(true);
+      uplights.forEach(ox => {
+        const base = g.localToWorld(new T.Vector3(ox, -cy, 34)); base.y = 0;
+        const tgt = g.localToWorld(new T.Vector3(ox * .6, 0, 4));
+        addUplight(base, tgt, Math.atan((w / 2 / uplights.length + 30) / base.distanceTo(tgt)));
+      });
+
+      // Live iframe on the CSS3D layer, aligned exactly with the hole
+      const slot = document.createElement('div');
+      slot.className = 'canvas-slot';
+      slot.style.width = pxW + 'px'; slot.style.height = pxH + 'px';
+      const iframe = document.createElement('iframe');
+      iframe.dataset.src = srcUrl || encodeURI(`/visualizations/${artwork}`);
+      iframe.dataset.active = '0';
+      if (ballotArtwork) iframe.dataset.artwork = artwork;
+      iframe.title = iframeTitle || `Mueseum painting ${index + 1}: ${artwork}`;
+      hookIframe(iframe);
+      iframe.addEventListener('pointerdown', () => { if (ballotArtwork) selectBallot(artwork); });
+      slot.appendChild(iframe);
+      const obj = new CSS3DObject(slot);
+      obj.position.copy(g.localToWorld(new T.Vector3(0, 0, depth * .52)));
+      obj.rotation.y = rotY;
+      obj.scale.setScalar(scale);
+      cssScene.add(obj);
+
+      ex.center = g.localToWorld(new T.Vector3(0, 0, 0));
+      ex.view = g.localToWorld(new T.Vector3(0, EYE - cy, viewDist)); ex.view.y = EYE;
+      g.traverse(o => { o.userData.ex = ex; });
+      exhibits.push(ex);
+      iframeEntries.push({ iframe, center: ex.center, radius: Math.hypot(w, h) / 2, active: false, lastSeen: 0 });
+    }
+
+    const frames = ['gold', 'black', 'wood'];
+    const oneVoiceArtwork = visualizationFiles.find(file => /one-voice/i.test(file)) || null;
+    let sidecarPlaced = false;
+
+    function placePaintingByIndex(i){
+      const artwork = visualizationFiles[i];
+      if (oneVoiceArtwork && artwork === oneVoiceArtwork) {
+        hangPainting({
+          artwork, index: i,
+          pos: new T.Vector3(-56, 225, 17), rotY: 0,
+          pxW: 960, pxH: 600, scale: .24, frame: 'gold', cy: 225, uplights: [0], viewDist: 300
+        });
+
+        if (!sidecarPlaced) {
+          sidecarPlaced = true;
+          hangPainting({
+            artwork: 'constitution-neighborhood', index: i,
+            pos: new T.Vector3(236, 225, 17), rotY: 0,
+            pxW: 960, pxH: 600, scale: .24, frame: 'gold', cy: 225, uplights: [0], viewDist: 300,
+            srcUrl: 'https://happybearlandia.fly.dev/game/constitution-neighborhood',
+            iframeTitle: 'Constitution Neighborhood',
+            ballotArtwork: false
+          });
+        }
+        return;
+      }
+
+      if (i === N - 1) {
+        // The final artwork hangs large on the end wall
+        hangPainting({
+          artwork, index: i,
+          pos: new T.Vector3(0, 290, Z_END + 1), rotY: 0,
+          pxW: 1280, pxH: 720, scale: .3, frame: 'gold', cy: 290, uplights: [-110, 110], viewDist: 620
+        });
+        return;
+      }
+
+      const s = i % 2 === 0 ? -1 : 1;
+      hangPainting({
+        artwork, index: i,
+        pos: new T.Vector3(s * (W / 2 - 1), 225, sectionZ(i)), rotY: -s * Math.PI / 2,
+        pxW: 960, pxH: 600, scale: .24, frame: frames[i % 3], cy: 225, uplights: [0], viewDist: 330
+      });
+    }
+
+    for (let i = 0; i < N; i++) placePaintingByIndex(i);
+
+    /* ---------- statues ---------- */
+    function knot(){ const g = new T.Group(); const m = mesh(new T.TorusKnotGeometry(.34, .105, 280, 40, 2, 3), marble); m.position.y = .78; g.add(m);
+      g.userData.tick = t => { m.rotation.y = t * .25; m.rotation.x = Math.sin(t * .2) * .25; }; return g; }
+    function orrery(){ const g = new T.Group();
+      const stem = mesh(new T.CylinderGeometry(.022, .04, .62, 16), brass); stem.position.y = .31; g.add(stem);
+      const core = mesh(new T.SphereGeometry(.15, 48, 32), brass); core.position.y = .78; g.add(core);
+      const rings = [];
+      [[.36, .42, .6, marble, .05], [.53, -.62, .36, basalt, .066], [.72, .22, .2, brass, .045]].forEach(([r, tilt, spd, pm, ps]) => {
+        const pivot = new T.Group(); pivot.position.y = .78; pivot.rotation.z = tilt;
+        const ring = mesh(new T.TorusGeometry(r, .007, 8, 160), brass); ring.rotation.x = Math.PI / 2; pivot.add(ring);
+        const spin = new T.Group(); pivot.add(spin);
+        const planet = mesh(new T.SphereGeometry(ps, 32, 16), pm); planet.position.x = r; spin.add(planet);
+        const arm = mesh(new T.CylinderGeometry(.004, .004, r, 6), brass); arm.rotation.z = Math.PI / 2; arm.position.x = r / 2; spin.add(arm);
+        g.add(pivot); rings.push({ spin, spd, pivot });
+      });
+      g.userData.tick = t => rings.forEach((o, i) => { o.spin.rotation.y = t * o.spd + i * 2; o.pivot.rotation.y = t * .05 * (i + 1); });
+      return g; }
+    function cairn(){ const g = new T.Group(); const r = rngFrom(4); let y = 0;
+      [[.42, .15, .36], [.34, .14, .3], [.27, .125, .24], [.2, .11, .18], [.13, .09, .12]].forEach(([rx, ry, rz], i, arr) => {
+        const m = mesh(new T.SphereGeometry(1, 48, 24), i === arr.length - 1 ? brass : basalt); m.scale.set(rx, ry, rz);
+        y += ry * .92; m.position.set((r() - .5) * .08, y, (r() - .5) * .08); m.rotation.y = r() * 6; y += ry * .85; g.add(m); });
+      g.userData.tick = t => { g.rotation.y = t * .06; }; return g; }
+
+    const sculptTypes = [
+      { make: knot, title: 'Unending Correspondence', artist: 'Sela Brandt', born: 1966, year: 2017, medium: 'Carrara marble, motorized base', dims: '74 × 68 × 68 cm', acc: '2017.230', note: 'A single loop that passes through itself three times. The base turns once every twenty-five seconds.' },
+      { make: orrery, title: 'Small Heaven', artist: 'Oskar Lind', born: 1981, year: 2023, medium: 'Brass, marble, basalt; kinetic', dims: '112 × 150 × 150 cm', acc: '2023.019', note: 'Three bodies on three tilted rings, geared so their shadows never repeat the same pattern twice in a day.' },
+      { make: cairn, title: 'Cairn for a Quiet Year', artist: 'Hana Ruiz', born: 1977, year: 2020, medium: 'Basalt and gilded bronze', dims: '96 × 84 × 72 cm', acc: '2020.101', note: 'Four river stones and one gilded one, balanced without pins. The gold stone was cast from the smallest.' }
+    ];
+
+    const statueZs = [];
+    for (let k = 0; k < sideCount; k++) if (k % 3 === 1) statueZs.push(sectionZ(k));
+    if (!statueZs.length) statueZs.push(sectionZ(0));
+
+    const ticks = [], statues = [];
+    statueZs.forEach((z, i) => {
+      const spec = sculptTypes[i % sculptTypes.length];
+      const cast = Math.floor(i / sculptTypes.length) + 1;
+      const ex = {
+        kind: 'sculpture', ...spec,
+        byline: spec.artist + ', b. ' + spec.born,
+        acc: spec.acc + (cast > 1 ? '.' + cast : ''),
+        center: new T.Vector3(0, 175, z),
+        view: new T.Vector3(70, EYE, z + 310)
+      };
+      const base = addBox(100, 100, 100, plinthMat, 0, 50, z);
+      const top = addBox(106, 4, 106, plinthMat, 0, 102, z);
+      obstacles.push({ x: 0, z, hx: 55, hz: 55 });
+      const g = spec.make(); g.scale.setScalar(100); g.position.set(0, 104, z); scene.add(g);
+      if (g.userData.tick) ticks.push(g.userData.tick);
+      [base, top].forEach(m => { m.userData.ex = ex; });
+      g.traverse(o => { o.userData.ex = ex; });
+      exhibits.push(ex);
+
+      const at = new T.Vector3(190, H - 6, z + 160), target = new T.Vector3(0, 145, z);
+      addCeilingFixture(at, target);
+      const dir = target.clone().sub(at).normalize();
+      const origin = at.clone().add(dir.multiplyScalar(27));
+      addBeam(origin, target, .34 * .92, .1, 0xffe2bd);
+      statues.push({ z, origin, target });
+    });
+
+    // Real shadow-casting spotlights are pooled and follow you to the nearest statues
+    const statueSpots = [];
+    for (let k = 0; k < Math.min(3, statues.length); k++) {
+      const s = new T.SpotLight(0xffe2bd, 0, 1600, .34, .5, 2);
+      s.castShadow = true; s.shadow.mapSize.set(1024, 1024);
+      s.shadow.camera.near = 30; s.shadow.camera.far = 1000; s.shadow.bias = -0.0005; s.shadow.normalBias = 2;
+      s.userData = { st: null, f: 0 };
+      scene.add(s, s.target); statueSpots.push(s);
+    }
+    function assignStatueSpots(z){
+      const want = statues.slice().sort((a, b) => Math.abs(a.z - z) - Math.abs(b.z - z)).slice(0, statueSpots.length);
+      const kept = new Set();
+      statueSpots.forEach(sp => { if (sp.userData.st && want.includes(sp.userData.st)) kept.add(sp.userData.st); else sp.userData.st = null; });
+      statueSpots.forEach(sp => {
+        if (sp.userData.st) return;
+        const st = want.find(w => !kept.has(w)); if (!st) return;
+        kept.add(st); sp.userData.st = st; sp.userData.f = 0;
+        sp.position.copy(st.origin); sp.target.position.copy(st.target);
+      });
+    }
+
+    /* ---------- benches ---------- */
+    for (let k = 0; k < sideCount; k++) {
+      if (k % 6 !== 3) continue;
+      const z = sectionZ(k);
+      addBox(50, 7, 190, benchMat, 0, 45, z);
+      [-80, 80].forEach(dz => addBox(42, 42, 6, blackMat, 0, 21, z + dz));
+      obstacles.push({ x: 0, z, hx: 30, hz: 100 });
+    }
+    { // bench facing the end wall
+      const z = Z_END + 430;
+      addBox(190, 7, 50, benchMat, 0, 45, z);
+      [-80, 80].forEach(dx => addBox(6, 42, 42, blackMat, dx, 21, z));
+      obstacles.push({ x: 0, z, hx: 100, hz: 30 });
+    }
+
+    /* ---------- dust ---------- */
+    const dustN = coarse ? 700 : Math.min(2600, Math.round(L / 100 * 14));
+    const dpos = new Float32Array(dustN * 3), dseed = new Float32Array(dustN);
+    const dr = rngFrom(99);
+    for (let i = 0; i < dustN; i++) { dpos[i * 3] = (dr() - .5) * (W - 100); dpos[i * 3 + 1] = dr() * H; dpos[i * 3 + 2] = Z_END + 50 + dr() * (L - 100); dseed[i] = dr() * 100; }
+    const dgeo = new T.BufferGeometry(); dgeo.setAttribute('position', new T.BufferAttribute(dpos, 3));
+    const dc = document.createElement('canvas'); dc.width = dc.height = 64; const dg = dc.getContext('2d');
+    dg.fillStyle = '#000'; dg.fillRect(0, 0, 64, 64);
+    const grad = dg.createRadialGradient(32, 32, 0, 32, 32, 32); grad.addColorStop(0, '#fff'); grad.addColorStop(1, '#000'); dg.fillStyle = grad; dg.fillRect(0, 0, 64, 64);
+    const dust = new T.Points(dgeo, new T.PointsMaterial({ size: 2.8, map: new T.CanvasTexture(dc), color: new T.Color(0xffe6c4).multiplyScalar(.45), fog: false, ...ADD }));
+    dust.renderOrder = 5; dust.raycast = noRaycast; scene.add(dust);
+    const dbase = dpos.slice();
+
+    /* ---------- ballot (unchanged behaviour) ---------- */
     const ballotArtworkEl = document.getElementById('ballotArtwork');
     const ballotVoteEl = document.getElementById('ballotVote');
     const ballotVotesEl = document.getElementById('ballotVotes');
@@ -516,10 +899,7 @@
 
     let activeBallotArtwork = visualizationFiles[0] || '';
 
-    function setBallotStatus(message){
-      if (!ballotStatusEl) return;
-      ballotStatusEl.textContent = message || '';
-    }
+    function setBallotStatus(message){ if (ballotStatusEl) ballotStatusEl.textContent = message || ''; }
 
     function formatBallotDate(iso){
       const d = new Date(iso);
@@ -531,10 +911,8 @@
       if (!ballotVotesEl || !ballotCommentsEl) return;
       const votes = Number(entry?.votes || 0);
       const comments = Array.isArray(entry?.comments) ? entry.comments : [];
-
       ballotVotesEl.textContent = `Votes: ${votes}`;
       ballotCommentsEl.innerHTML = '';
-
       if (!comments.length){
         const li = document.createElement('li');
         li.className = 'ballot-empty';
@@ -542,38 +920,25 @@
         ballotCommentsEl.appendChild(li);
         return;
       }
-
-      comments
-        .slice()
-        .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
-        .forEach(comment => {
-          const li = document.createElement('li');
-
-          const meta = document.createElement('div');
-          meta.className = 'meta';
-          const author = (comment.author || 'Anonymous').trim() || 'Anonymous';
-          const stamp = formatBallotDate(comment.createdAt);
-          meta.textContent = stamp ? `${author} · ${stamp}` : author;
-
-          const text = document.createElement('div');
-          text.className = 'text';
-          text.textContent = comment.text || '';
-
-          li.appendChild(meta);
-          li.appendChild(text);
-          ballotCommentsEl.appendChild(li);
-        });
+      comments.slice().sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')).forEach(comment => {
+        const li = document.createElement('li');
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const author = (comment.author || 'Anonymous').trim() || 'Anonymous';
+        const stamp = formatBallotDate(comment.createdAt);
+        meta.textContent = stamp ? `${author} · ${stamp}` : author;
+        const text = document.createElement('div');
+        text.className = 'text';
+        text.textContent = comment.text || '';
+        li.appendChild(meta); li.appendChild(text);
+        ballotCommentsEl.appendChild(li);
+      });
     }
 
     async function loadBallotEntry(artwork){
-      if (!artwork) {
-        renderBallotEntry({ votes: 0, comments: [] });
-        return;
-      }
-
+      if (!artwork) { renderBallotEntry({ votes: 0, comments: [] }); return; }
       try {
-        const url = `/api/ballot?artwork=${encodeURIComponent(artwork)}`;
-        const res = await fetch(url, { cache: 'no-store' });
+        const res = await fetch(`/api/ballot?artwork=${encodeURIComponent(artwork)}`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const payload = await res.json();
         renderBallotEntry(payload?.entry || { votes: 0, comments: [] });
@@ -587,11 +952,7 @@
       if (!activeBallotArtwork) return;
       setBallotStatus('Submitting vote…');
       try {
-        const res = await fetch('/api/ballot/vote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ artwork: activeBallotArtwork })
-        });
+        const res = await fetch('/api/ballot/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ artwork: activeBallotArtwork }) });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
         renderBallotEntry(payload?.entry || { votes: 0, comments: [] });
@@ -605,21 +966,12 @@
     async function submitBallotComment(){
       if (!activeBallotArtwork || !ballotCommentEl) return;
       const text = ballotCommentEl.value.trim();
-      if (!text) {
-        setBallotStatus('Please enter a comment before posting.');
-        return;
-      }
-
+      if (!text) { setBallotStatus('Please enter a comment before posting.'); return; }
       setBallotStatus('Posting comment…');
       try {
         const res = await fetch('/api/ballot/comment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            artwork: activeBallotArtwork,
-            author: ballotNameEl?.value || '',
-            text
-          })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artwork: activeBallotArtwork, author: ballotNameEl?.value || '', text })
         });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
@@ -632,401 +984,631 @@
       }
     }
 
+    function conceptIndexForArtwork(artwork){
+      const idx = visualizationFiles.indexOf(artwork);
+      return idx >= 0 ? idx % conceptChain.length : 0;
+    }
+    function conceptIndexForExhibit(ex){
+      if (!ex) return activeConceptIndex;
+      if (ex.artwork) return conceptIndexForArtwork(ex.artwork);
+      if (ex.kind === 'sculpture') return 3; // anchor sculptures to Humanity
+      return activeConceptIndex;
+    }
+
+    function voteLabelForArtwork(artwork){
+      if (!artwork) return 'Vote';
+      const t = prettyTitle(artwork);
+      return `Vote · ${t.length > 28 ? t.slice(0, 27) + '…' : t}`;
+    }
+    function updateVoteButtonLabel(artwork){
+      if (!ballotVoteEl) return;
+      ballotVoteEl.textContent = voteLabelForArtwork(artwork);
+      ballotVoteEl.title = artwork ? `Vote for ${prettyTitle(artwork)}` : 'Vote';
+      ballotVoteEl.setAttribute('aria-label', artwork ? `Vote for ${prettyTitle(artwork)}` : 'Vote');
+    }
+
+    function findExhibitByArtwork(artwork){
+      if (!artwork) return null;
+      return exhibits.find(ex => ex.kind === 'painting' && ex.artwork === artwork) || null;
+    }
+
+    function selectBallot(artwork){
+      if (!artwork || !ballotArtworkEl) return;
+      const changed = activeBallotArtwork !== artwork;
+      if (ballotArtworkEl.value !== artwork) ballotArtworkEl.value = artwork;
+      activeBallotArtwork = artwork;
+      activeConceptIndex = conceptIndexForArtwork(artwork);
+      updateVoteButtonLabel(artwork);
+      if (!changed) return;
+      setBallotStatus('');
+      loadBallotEntry(artwork);
+    }
+
     function initBallot(){
       if (!ballotArtworkEl) return;
-
       const options = visualizationFiles.map((file, index) => {
         const option = document.createElement('option');
         option.value = file;
-        option.textContent = `${index + 1}. ${file}`;
+        option.textContent = `${index + 1}. ${prettyTitle(file)}`;
         return option;
       });
       ballotArtworkEl.replaceChildren(...options);
-
-      if (!activeBallotArtwork && visualizationFiles.length) {
-        activeBallotArtwork = visualizationFiles[0];
-      }
+      if (!activeBallotArtwork && visualizationFiles.length) activeBallotArtwork = visualizationFiles[0];
       ballotArtworkEl.value = activeBallotArtwork;
+      activeConceptIndex = conceptIndexForArtwork(activeBallotArtwork);
+      updateVoteButtonLabel(activeBallotArtwork);
 
       ballotArtworkEl.addEventListener('change', () => {
         activeBallotArtwork = ballotArtworkEl.value;
+        activeConceptIndex = conceptIndexForArtwork(activeBallotArtwork);
+        updateVoteButtonLabel(activeBallotArtwork);
         loadBallotEntry(activeBallotArtwork);
+
+        const ex = findExhibitByArtwork(activeBallotArtwork);
+        if (ex) goTo(ex);
       });
 
       ballotVoteEl?.addEventListener('click', submitBallotVote);
-
-      ballotFormEl?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        submitBallotComment();
-      });
-
+      ballotFormEl?.addEventListener('submit', (event) => { event.preventDefault(); submitBallotComment(); });
       loadBallotEntry(activeBallotArtwork);
-    }
 
+      const panel = document.getElementById('ballotPanel'), btn = document.getElementById('ballotCollapse');
+      btn.addEventListener('click', () => {
+        const collapsed = panel.classList.toggle('collapsed');
+        btn.textContent = collapsed ? 'Show' : 'Hide';
+        btn.setAttribute('aria-expanded', String(!collapsed));
+      });
+      if (innerWidth < 900) btn.click();
+    }
     initBallot();
 
-    const FRAME_W = 680;
-    const FRAME_H = 430;
-    const SURFACE_SPAN = ROOM_DEPTH - 840;
-
-    const paintingSurfaces = roomMeta.flatMap(room => ([
-      { primary:'z', fixed:-2090, ry: Math.PI / 2, center: room.centerZ },
-      { primary:'z', fixed: 2090, ry:-Math.PI / 2, center: room.centerZ }
-    ]));
-
-    const rowYs = [660, 150];
-    const labelRowYs = [410, 390]; // central gap between top and bottom rows
-    const colOffsets = [-SURFACE_SPAN * 0.30, SURFACE_SPAN * 0.30];
-
-    const slots = [];
-    paintingSurfaces.forEach(surface => {
-      // 4 paintings per wall: 2 columns x 2 rows
-      rowYs.forEach((rowY, rowIdx) => {
-        colOffsets.forEach(offset => {
-          const v = surface.center + offset;
-          if (surface.primary === 'x') {
-            slots.push({ x:v, y:rowY, z:surface.fixed, ry:surface.ry, labelY:labelRowYs[rowIdx] });
-          } else {
-            slots.push({ x:surface.fixed, y:rowY, z:v, ry:surface.ry, labelY:labelRowYs[rowIdx] });
-          }
-        });
-      });
+    /* ---------- lighting modes ---------- */
+    const modes = {
+      moon: { sky: new T.Color(0x9db8ff), skyI: .95, bg: new T.Color(0x0a1426), hemi: .3, shaft: new T.Color(0x9db8ff), shaftS: .055, exp: 1.1, dim: .14 },
+      sun:  { sky: new T.Color(0xfff0d6), skyI: 3.0, bg: new T.Color(0xbcd3e6), hemi: .55, shaft: new T.Color(0xffe6bf), shaftS: .085, exp: .92, dim: 0 }
+    };
+    let modeKey = 'moon';
+    const cur = { sky: modes.moon.sky.clone(), skyI: modes.moon.skyI, bg: modes.moon.bg.clone(), hemi: modes.moon.hemi, shaft: modes.moon.shaft.clone(), shaftS: modes.moon.shaftS, exp: modes.moon.exp, dim: modes.moon.dim };
+    const bMoon = document.getElementById('b-moon'), bSun = document.getElementById('b-sun'), bBeams = document.getElementById('b-beams');
+    function setMode(k){ modeKey = k; bMoon.setAttribute('aria-pressed', k === 'moon'); bSun.setAttribute('aria-pressed', k === 'sun'); }
+    bMoon.addEventListener('click', () => setMode('moon'));
+    bSun.addEventListener('click', () => setMode('sun'));
+    bBeams.addEventListener('click', () => {
+      const on = bBeams.getAttribute('aria-pressed') !== 'true';
+      bBeams.setAttribute('aria-pressed', on);
+      beams.forEach(b => b.visible = on); shaft.visible = on; dust.visible = on;
     });
 
-    // ---------- Shared input state (used by both the gallery and the iframes) ----------
-    camera.rotation.order = 'YXZ';
-    const keys = {};
-    const eyeHeight = 200;
-    const pos = new THREE.Vector3(0, eyeHeight, 980);
-    const vel = new THREE.Vector3();
-    let yaw = 0;
-    let pitch = -0.06;
-    let locked = false;
-    let grounded = true;
-    let bobT = 0;
-    let lookButton = -1; // mouse button currently held for look, -1 = none
+    /* ---------- input state ---------- */
+    const minimapCanvas = document.getElementById('minimap');
+    const minimapCtx = minimapCanvas?.getContext('2d');
+    const minimapCoordEl = document.getElementById('minimapCoord');
+    const constellationCanvas = document.getElementById('constellationMap');
+    const constellationCtx = constellationCanvas?.getContext('2d');
+    const constellationFocusEl = document.getElementById('constellationFocus');
 
-    const MOUSE_SENS = 0.0022;
-    const PITCH_MIN = -1.18;
-    const PITCH_MAX = 0.78;
-    const GRAVITY = 1900;
-    const JUMP_V = 700;
-    const WALK_SPEED = 2630;
-    const SPRINT_SPEED = 4230;
-    const GROUND_ACCEL = 14;
-    const AIR_ACCEL = 4;
-    const GROUND_FRICTION = 9;
-    const AIR_DRAG = 0.25;
-    const MOVE_UP = new THREE.Vector3(0, 1, 0);
-    const moveLocalTmp = new THREE.Vector3();
+    const WORLD_MIN_X = -W / 2 + 45;
+    const WORLD_MAX_X = W / 2 - 45;
+    const WORLD_MIN_Z = Z_END + 60;
+    const WORLD_MAX_Z = Z_START - 60;
+    const POSE_KEY = 'mueseum-mode-pose-v1';
 
-    const MOVE_CODES = new Set([
-      'KeyW','KeyA','KeyS','KeyD',
-      'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
-      'ShiftLeft','ShiftRight','Space'
-    ]);
-
-    function isTypingTarget(t){
-      return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''));
+    function clampWorld(v){
+      v.x = Math.max(WORLD_MIN_X, Math.min(WORLD_MAX_X, v.x));
+      v.z = Math.max(WORLD_MIN_Z, Math.min(WORLD_MAX_Z, v.z));
+      return v;
     }
 
-    function onMoveKeyDown(e){
-      if (!MOVE_CODES.has(e.code) || isTypingTarget(e.target)) return;
-      keys[e.code] = true;
-      e.preventDefault();
-      if (e.code === 'Space' && !e.repeat && grounded){
-        vel.y = JUMP_V;
-        grounded = false;
+    function loadSavedPose(){
+      try {
+        const raw = localStorage.getItem(POSE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (![data?.x, data?.z, data?.yaw, data?.pitch].every(Number.isFinite)) return null;
+        return {
+          x: Math.max(WORLD_MIN_X, Math.min(WORLD_MAX_X, data.x)),
+          z: Math.max(WORLD_MIN_Z, Math.min(WORLD_MAX_Z, data.z)),
+          yaw: data.yaw,
+          pitch: data.pitch
+        };
+      } catch {
+        return null;
       }
     }
 
-    function onMoveKeyUp(e){
-      if (MOVE_CODES.has(e.code)) keys[e.code] = false;
+    const savedPose = loadSavedPose();
+    const keys = {};
+    const pos = new T.Vector3(savedPose?.x ?? 0, EYE, savedPose?.z ?? (Z_START - 170));
+    const vel = new T.Vector3();
+    let yaw = savedPose?.yaw ?? 0, pitch = savedPose?.pitch ?? -0.04;
+    let locked = false, grounded = true, bobT = 0;
+    let lookButton = -1;
+    let walkDir = 0;
+    let glide = null;
+    let drag = null;
+
+    const MOUSE_SENS = 0.0022;
+    const PITCH_MIN = -1.18, PITCH_MAX = 0.78;
+    const GRAVITY = 1500, JUMP_V = 420;
+    const WALK_SPEED = 380, SPRINT_SPEED = 720;
+    const GROUND_ACCEL = 12, AIR_ACCEL = 3;
+    const GROUND_FRICTION = 9, AIR_DRAG = 0.25;
+    const MOVE_UP = new T.Vector3(0, 1, 0);
+    const moveLocalTmp = new T.Vector3();
+
+    pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch));
+
+    function persistPose(){
+      try {
+        localStorage.setItem(POSE_KEY, JSON.stringify({ x: pos.x, z: pos.z, yaw, pitch }));
+      } catch {}
     }
 
-    function clearKeys(){
-      for (const code of MOVE_CODES) keys[code] = false;
+    const MOVE_CODES = new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','Space']);
+
+    const hint = document.getElementById('hint');
+    let hintGone = false;
+    function dismissHint(){ if (!hintGone) { hintGone = true; setTimeout(() => { hint.style.opacity = '0'; }, 6000); } }
+
+    function isTypingTarget(t){ return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '')); }
+
+    function onMoveKeyDown(e){
+      if (!MOVE_CODES.has(e.code) || isTypingTarget(e.target)) return;
+      if (e.target?.tagName === 'BUTTON' && e.code === 'Space') return;
+      keys[e.code] = true;
+      e.preventDefault();
+      if (e.code !== 'ShiftLeft' && e.code !== 'ShiftRight') { glide = null; dismissHint(); }
+      if (e.code === 'Space' && !e.repeat && grounded){ vel.y = JUMP_V; grounded = false; }
     }
+    function onMoveKeyUp(e){ if (MOVE_CODES.has(e.code)) keys[e.code] = false; }
+    function clearKeys(){ for (const code of MOVE_CODES) keys[code] = false; walkDir = 0; }
 
     function requestLock(){
-      const p = renderer.domElement.requestPointerLock?.();
+      const p = dom.requestPointerLock?.();
       if (p && typeof p.catch === 'function') p.catch(() => { lookButton = -1; });
     }
-
-    function startLook(button){
-      if (locked) return;
-      lookButton = button;
-      requestLock();
-    }
-
+    function startLook(button){ if (locked) return; lookButton = button; requestLock(); }
     function endLook(button){
       if (button !== lookButton) return;
       lookButton = -1;
       if (document.pointerLockElement) document.exitPointerLock();
     }
 
-    // Wire an iframe so movement keys and right-click look keep working while it has focus.
-    // Works because the visualizations are same-origin; cross-origin pages are skipped silently.
+    // Movement keys and right-click look keep working while a (same-origin) painting has focus.
     function hookIframe(iframe){
       iframe.addEventListener('load', () => {
         let win, doc;
-        try {
-          win = iframe.contentWindow;
-          doc = win.document;
-        } catch { return; }
+        try { win = iframe.contentWindow; doc = win.document; } catch { return; }
         if (!win || !doc || win.__museumHooked) return;
         win.__museumHooked = true;
-
         win.addEventListener('keydown', onMoveKeyDown, true);
         win.addEventListener('keyup', onMoveKeyUp, true);
-        doc.addEventListener('mousedown', e => {
-          if (e.button === 2){ e.preventDefault(); startLook(2); }
-        }, true);
+        doc.addEventListener('mousedown', e => { if (e.button === 2){ e.preventDefault(); startLook(2); } }, true);
         doc.addEventListener('mouseup', e => endLook(e.button), true);
         doc.addEventListener('contextmenu', e => e.preventDefault(), true);
       });
     }
 
-    // ---------- Paintings ----------
-    const iframeEntries = [];
-    const preloadFrustum = new THREE.Frustum();
-    const preloadProjectionMatrix = new THREE.Matrix4();
-    const preloadWorldPos = new THREE.Vector3();
-    const preloadBoundsSphere = new THREE.Sphere(new THREE.Vector3(), 430);
-    const PRELOAD_CHECK_MS = 100;
-    let nextPreloadCheck = 0;
-
+    /* ---------- iframe loading: only near + visible paintings run ---------- */
+    const frustum = new T.Frustum(), projM = new T.Matrix4(), sphere = new T.Sphere();
+    let nextPreload = 0;
     function setIframeActive(entry, active){
       if (entry.active === active) return;
-
       const iframe = entry.iframe;
-      const src = iframe.dataset.src;
-
-      if (active) {
-        if (!src) return;
-        iframe.src = src;
-        iframe.dataset.active = '1';
-      } else {
-        iframe.src = 'about:blank';
-        iframe.dataset.active = '0';
-      }
-
+      if (active) { if (!iframe.dataset.src) return; iframe.src = iframe.dataset.src; iframe.dataset.active = '1'; }
+      else { iframe.src = 'about:blank'; iframe.dataset.active = '0'; }
       entry.active = active;
     }
-
     function updateIframePreload(now){
-      if (now < nextPreloadCheck) return;
-      nextPreloadCheck = now + PRELOAD_CHECK_MS;
-
+      if (now < nextPreload) return;
+      nextPreload = now + 150;
       camera.updateMatrixWorld(true);
-      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-      preloadProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-      preloadFrustum.setFromProjectionMatrix(preloadProjectionMatrix);
-
-      for (let i = 0; i < iframeEntries.length; i++){
-        const entry = iframeEntries[i];
-
-        entry.object.getWorldPosition(preloadWorldPos);
-        preloadBoundsSphere.center.copy(preloadWorldPos);
-
-        const inFrustum = preloadFrustum.intersectsSphere(preloadBoundsSphere);
-        setIframeActive(entry, inFrustum);
+      projM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projM);
+      for (const entry of iframeEntries){
+        sphere.center.copy(entry.center); sphere.radius = entry.radius;
+        const dist = camera.position.distanceTo(entry.center);
+        if (frustum.intersectsSphere(sphere) && dist < 2800) { entry.lastSeen = now; setIframeActive(entry, true); }
+        else if (entry.active && (dist > 3400 || now - entry.lastSeen > 2500)) setIframeActive(entry, false);
       }
     }
 
-    paintings.forEach((painting, i) => {
-      const frameEl = cssPanel('frame', FRAME_W, FRAME_H);
-      const iframe = document.createElement('iframe');
-      iframe.dataset.src = painting.src;
-      iframe.dataset.active = '0';
-      iframe.dataset.artwork = painting.artwork;
-      iframe.title = painting.title || `Mueseum painting ${i + 1}`;
-      if (painting.allow) iframe.allow = painting.allow;
-      if (painting.referrerPolicy) iframe.referrerPolicy = painting.referrerPolicy;
-      if (painting.allowFullscreen) iframe.allowFullscreen = true;
-      hookIframe(iframe);
-      iframe.addEventListener('pointerdown', () => {
-        if (!painting.artwork || !ballotArtworkEl) return;
-        if (ballotArtworkEl.value !== painting.artwork) {
-          ballotArtworkEl.value = painting.artwork;
-          activeBallotArtwork = painting.artwork;
-          loadBallotEntry(activeBallotArtwork);
-        }
-      });
-      frameEl.appendChild(iframe);
+    /* ---------- pointer: drag to look, click to approach ---------- */
+    const ray = new T.Raycaster(), ndc = new T.Vector2();
+    function pickAt(x, y){
+      ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const hit = ray.intersectObjects(scene.children, true)[0];
+      if (hit?.object.userData.ex) goTo(hit.object.userData.ex);
+    }
+    function goTo(ex){
+      const d = ex.center.clone().sub(ex.view);
+      const tYaw = Math.atan2(-d.x, -d.z);
+      const tPitch = Math.atan2(d.y, Math.hypot(d.x, d.z)) * .6;
+      let dy = tYaw - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      glide = { t: 0, dur: reduce ? .01 : 1.4, p0: pos.clone(), p1: ex.view.clone(), y0: yaw, y1: yaw + dy, q0: pitch, q1: tPitch };
+      vel.set(0, 0, 0);
+      showPlacard(ex);
+      if (ex.artwork) selectBallot(ex.artwork);
+      dismissHint();
+    }
 
-      const frame = new CSS3DObject(frameEl);
-      const slot = slots[i] || slots[slots.length - 1];
-      frame.position.set(slot.x, slot.y, slot.z);
-      frame.rotation.y = slot.ry;
-      scene.add(frame);
-
-      const labelEl = cssPanel('painting-label', 330, 30);
-      const artworkName = decodeURI(painting.artwork || '');
-      const sourceName = artworkName
-        .replace(/\/index\.html$/i, '')
-        .replace(/\.[^.]+$/, '')
-        .split('/')
-        .filter(Boolean)
-        .join(' / ');
-      labelEl.textContent = `${i + 1}. ${sourceName || 'untitled'}`;
-      const labelObj = new CSS3DObject(labelEl);
-      labelObj.position.set(slot.x, slot.labelY ?? 400, slot.z);
-      labelObj.rotation.y = slot.ry;
-      scene.add(labelObj);
-
-      iframeEntries.push({ el: frameEl, iframe, object: frame, active: false });
-    });
-
-    // ---------- Gallery input ----------
-    // Mousedown on empty scenery (walls/floor are pointer-events:none, so it lands on the renderer).
-    // Iframe clicks never reach here, so left-click on a painting stays an interaction.
-    renderer.domElement.addEventListener('mousedown', e => {
-      if (e.button !== 0 && e.button !== 2) return;
-      if (e.target.closest?.('iframe, a, button, input, textarea, select, option')) return;
+    dom.addEventListener('pointerdown', e => {
+      if (e.target !== dom && e.target.closest?.('iframe, a, button, input, textarea, select, option')) return;
+      if (e.pointerType === 'mouse' && e.button === 2) { e.preventDefault(); glide = null; startLook(2); return; }
+      if (e.button !== 0) return;
       e.preventDefault();
-
-      // Left-drag on empty space also takes keyboard focus back from any painting.
-      if (e.button === 0){
-        const active = document.activeElement;
-        if (active && active.tagName === 'IFRAME') active.blur();
-        stage.focus({ preventScroll: true });
-      }
-      startLook(e.button);
+      const active = document.activeElement;
+      if (active && active.tagName === 'IFRAME') active.blur();
+      stage.focus({ preventScroll: true });
+      drag = { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: 0, lockAsked: false };
+      dom.style.cursor = 'grabbing';
     });
 
-    // While locked, mouse events go to the locked element and bubble to document.
+    document.addEventListener('pointermove', e => {
+      if (locked) {
+        yaw -= e.movementX * MOUSE_SENS;
+        pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - e.movementY * MOUSE_SENS * 0.9));
+        if (drag) drag.moved += Math.abs(e.movementX) + Math.abs(e.movementY);
+        return;
+      }
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
+      if (drag.type === 'touch') {           // touch: grab the view
+        yaw += dx * .0058; pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch + dy * .0048));
+      } else {                               // mouse: FPS look, upgrade to pointer lock once it's clearly a drag
+        yaw -= dx * MOUSE_SENS * 1.4; pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - dy * MOUSE_SENS * 1.3));
+        if (drag.moved > 6 && !drag.lockAsked) { drag.lockAsked = true; lookButton = 0; requestLock(); }
+      }
+      if (drag.moved > 6) { glide = null; dismissHint(); }
+    });
+
+    function endPointer(e){
+      if (drag && (e.pointerId === drag.id || locked)) {
+        const wasClick = drag.moved < 6 && e.type === 'pointerup';
+        const { sx, sy } = drag;
+        drag = null;
+        dom.style.cursor = 'grab';
+        if (wasClick) pickAt(sx, sy);
+      }
+      endLook(e.button === -1 ? lookButton : e.button);
+    }
+    document.addEventListener('pointerup', endPointer);
+    document.addEventListener('pointercancel', endPointer);
     document.addEventListener('mouseup', e => endLook(e.button));
-    renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+    dom.addEventListener('contextmenu', e => e.preventDefault());
+    dom.addEventListener('wheel', e => {
+      e.preventDefault(); glide = null;
+      pos.addScaledVector(new T.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), -e.deltaY * .4);
+      dismissHint();
+    }, { passive: false });
 
     document.addEventListener('pointerlockchange', () => {
-      locked = document.pointerLockElement === renderer.domElement;
+      locked = document.pointerLockElement === dom;
       document.body.classList.toggle('locked', locked);
-      // Button was released before the lock was granted: let go immediately.
       if (locked && lookButton === -1) document.exitPointerLock();
-      // Lock ended some other way (e.g. Esc): forget the held button.
       if (!locked) lookButton = -1;
-    });
-
-    document.addEventListener('mousemove', e => {
-      if (!locked) return;
-      yaw -= e.movementX * MOUSE_SENS;
-      pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - e.movementY * (MOUSE_SENS * 0.9)));
     });
 
     addEventListener('keydown', onMoveKeyDown);
     addEventListener('keyup', onMoveKeyUp);
-
-    // Drop held keys when the whole page loses focus (alt-tab), but not when focus
-    // just moves into one of our iframes.
-    addEventListener('blur', () => {
-      setTimeout(() => { if (!document.hasFocus()) clearKeys(); }, 0);
-    });
+    addEventListener('blur', () => { setTimeout(() => { if (!document.hasFocus()) clearKeys(); }, 0); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) clearKeys(); });
 
-    // ---------- Movement ----------
+    function holdBtn(id, dir){
+      const b = document.getElementById(id);
+      b.addEventListener('pointerdown', e => { e.preventDefault(); walkDir = dir; glide = null; dismissHint(); b.setPointerCapture(e.pointerId); });
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, () => { walkDir = 0; }));
+    }
+    holdBtn('w-f', 1); holdBtn('w-b', -1);
+
+    /* ---------- placard ---------- */
+    const pl = document.getElementById('placard');
+    const plAcc = document.getElementById('pl-acc'), plTitle = document.getElementById('pl-title'), plArtist = document.getElementById('pl-artist'), plMeta = document.getElementById('pl-meta'), plNote = document.getElementById('pl-note');
+    let shown = null;
+    function showPlacard(ex){
+      if (ex === shown) return; shown = ex;
+      pl.classList.add('fade');
+      if (!ex) return;
+      activeConceptIndex = conceptIndexForExhibit(ex);
+      setTimeout(() => {
+        if (shown !== ex) return;
+        plAcc.textContent = 'Acc. ' + ex.acc; plTitle.textContent = ex.title; plArtist.textContent = ex.byline;
+        plMeta.textContent = ex.year + ' · ' + ex.medium + ' · ' + ex.dims; plNote.textContent = ex.note;
+        pl.classList.remove('fade');
+      }, 180);
+    }
+    function nearestExhibit(){
+      const f = new T.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      let best = null, bd = 1e9;
+      for (const ex of exhibits) {
+        const d = new T.Vector3(ex.center.x - pos.x, 0, ex.center.z - pos.z);
+        const dist = d.length(); if (dist < 1 || dist > 750) continue;
+        if (d.dot(f) / dist > .72 && dist < bd) { bd = dist; best = ex; }
+      }
+      return best;
+    }
+
+    /* ---------- minimap ---------- */
+    function mapX(x){ return ((x - WORLD_MIN_X) / (WORLD_MAX_X - WORLD_MIN_X)) * minimapCanvas.width; }
+    function mapY(z){ return (1 - (z - WORLD_MIN_Z) / (WORLD_MAX_Z - WORLD_MIN_Z)) * minimapCanvas.height; }
+    function worldFromMap(px, py){
+      const x = WORLD_MIN_X + (px / minimapCanvas.width) * (WORLD_MAX_X - WORLD_MIN_X);
+      const z = WORLD_MIN_Z + (1 - py / minimapCanvas.height) * (WORLD_MAX_Z - WORLD_MIN_Z);
+      return new T.Vector3(x, EYE, z);
+    }
+
+    function drawMinimap(){
+      if (!minimapCtx || !minimapCanvas) return;
+      const ctx = minimapCtx, w = minimapCanvas.width, h = minimapCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(8,11,14,0.95)';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(201,164,106,0.7)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, w - 2, h - 2);
+
+      ctx.strokeStyle = 'rgba(235,230,220,0.22)';
+      ctx.lineWidth = 1;
+      boundaryZs.forEach(z => {
+        const y = mapY(z);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = 'rgba(169,182,191,0.45)';
+      for (const ex of exhibits) {
+        if (ex.kind !== 'painting') continue;
+        const x = mapX(ex.center.x), y = mapY(ex.center.z);
+        ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+      }
+
+      ctx.fillStyle = 'rgba(255, 210, 150, 0.6)';
+      for (const o of obstacles) {
+        const x0 = mapX(o.x - o.hx), x1 = mapX(o.x + o.hx);
+        const y0 = mapY(o.z + o.hz), y1 = mapY(o.z - o.hz);
+        ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+      }
+
+      const px = mapX(pos.x), py = mapY(pos.z);
+      const dx = -Math.sin(yaw), dz = -Math.cos(yaw);
+      const hx = px + dx * 11, hy = py - dz * 11;
+      const lx = px + dz * 5.5, ly = py + dx * 5.5;
+      const rx = px - dz * 5.5, ry = py - dx * 5.5;
+
+      ctx.fillStyle = '#ebe6dc';
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(lx, ly);
+      ctx.lineTo(rx, ry);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#c9a46a';
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (minimapCoordEl) minimapCoordEl.textContent = `X ${Math.round(pos.x)} · Z ${Math.round(pos.z)}`;
+    }
+
+    function drawConstellation(){
+      if (!constellationCtx || !constellationCanvas) return;
+      const ctx = constellationCtx, w = constellationCanvas.width, h = constellationCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(8,11,14,0.95)';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(201,164,106,0.7)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, w - 2, h - 2);
+
+      ctx.lineWidth = 2;
+      for (let i = 0; i < conceptPoints.length - 1; i++) {
+        const a = conceptPoints[i], b = conceptPoints[i + 1];
+        const activeEdge = i === activeConceptIndex || i + 1 === activeConceptIndex;
+        ctx.strokeStyle = activeEdge ? 'rgba(235,230,220,0.88)' : 'rgba(169,182,191,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+
+        const vx = b.x - a.x, vy = b.y - a.y;
+        const mag = Math.hypot(vx, vy) || 1;
+        const ux = vx / mag, uy = vy / mag;
+        const tx = b.x - ux * 9, ty = b.y - uy * 9;
+        ctx.fillStyle = activeEdge ? 'rgba(235,230,220,0.88)' : 'rgba(169,182,191,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx - ux * 7 - uy * 4, ty - uy * 7 + ux * 4);
+        ctx.lineTo(tx - ux * 7 + uy * 4, ty - uy * 7 - ux * 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.textAlign = 'center';
+      ctx.font = '10px "IBM Plex Mono", ui-monospace, monospace';
+
+      for (let i = 0; i < conceptPoints.length; i++) {
+        const p = conceptPoints[i];
+        const active = i === activeConceptIndex;
+        ctx.fillStyle = active ? '#c9a46a' : 'rgba(169,182,191,0.72)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, active ? 7 : 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = active ? 'rgba(235,230,220,0.92)' : 'rgba(235,230,220,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, active ? 10 : 8, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = active ? 'rgba(235,230,220,0.95)' : 'rgba(169,182,191,0.85)';
+        const labelY = p.y + (i % 2 === 0 ? -12 : 16);
+        ctx.fillText(conceptChain[i], p.x, labelY);
+
+        ctx.fillStyle = 'rgba(201,164,106,0.9)';
+        ctx.fillText(String(conceptCounts[i]), p.x, p.y + (i % 2 === 0 ? 18 : -12));
+      }
+
+      if (constellationFocusEl) constellationFocusEl.textContent = `Focus: ${conceptChain[activeConceptIndex]}`;
+    }
+
+    if (minimapCanvas) {
+      minimapCanvas.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const r = minimapCanvas.getBoundingClientRect();
+        const tp = worldFromMap((e.clientX - r.left) * (minimapCanvas.width / r.width), (e.clientY - r.top) * (minimapCanvas.height / r.height));
+        glide = null;
+        vel.set(0, 0, 0);
+        pos.copy(clampWorld(tp));
+        pos.y = EYE;
+        grounded = true;
+        dismissHint();
+        showPlacard(nearestExhibit());
+        persistPose();
+      });
+    }
+
+    /* ---------- movement ---------- */
     function applyFriction(dt, amount){
       const speed = Math.hypot(vel.x, vel.z);
       if (speed <= 0.0001) return;
-      const drop = speed * amount * dt;
-      const next = Math.max(0, speed - drop);
-      const scale = next / speed;
-      vel.x *= scale;
-      vel.z *= scale;
+      const scale = Math.max(0, speed - speed * amount * dt) / speed;
+      vel.x *= scale; vel.z *= scale;
     }
-
     function accelerate(wishX, wishZ, wishSpeed, accel, dt){
       if (wishSpeed <= 0) return;
-      const wishDirX = wishX / wishSpeed;
-      const wishDirZ = wishZ / wishSpeed;
-      const currentSpeed = vel.x * wishDirX + vel.z * wishDirZ;
-      const addSpeed = wishSpeed - currentSpeed;
-      if (addSpeed <= 0) return;
-      const accelSpeed = Math.min(addSpeed, accel * wishSpeed * dt);
-      vel.x += wishDirX * accelSpeed;
-      vel.z += wishDirZ * accelSpeed;
+      const wx = wishX / wishSpeed, wz = wishZ / wishSpeed;
+      const add = wishSpeed - (vel.x * wx + vel.z * wz);
+      if (add <= 0) return;
+      const a = Math.min(add, accel * wishSpeed * dt);
+      vel.x += wx * a; vel.z += wz * a;
     }
+    function collide(){
+      clampWorld(pos);
+      const m = 32;
+      for (const o of obstacles) {
+        const dx = pos.x - o.x, dz = pos.z - o.z, px = o.hx + m - Math.abs(dx), pz = o.hz + m - Math.abs(dz);
+        if (px > 0 && pz > 0) { if (px < pz) { pos.x += Math.sign(dx || 1) * px; vel.x = 0; } else { pos.z += Math.sign(dz || 1) * pz; vel.z = 0; } }
+      }
+      clampWorld(pos);
+    }
+    const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 
     function updateWalk(dt){
-      let mx = 0;
-      let mz = 0;
-
+      let mx = 0, mz = 0;
       if (keys.KeyA || keys.ArrowLeft) mx -= 1;
       if (keys.KeyD || keys.ArrowRight) mx += 1;
       if (keys.KeyW || keys.ArrowUp) mz += 1;
       if (keys.KeyS || keys.ArrowDown) mz -= 1;
-
+      mz += walkDir;
       const moving = mx !== 0 || mz !== 0;
-      const len = Math.hypot(mx, mz);
-      if (len > 1){
-        mx /= len;
-        mz /= len;
-      }
-
+      const len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
       const sprinting = keys.ShiftLeft || keys.ShiftRight;
-      const moveSpeed = sprinting ? SPRINT_SPEED : WALK_SPEED;
-      moveLocalTmp.set(mx, 0, -mz).applyAxisAngle(MOVE_UP, yaw);
-      const wishX = moveLocalTmp.x * moveSpeed;
-      const wishZ = moveLocalTmp.z * moveSpeed;
-      const wishSpeed = Math.hypot(wishX, wishZ);
 
-      if (grounded){
-        applyFriction(dt, moving ? GROUND_FRICTION : GROUND_FRICTION * 2.2);
-        accelerate(wishX, wishZ, wishSpeed, GROUND_ACCEL, dt);
+      if (glide) {
+        glide.t = Math.min(1, glide.t + dt / glide.dur);
+        const k = ease(glide.t);
+        pos.lerpVectors(glide.p0, glide.p1, k);
+        yaw = glide.y0 + (glide.y1 - glide.y0) * k;
+        pitch = glide.q0 + (glide.q1 - glide.q0) * k;
+        if (glide.t >= 1) glide = null;
       } else {
-        applyFriction(dt, AIR_DRAG);
-        accelerate(wishX, wishZ, wishSpeed, AIR_ACCEL, dt);
+        const moveSpeed = sprinting ? SPRINT_SPEED : WALK_SPEED;
+        moveLocalTmp.set(mx, 0, -mz).applyAxisAngle(MOVE_UP, yaw);
+        const wishX = moveLocalTmp.x * moveSpeed, wishZ = moveLocalTmp.z * moveSpeed;
+        const wishSpeed = Math.hypot(wishX, wishZ);
+        if (grounded) { applyFriction(dt, moving ? GROUND_FRICTION : GROUND_FRICTION * 2.2); accelerate(wishX, wishZ, wishSpeed, GROUND_ACCEL, dt); }
+        else { applyFriction(dt, AIR_DRAG); accelerate(wishX, wishZ, wishSpeed, AIR_ACCEL, dt); }
+        vel.y -= GRAVITY * dt;
+        pos.x += vel.x * dt; pos.y += vel.y * dt; pos.z += vel.z * dt;
+        if (pos.y <= EYE) { pos.y = EYE; vel.y = 0; grounded = true; }
       }
-
-      vel.y -= GRAVITY * dt;
-
-      pos.x += vel.x * dt;
-      pos.y += vel.y * dt;
-      pos.z += vel.z * dt;
-
-      if (pos.y <= eyeHeight){
-        pos.y = eyeHeight;
-        vel.y = 0;
-        grounded = true;
-      }
-
-      const minZ = roomMeta[roomMeta.length - 1].backZ + 220;
-      const maxZ = ROOM_FRONT_Z + 280;
-      pos.x = Math.max(-1880, Math.min(1880, pos.x));
-      pos.z = Math.max(minZ, Math.min(maxZ, pos.z));
+      collide();
 
       const planar = Math.hypot(vel.x, vel.z);
-      if (grounded && planar > 40 && moving) bobT += dt * (sprinting ? 15 : 10);
-      const bob = grounded ? Math.sin(bobT) * Math.min(6, planar * 0.008) : 0;
+      if (grounded && planar > 30 && moving && !glide && !reduce) bobT += dt * (sprinting ? 14 : 9);
+      const bob = grounded && !reduce ? Math.sin(bobT) * Math.min(1.8, planar * 0.005) : 0;
 
-      const targetFov = sprinting && planar > 140 ? 55 : 50;
-      camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 8);
-      camera.updateProjectionMatrix();
+      const targetFov = sprinting && planar > 120 ? 64 : 60;
+      if (Math.abs(camera.fov - targetFov) > .01) { camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 8); camera.updateProjectionMatrix(); }
 
       camera.position.set(pos.x, pos.y + bob, pos.z);
-      camera.rotation.y = yaw;
-      camera.rotation.x = pitch;
+      camera.rotation.set(pitch, yaw, 0);
     }
 
+    /* ---------- loop ---------- */
     function resize(){
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
+      gl.setSize(innerWidth, innerHeight);
+      cssRenderer.setSize(innerWidth, innerHeight);
     }
     addEventListener('resize', resize);
 
-    let last = performance.now();
+    let last = performance.now(), t = 0, nearT = 0, spotT = 1, poseSaveT = 0;
     function frame(now){
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
+      t += dt * (reduce ? .3 : 1);
+
       updateWalk(dt);
+
+      poseSaveT += dt;
+      if (poseSaveT > 0.35) { poseSaveT = 0; persistPose(); }
+
+      nearT += dt; if (nearT > .2 && !glide) { nearT = 0; showPlacard(nearestExhibit()); }
+      spotT += dt; if (spotT > .25) { spotT = 0; assignStatueSpots(pos.z); }
+      statueSpots.forEach(s => { s.userData.f = Math.min(1, s.userData.f + dt * 1.5); s.intensity = 4.2 * s.userData.f; });
+      placeSky(Math.round(pos.z / 400) * 400);
+
+      ticks.forEach(fn => fn(t));
+
+      if (dust.visible) {
+        for (let i = 0; i < dustN; i++) {
+          const s = dseed[i];
+          dpos[i * 3] = dbase[i * 3] + Math.sin(t * .13 + s) * 25;
+          dpos[i * 3 + 1] = (dbase[i * 3 + 1] + t * 2 * (.5 + (s % 1))) % H;
+          dpos[i * 3 + 2] = dbase[i * 3 + 2] + Math.cos(t * .11 + s * 1.3) * 25;
+        }
+        dgeo.attributes.position.needsUpdate = true;
+      }
+
+      const m = modes[modeKey], a = 1 - Math.pow(.04, dt);
+      cur.sky.lerp(m.sky, a); cur.bg.lerp(m.bg, a); cur.shaft.lerp(m.shaft, a);
+      cur.skyI += (m.skyI - cur.skyI) * a; cur.hemi += (m.hemi - cur.hemi) * a; cur.shaftS += (m.shaftS - cur.shaftS) * a;
+      cur.exp += (m.exp - cur.exp) * a; cur.dim += (m.dim - cur.dim) * a;
+      sky.color.copy(cur.sky); sky.intensity = cur.skyI; scene.background.copy(cur.bg); hemi.intensity = cur.hemi;
+      shaftMat.uniforms.color.value.copy(cur.shaft); shaftMat.uniforms.strength.value = cur.shaftS;
+      gl.toneMappingExposure = cur.exp; holeMat.uniforms.dim.value = cur.dim;
+
+      gl.render(scene, camera);
+      cssRenderer.render(cssScene, camera);
+      drawMinimap();
+      drawConstellation();
       updateIframePreload(now);
-      renderer.render(scene, camera);
       requestAnimationFrame(frame);
     }
 
     camera.position.copy(pos);
     camera.rotation.set(pitch, yaw, 0);
+    collide();
+    drawMinimap();
+    drawConstellation();
+
+    addEventListener('pagehide', persistPose);
+    addEventListener('beforeunload', persistPose);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) persistPose(); });
+
     requestAnimationFrame(frame);
   </script>
 </body>

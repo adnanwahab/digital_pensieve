@@ -1,0 +1,361 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Ladder of Abstraction</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a vertical ladder — each rung pairs a parameter card + parameter-space cube with the road view at that level of abstraction. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --ink:#1b232c; --muted:#5d6b78; --line:#d5dce3;
+  --asphalt:#4a4f55; --asphalt-faint:#dde1e5; --lane:#f0c419; --car:#d7322b; --trace:#2f5fd0;
+  --cube:#6fa8dc; --hm-lo:#eef2f6; --hm-hi:#b3261e;
+  --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --surface:#18202a; --ink:#e6ebf0; --muted:#93a1ae; --line:#2a3542;
+  --asphalt:#5b626a; --asphalt-faint:#28303a; --lane:#e8be2a; --car:#ff5a4e; --trace:#7aa2ff;
+  --cube:#5b8fc7; --hm-lo:#1a222c; --hm-hi:#ff6b5e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --surface:#18202a; --ink:#e6ebf0; --muted:#93a1ae; --line:#2a3542;
+  --asphalt:#5b626a; --asphalt-faint:#28303a; --lane:#e8be2a; --car:#ff5a4e; --trace:#7aa2ff;
+  --cube:#5b8fc7; --hm-lo:#1a222c; --hm-hi:#ff6b5e; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+header h1{font-weight:800;font-size:clamp(28px,4vw,40px);letter-spacing:-.02em;margin:0;text-wrap:balance}
+header p{color:var(--muted);max-width:64ch;margin:8px 0 0;font-size:15px}
+.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;
+  grid-template-columns:auto repeat(3,minmax(0,1fr));gap:12px 20px;align-items:center}
+.controls label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;min-width:0}
+.controls output{font-family:var(--mono);font-size:14px;color:var(--ink);text-transform:none;letter-spacing:0}
+input[type=range]{width:100%;accent-color:var(--car)}
+button{font:600 13px var(--display);background:var(--ink);color:var(--bg);border:0;border-radius:999px;
+  padding:9px 16px;cursor:pointer;min-width:84px}
+button:focus-visible,input:focus-visible,canvas:focus-visible{outline:2px solid var(--trace);outline-offset:2px}
+.rung{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:center;
+  padding-top:24px;border-top:1px solid var(--line)}
+.side{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;
+  font-family:var(--mono);font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.card dt{color:var(--muted)} .card dd{margin:0;font-variant-numeric:tabular-nums}
+.card dd.all{color:var(--trace);font-weight:600}
+.cube{width:150px;height:130px;align-self:center}
+.view{display:flex;flex-direction:column;gap:6px;min-width:0}
+.view h2{font-size:15px;font-weight:700;margin:0}
+.view p{margin:0;color:var(--muted);font-size:13.5px;max-width:70ch}
+.view canvas{width:100%;display:block;touch-action:none;border-radius:6px}
+.legend{display:flex;align-items:center;gap:8px;font:12px var(--mono);color:var(--muted);flex-wrap:wrap}
+.legend .bar{width:140px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--hm-lo),var(--hm-hi));border:1px solid var(--line)}
+footer{color:var(--muted);font-size:12.5px}
+footer a{color:var(--trace)}
+@media (max-width:720px){
+  .controls{grid-template-columns:1fr 1fr}
+  .controls button{grid-column:1/-1;justify-self:start}
+  .rung{grid-template-columns:1fr;gap:12px}
+  .side{flex-direction:row;align-items:center;justify-content:space-between}
+  .cube{width:120px;height:104px}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Ladder of Abstraction</h1>
+    <p>A car follows a road by steering toward it at a fixed turning rate. Each rung below shows the same simulation with one more parameter abstracted away, so you see every value of it at once instead of a single instance.</p>
+  </header>
+
+  <div class="controls">
+    <button id="play" type="button">Play</button>
+    <label for="t">time <output id="tOut">100</output><input id="t" type="range" min="0" max="500" step="1" value="100"></label>
+    <label for="r">turning rate <output id="rOut">2.0°</output><input id="r" type="range" min="0.2" max="10" step="0.1" value="2"></label>
+    <label for="a">bend angle <output id="aOut">40°</output><input id="a" type="range" min="0" max="80" step="1" value="40"></label>
+  </div>
+
+  <section class="rung">
+    <div class="side">
+      <dl class="card"><dt>time:</dt><dd data-k="t"></dd><dt>turning rate:</dt><dd data-k="r"></dd><dt>bend angle:</dt><dd data-k="a"></dd></dl>
+      <canvas class="cube" data-mode="point"></canvas>
+    </div>
+    <div class="view">
+      <h2>One moment</h2>
+      <canvas id="c1" aria-label="Car on the road at the current time"></canvas>
+      <p>A single point in parameter space: one time, one turning rate, one road.</p>
+    </div>
+  </section>
+
+  <section class="rung">
+    <div class="side">
+      <dl class="card"><dt>time:</dt><dd class="all">∗</dd><dt>turning rate:</dt><dd data-k="r"></dd><dt>bend angle:</dt><dd data-k="a"></dd></dl>
+      <canvas class="cube" data-mode="line"></canvas>
+    </div>
+    <div class="view">
+      <h2>Abstract over time</h2>
+      <canvas id="c2" aria-label="The car's full trajectory"></canvas>
+      <p>Every moment at once becomes a trajectory. Drag along it to scrub time.</p>
+    </div>
+  </section>
+
+  <section class="rung">
+    <div class="side">
+      <dl class="card"><dt>time:</dt><dd class="all">∗</dd><dt>turning rate:</dt><dd class="all">∗</dd><dt>bend angle:</dt><dd data-k="a"></dd></dl>
+      <canvas class="cube" data-mode="plane"></canvas>
+    </div>
+    <div class="view">
+      <h2>Abstract over turning rate</h2>
+      <canvas id="c3" aria-label="Trajectories for every turning rate"></canvas>
+      <p>One trajectory for each turning rate from 0.2° to 10° per step. Gentle steering drifts off the bend in wide arcs; sharp steering hugs it but zig-zags. Point at a line to select that rate.</p>
+    </div>
+  </section>
+
+  <section class="rung">
+    <div class="side">
+      <dl class="card"><dt>time:</dt><dd class="all">∗</dd><dt>turning rate:</dt><dd class="all">∗</dd><dt>bend angle:</dt><dd class="all">∗</dd></dl>
+      <canvas class="cube" data-mode="volume"></canvas>
+    </div>
+    <div class="view">
+      <h2>Abstract over turning rate and bend angle</h2>
+      <canvas id="c4" aria-label="Heatmap of time off the road"></canvas>
+      <div class="legend"><span>time off the road</span><span>0%</span><span class="bar"></span><span>max</span><span id="hmStatus"></span></div>
+      <p>Each trajectory collapses to one number, the share of time spent off the asphalt, so the whole space fits in one picture. Click a cell to jump to that car.</p>
+    </div>
+  </section>
+
+  <footer>Inspired by Bret Victor's essay <a href="https://worrydream.com/LadderOfAbstraction/" target="_blank" rel="noopener">Up and Down the Ladder of Abstraction</a>.</footer>
+</div>
+
+<script>
+(()=>{
+const WX=560, WY=235, Y0=180, HALF=9, STEPS=500, SPEED=1.2, R=50, L1=50, DEAD=0.8;
+const RATES=[]; for(let i=0;i<50;i++) RATES.push(0.2+i*(9.8/49));
+const st={t:100,r:2,a:40};
+const $=id=>document.getElementById(id);
+
+// ---------- simulation ----------
+const roadCache=new Map();
+function road(bendDeg){
+  if(roadCache.has(bendDeg)) return roadCache.get(bendDeg);
+  const b=bendDeg*Math.PI/180, P=[]; let x=0,y=Y0,h=0; P.push([x,y]);
+  const straight=L=>{for(let i=0;i<L;i++){x+=Math.cos(h);y+=Math.sin(h);P.push([x,y]);}};
+  const arc=turn=>{const len=Math.abs(turn)*R, n=Math.max(1,Math.round(len)); if(!len)return;
+    for(let i=0;i<n;i++){h+=turn/n;x+=Math.cos(h)*len/n;y+=Math.sin(h)*len/n;P.push([x,y]);}};
+  straight(110); arc(-b); straight(L1); arc(2*b); straight(L1); arc(-b);
+  while(x<WX+40) straight(1);
+  const X=Float64Array.from(P,p=>p[0]), Y=Float64Array.from(P,p=>p[1]);
+  const o={X,Y,n:P.length}; roadCache.set(bendDeg,o); return o;
+}
+function signedDist(rd,x,y){
+  const {X,Y,n}=rd; let lo=0,hi=n-1;
+  while(lo<hi){const m=(lo+hi)>>1; if(X[m]<x) lo=m+1; else hi=m;}
+  let best=1e18,bi=lo;
+  for(let i=Math.max(0,lo-90);i<Math.min(n,lo+90);i++){const dx=x-X[i],dy=y-Y[i],d=dx*dx+dy*dy; if(d<best){best=d;bi=i;}}
+  const j=Math.min(n-1,bi+1), i0=j-1, tx=X[j]-X[i0], ty=Y[j]-Y[i0];
+  const cr=tx*(y-Y[bi])-ty*(x-X[bi]);
+  return Math.sign(cr)*Math.sqrt(best);
+}
+function simulate(rate,bendDeg){
+  const rd=road(bendDeg), dr=rate*Math.PI/180;
+  const T=new Float32Array((STEPS+1)*3); let x=0,y=Y0,h=0,off=0;
+  T[0]=x;T[1]=y;T[2]=h;
+  for(let s=1;s<=STEPS;s++){
+    const d=signedDist(rd,x,y);
+    if(Math.abs(d)>HALF) off++;
+    if(d>DEAD) h-=dr; else if(d<-DEAD) h+=dr;
+    x+=Math.cos(h)*SPEED; y+=Math.sin(h)*SPEED;
+    T[s*3]=x;T[s*3+1]=y;T[s*3+2]=h;
+  }
+  return {T,off:off/STEPS};
+}
+
+// ---------- theme ----------
+let C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);
+  for(const k of ["bg","surface","ink","muted","line","asphalt","asphalt-faint","lane","car","trace","cube","hm-lo","hm-hi"]) C[k]=cs.getPropertyValue("--"+k).trim();}
+const hex=h=>{h=h.replace("#","");return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16));};
+const rgba=(h,a)=>{const [r,g,b]=hex(h);return `rgba(${r},${g},${b},${a})`;};
+const mix=(a,b,t)=>{const A=hex(a),B=hex(b);return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*t)).join(",")})`;};
+
+// ---------- canvas helpers ----------
+function fit(cv,aspect,fixedH){
+  const w=cv.clientWidth||300, h=fixedH||Math.round(w*aspect), dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  cv.style.height=h+"px";
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  return {ctx,w,h};
+}
+function drawRoad(ctx,s,bend,faint){
+  const {X,Y,n}=road(bend);
+  ctx.lineJoin=ctx.lineCap="round";
+  ctx.beginPath(); for(let i=0;i<n;i++){const px=X[i]*s,py=Y[i]*s; i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+  ctx.strokeStyle=faint?C["asphalt-faint"]:C.asphalt; ctx.lineWidth=HALF*2*s; ctx.stroke();
+  ctx.strokeStyle=faint?C.surface:C.lane; ctx.lineWidth=Math.max(1,1.3*s); ctx.stroke();
+}
+function trajPath(ctx,T,s,upto=STEPS){
+  ctx.beginPath(); for(let i=0;i<=upto;i++){const px=T[i*3]*s,py=T[i*3+1]*s; i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+}
+function drawCar(ctx,x,y,h,s){
+  ctx.save(); ctx.translate(x*s,y*s); ctx.rotate(h);
+  const L=15*s,Wd=8*s;
+  ctx.fillStyle="rgba(0,0,0,.25)"; ctx.beginPath(); ctx.roundRect(-L/2+1,-Wd/2+1.5,L,Wd,3*s); ctx.fill();
+  ctx.fillStyle=C.car; ctx.beginPath(); ctx.roundRect(-L/2,-Wd/2,L,Wd,3*s); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.75)"; ctx.beginPath(); ctx.roundRect(L*0.05,-Wd*0.32,L*0.22,Wd*0.64,1.5*s); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- state-derived data ----------
+let cur=null, family=null, famKey=null;
+function compute(){
+  cur=simulate(st.r,st.a);
+  if(famKey!==st.a){famKey=st.a; family=RATES.map(r=>simulate(r,st.a));}
+}
+
+// ---------- rung 1-3 ----------
+const c1=$("c1"),c2=$("c2"),c3=$("c3"),c4=$("c4");
+function draw1(){
+  const {ctx,w}=fit(c1,WY/WX*0.8); const s=w/WX;
+  ctx.save(); ctx.translate(0,-WY*0.12*s); drawRoad(ctx,s,st.a,false);
+  const i=st.t*3; drawCar(ctx,cur.T[i],cur.T[i+1],cur.T[i+2],s); ctx.restore();
+}
+function draw2(){
+  const {ctx,w}=fit(c2,WY/WX*0.8); const s=w/WX;
+  ctx.save(); ctx.translate(0,-WY*0.12*s); drawRoad(ctx,s,st.a,false);
+  trajPath(ctx,cur.T,s); ctx.setLineDash([5,4]); ctx.strokeStyle=C.car; ctx.lineWidth=1.8; ctx.stroke(); ctx.setLineDash([]);
+  const i=st.t*3; drawCar(ctx,cur.T[i],cur.T[i+1],cur.T[i+2],s); ctx.restore();
+}
+function draw3(){
+  const {ctx,w}=fit(c3,WY/WX); const s=w/WX;
+  drawRoad(ctx,s,st.a,true);
+  ctx.strokeStyle=rgba(C.trace,0.28); ctx.lineWidth=0.9;
+  for(const f of family){trajPath(ctx,f.T,s); ctx.stroke();}
+  trajPath(ctx,cur.T,s); ctx.setLineDash([5,4]); ctx.strokeStyle=C.car; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]);
+}
+
+// ---------- rung 4 heatmap ----------
+const NR=49, NA=41, HM=new Float32Array(NR*NA).fill(NaN); let hmMax=0.01, hmRow=0;
+const M={l:52,r:14,t:10,b:38};
+function hmRates(i){return 0.2+i*(9.8/(NR-1));} function hmAng(j){return j*(80/(NA-1));}
+function stepHeatmap(){
+  const t0=performance.now();
+  while(hmRow<NA && performance.now()-t0<14){
+    for(let i=0;i<NR;i++){const v=simulate(hmRates(i),Math.round(hmAng(hmRow))).off; HM[hmRow*NR+i]=v; if(v>hmMax)hmMax=v;}
+    hmRow++;
+  }
+  $("hmStatus").textContent=hmRow<NA?`computing ${Math.round(hmRow/NA*100)}%`:"";
+  draw4(); drawCubes();
+  if(hmRow<NA) requestAnimationFrame(stepHeatmap);
+}
+function draw4(){
+  const {ctx,w,h}=fit(c4,0.42); const pw=w-M.l-M.r, ph=h-M.t-M.b;
+  const cw=pw/NR, ch=ph/NA;
+  ctx.fillStyle=C.surface; ctx.fillRect(M.l,M.t,pw,ph);
+  for(let j=0;j<NA;j++)for(let i=0;i<NR;i++){const v=HM[j*NR+i]; if(Number.isNaN(v))continue;
+    ctx.fillStyle=mix(C["hm-lo"],C["hm-hi"],Math.pow(v/hmMax,0.7));
+    ctx.fillRect(M.l+i*cw,M.t+ph-(j+1)*ch,Math.ceil(cw)+0.5,Math.ceil(ch)+0.5);}
+  ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.strokeRect(M.l+.5,M.t+.5,pw,ph);
+  ctx.fillStyle=C.muted; ctx.font="11px "+getComputedStyle(document.body).getPropertyValue("--mono");
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(const r of [0.2,2,4,6,8,10]){const x=M.l+(r-0.2)/9.8*pw; ctx.fillText(r+"°",x,M.t+ph+5);}
+  ctx.fillText("turning rate (per step)",M.l+pw/2,M.t+ph+21);
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(const a of [0,20,40,60,80]){const y=M.t+ph-a/80*ph; ctx.fillText(a+"°",M.l-6,y);}
+  ctx.save(); ctx.translate(12,M.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textAlign="center"; ctx.fillText("bend angle",0,0); ctx.restore();
+  const cx=M.l+(st.r-0.2)/9.8*pw, cy=M.t+ph-st.a/80*ph;
+  ctx.strokeStyle=C.ink; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(M.l,cy); ctx.lineTo(M.l+pw,cy); ctx.moveTo(cx,M.t); ctx.lineTo(cx,M.t+ph); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=C.car; ctx.strokeStyle=C.surface; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,5,0,7); ctx.fill(); ctx.stroke();
+}
+
+// ---------- cubes ----------
+function drawCubes(){
+  document.querySelectorAll("canvas.cube").forEach(cv=>{
+    const {ctx,w,h}=fit(cv,0,cv.clientHeight||130), S=Math.min(w,h)*0.42, c=Math.cos(Math.PI/6), sn=0.5;
+    const cx=w/2, cy=h*0.42;
+    // r→ right-down along front-right edge, a→ left-down; t up
+    const P=(r,a,t)=>[cx+(r-a)*S*c, cy+(r+a)*S*sn - t*S + S*0.15];
+    const poly=(pts,fill,stroke)=>{ctx.beginPath();pts.forEach((p,i)=>{const q=P(...p);i?ctx.lineTo(...q):ctx.moveTo(...q);});ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}};
+    const rn=(st.r-0.2)/9.8, an=st.a/80, tn=st.t/STEPS, mode=cv.dataset.mode;
+    ctx.lineWidth=1;
+    // floor shadow
+    poly([[0,0,0],[1,0,0],[1,1,0],[0,1,0]],rgba(C.cube,0.12),null);
+    // back faces
+    poly([[0,0,0],[1,0,0],[1,0,1],[0,0,1]],rgba(C.cube,0.10),rgba(C.cube,0.35));
+    poly([[0,0,0],[0,1,0],[0,1,1],[0,0,1]],rgba(C.cube,0.10),rgba(C.cube,0.35));
+    // highlight inside
+    if(mode==="plane"){poly([[0,an,0],[1,an,0],[1,an,1],[0,an,1]],rgba(C.car,0.45),C.car);
+      const a=P(rn,an,0),b=P(rn,an,1); ctx.strokeStyle=C.car; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();}
+    if(mode==="volume"){
+      const cr=12,ca=10;
+      for(let j=0;j<ca;j++)for(let i=0;i<cr;i++){const ri=Math.round(i/(cr-1)*(NR-1)), aj=Math.round(j/(ca-1)*(NA-1)); const v=HM[aj*NR+ri];
+        if(Number.isNaN(v))continue; poly([[i/cr,j/ca,0],[(i+1)/cr,j/ca,0],[(i+1)/cr,(j+1)/ca,0],[i/cr,(j+1)/ca,0]],mix(C["hm-lo"],C["hm-hi"],Math.pow(v/hmMax,0.7)),null);}
+      poly([[0,0,0],[1,0,0],[1,1,0],[0,1,0]],null,C.car);
+    }
+    if(mode==="line"){const a=P(rn,an,0),b=P(rn,an,1); ctx.strokeStyle=C.car; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();}
+    if(mode==="point"){const g=P(rn,an,0); ctx.fillStyle=rgba(C.ink,0.25); ctx.beginPath(); ctx.ellipse(g[0],g[1],5,2.5,0,0,7); ctx.fill();
+      const p=P(rn,an,tn); ctx.fillStyle=C.car; ctx.beginPath(); ctx.arc(p[0],p[1],4.5,0,7); ctx.fill();}
+    if(mode==="volume"){const p=P(rn,an,0); ctx.fillStyle=C.ink; ctx.beginPath(); ctx.arc(p[0],p[1],3,0,7); ctx.fill();}
+    // front faces
+    ctx.lineWidth=1;
+    poly([[1,0,0],[1,1,0],[1,1,1],[1,0,1]],rgba(C.cube,mode==="volume"?0.12:0.22),C.cube);
+    poly([[0,1,0],[1,1,0],[1,1,1],[0,1,1]],rgba(C.cube,mode==="volume"?0.12:0.28),C.cube);
+    poly([[0,0,1],[1,0,1],[1,1,1],[0,1,1]],rgba(C.cube,0.18),C.cube);
+    // axis labels
+    ctx.fillStyle=C.muted; ctx.font="10px "+getComputedStyle(document.body).getPropertyValue("--mono");
+    const lab=(txt,p,ang,dx,dy)=>{ctx.save();ctx.translate(p[0]+dx,p[1]+dy);ctx.rotate(ang);ctx.textAlign="center";ctx.fillText(txt,0,0);ctx.restore();};
+    lab("bend angle",P(0,0.5,0),-Math.atan2(sn,c)+0,-12,12);
+    lab("turn rate",P(0.5,1,0),Math.atan2(sn,c)*-1+0,0,0);
+    ctx.textAlign="right"; ctx.textBaseline="middle"; const tp=P(0,1,0.5); ctx.fillText("time",tp[0]-6,tp[1]);
+  });
+}
+
+// ---------- wiring ----------
+function syncUI(){
+  $("t").value=st.t; $("r").value=st.r; $("a").value=st.a;
+  $("tOut").textContent=st.t; $("rOut").textContent=st.r.toFixed(1)+"°"; $("aOut").textContent=st.a+"°";
+  document.querySelectorAll("dd[data-k]").forEach(d=>{const k=d.dataset.k;
+    d.textContent=k==="t"?st.t:k==="r"?st.r.toFixed(1)+"°":st.a+"°";});
+}
+function render(full=true){ if(full) compute(); syncUI(); draw1(); draw2(); draw3(); draw4(); drawCubes(); }
+$("t").addEventListener("input",e=>{st.t=+e.target.value; render(false);});
+$("r").addEventListener("input",e=>{st.r=+e.target.value; render();});
+$("a").addEventListener("input",e=>{st.a=+e.target.value; render();});
+
+let playing=false,last=0;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+$("play").addEventListener("click",()=>{playing=!playing; $("play").textContent=playing?"Pause":"Play";
+  if(playing){ if(st.t>=STEPS) st.t=0; last=performance.now(); requestAnimationFrame(tick);} });
+function tick(now){ if(!playing) return;
+  const adv=reduce?10:Math.max(1,Math.round((now-last)/16)); last=now;
+  st.t=Math.min(STEPS,st.t+adv); render(false);
+  if(st.t>=STEPS){playing=false;$("play").textContent="Play";return;}
+  reduce?setTimeout(()=>requestAnimationFrame(tick),120):requestAnimationFrame(tick);
+}
+
+function worldPt(cv,e,yShift){const b=cv.getBoundingClientRect(), s=b.width/WX; return [(e.clientX-b.left)/s,(e.clientY-b.top)/s+yShift];}
+function onDrag(cv,fn){let down=false;
+  cv.addEventListener("pointerdown",e=>{down=true;cv.setPointerCapture(e.pointerId);fn(e);});
+  cv.addEventListener("pointermove",e=>{if(down||e.pointerType==="mouse"&&cv===c3)fn(e);});
+  cv.addEventListener("pointerup",()=>down=false);}
+onDrag(c2,e=>{const [x,y]=worldPt(c2,e,WY*0.12); let bi=0,bd=1e18;
+  for(let i=0;i<=STEPS;i++){const dx=cur.T[i*3]-x,dy=cur.T[i*3+1]-y,d=dx*dx+dy*dy; if(d<bd){bd=d;bi=i;}}
+  st.t=bi; render(false);});
+onDrag(c3,e=>{const [x,y]=worldPt(c3,e,0); let br=st.r,bd=400;
+  family.forEach((f,k)=>{for(let i=0;i<=STEPS;i+=2){const dx=f.T[i*3]-x,dy=f.T[i*3+1]-y,d=dx*dx+dy*dy; if(d<bd){bd=d;br=RATES[k];}}});
+  const nr=Math.round(br*10)/10; if(nr!==st.r){st.r=nr; render();}});
+onDrag(c4,e=>{const b=c4.getBoundingClientRect(), pw=b.width-M.l-M.r, ph=b.height-M.t-M.b;
+  const fx=Math.min(1,Math.max(0,(e.clientX-b.left-M.l)/pw)), fy=Math.min(1,Math.max(0,(e.clientY-b.top-M.t)/ph));
+  st.r=Math.round((0.2+fx*9.8)*10)/10; st.a=Math.round((1-fy)*80); render();});
+
+function retheme(){readColors(); render(false);}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",retheme);
+new MutationObserver(retheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+new ResizeObserver(()=>render(false)).observe(document.querySelector(".wrap"));
+
+readColors(); compute(); render(false);
+(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>render(false));
+requestAnimationFrame(stepHeatmap);
+})();
+</script>
+
+</body></html>

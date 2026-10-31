@@ -1,0 +1,847 @@
+<title>One Voice</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: one lamp-lit page in an otherwise empty dark room; a single point of light is the pen. */
+:root {
+  --room: #07080b;
+  --lamp: #f2c27a;
+  --paper: #e8dfca;
+  --paper-edge: #b9ad92;
+  --ink: #1b2130;
+  --ink-wet: #2f4a9a;
+  --impression: rgba(27, 33, 48, 0.075);
+  --rule: rgba(60, 80, 120, 0.13);
+  --mark: rgba(242, 194, 122, 0.55);
+  --caption: #8a8577;
+  --caption-hi: #d9d2c0;
+  --hand: "Kalam", "Segoe Print", "Bradley Hand", cursive;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--room); color: var(--caption); overflow: hidden; }
+.room {
+  position: relative; min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+  --fit: 1;
+}
+.stack {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(var(--fit));
+  transform-origin: center center;
+  width: min(76em, calc(100vw - 32px));
+  display: grid; gap: 1.1em;
+}
+.lamp {
+  position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60vmax 48vmax at 50% 46%, rgba(242,194,122,0.16), rgba(242,194,122,0.05) 40%, transparent 70%);
+  opacity: 0; transition: opacity 2.4s ease;
+}
+.lit .lamp { opacity: 1; }
+
+.piece {
+  position: relative; width: 100%;
+  font-size: clamp(14px, 2.4vmin, 22px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14.5em;
+  grid-template-areas:
+    "paper labels"
+    "caption caption"
+    "actions actions";
+  column-gap: 1em;
+  row-gap: 1.1em;
+  align-items: start;
+  opacity: 0; transform: translateY(0.4em);
+  transition: opacity 2.2s ease, transform 2.2s ease;
+}
+.lit .piece { opacity: 1; transform: none; }
+
+/* the system the entry is written toward, hung above the page */
+.portal {
+  position: relative; width: 100%;
+  font-size: clamp(12px, 1.8vmin, 16px);
+  display: grid; gap: 0.6em;
+}
+.portal .bar {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.3em 1em;
+  font-family: var(--mono); font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.portal .bar a { color: var(--caption-hi); text-decoration: none; border-bottom: 1px solid rgba(217,210,192,0.35); }
+.portal .bar a:hover, .portal .bar a:focus-visible { color: var(--lamp); border-color: var(--lamp); outline: none; }
+.portal .embeds{display:grid;grid-template-columns:1fr;gap:.7em;align-items:start}
+.portal .embed{
+  border:1px solid rgba(217,210,192,0.35);
+  background:#0b0d12;
+  padding:.25em;
+}
+.portal .embed.gold{
+  background:linear-gradient(145deg,#f6df92 0%,#d9b75a 28%,#9d7422 52%,#d9b75a 76%,#f3d983 100%);
+  border:1px solid #7c5818;
+  padding:.35em;
+  box-shadow:0 0 0 1px rgba(255,225,146,.34), inset 0 0 0 1px rgba(116,79,18,.65);
+}
+.portal iframe {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: clamp(260px, 36vh, 430px);
+  border: 1px solid rgba(217,210,192,0.35);
+  background: #0b0d12;
+  transition: box-shadow 1.2s ease;
+}
+.portal .embed.gold iframe{border-color:rgba(107,72,15,.85)}
+.portal.received iframe { box-shadow: 0 0 0 1px var(--lamp), 0 0 3em -0.5em rgba(242,194,122,0.6); }
+
+.paper {
+  grid-area: paper;
+  position: relative;
+  width: min(42em, 100%);
+  justify-self: start;
+  background: radial-gradient(ellipse at 45% 30%, rgba(255,248,230,0.55), transparent 65%), var(--paper);
+  border-radius: 2px;
+  padding: 2.2em 2.4em 2em 3.4em;
+  box-shadow: 0 0.1em 0 var(--paper-edge), 0 1.8em 4em -1.2em rgba(0,0,0,0.85), 0 0 0 1px rgba(0,0,0,0.25);
+  transition: transform 2.4s cubic-bezier(.5,0,.2,1), opacity 2.4s ease, filter 2.4s ease;
+}
+.paper::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 2.3em;
+  width: 1px; background: rgba(170, 70, 70, 0.22);
+}
+.paper.sent { transform: translateY(-55vh) scale(0.08); opacity: 0; filter: blur(2px); }
+
+.text {
+  position: relative; font-family: var(--hand); font-weight: 300; color: var(--ink);
+  line-height: 1.75;
+  background-image: linear-gradient(to bottom, transparent calc(100% - 1px), var(--rule) 0);
+  background-size: 100% 1.75em;
+}
+.text[contenteditable="true"]{outline:none;caret-color:var(--ink-wet)}
+.text[contenteditable="true"]:focus-visible{box-shadow:0 0 0 2px rgba(47,74,154,.24);border-radius:.2em}
+.text p { margin: 0; }
+.text p + p { margin-top: 1.75em; }
+.text .date { font-weight: 400; }
+.text .date[contenteditable="true"]{cursor:text;outline:none;border-radius:.18em;padding:0 .08em;}
+.text .date[contenteditable="true"]:focus-visible{box-shadow:0 0 0 2px rgba(47,74,154,.28);background:rgba(255,255,255,.28)}
+.text .sign { text-align: right; }
+
+.c { color: var(--impression); transition: color 1.6s ease, filter 1.6s ease; }
+.c.wet { color: var(--ink-wet); transition: color 0.15s; }
+.c.dry { color: var(--ink); }
+/* labels-only: the words stay on the page but go soft, private */
+.private .c.dry { color: rgba(27, 33, 48, 0.22); filter: blur(0.12em); }
+
+.lab { transition: background-color 0.8s ease; border-radius: 0.2em; }
+.marking .lab { background-color: var(--mark); }
+
+.strike { position: relative; }
+.strike::after {
+  content: ""; position: absolute; left: -0.1em; right: -0.1em; top: 55%;
+  height: 0.09em; background: var(--ink); opacity: 0.85;
+  transform: scaleX(0) rotate(-1.2deg); transform-origin: left center;
+  transition: transform 0.55s cubic-bezier(.5,0,.3,1);
+}
+.strike.struck::after { transform: scaleX(1) rotate(-1.2deg); }
+
+/* theme labels that rise off the page */
+.chips {
+  position: absolute; inset: 0; display: flex; flex-wrap: wrap; align-content: center; justify-content: center;
+  gap: 0.6em; padding: 2em; pointer-events: none;
+}
+.chip {
+  font-family: var(--mono); font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink); background: #f6efdf; border: 1px solid var(--paper-edge);
+  padding: 0.55em 0.9em; border-radius: 99em;
+  box-shadow: 0 0.4em 1.2em -0.4em rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(0.6em);
+  transition: opacity 0.9s ease, transform 2.6s cubic-bezier(.5,0,.2,1);
+}
+.chip.in { opacity: 1; transform: none; }
+.chip.away { opacity: 0; transform: translateY(-50vh) scale(0.5); transition: opacity 2.2s ease 0.4s, transform 2.6s cubic-bezier(.5,0,.2,1); }
+
+.caption {
+  display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 0.4em 1em; padding-inline: 0.2em;
+}
+.caption .name { font-family: var(--display); font-style: italic; font-size: 1.5em; color: var(--caption-hi); }
+.caption .count {
+  font-family: var(--mono); font-size: 0.68em; letter-spacing: 0.12em; text-transform: uppercase;
+  font-variant-numeric: tabular-nums; transition: opacity 0.6s ease;
+}
+.caption .count b { color: var(--lamp); font-weight: 400; }
+
+.actions {
+  display: flex; flex-wrap: wrap; gap: 0.6em; align-items: center;
+}
+.actions input.entry-id{
+  min-width:17em;
+  font: inherit; font-family: var(--mono); font-size: 0.68em; letter-spacing: 0.08em;
+  color: var(--caption-hi); background: rgba(10,12,17,.62);
+  border: 1px solid rgba(217, 210, 192, 0.35); border-radius: 0.3em;
+  padding: 0.75em 0.9em;
+}
+.actions input.entry-id::placeholder{color:var(--caption)}
+.actions input.entry-id:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+.actions button {
+  font: inherit; font-family: var(--mono); font-size: 0.7em; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--caption-hi); background: transparent;
+  border: 1px solid rgba(217, 210, 192, 0.35); border-radius: 0.3em;
+  padding: 0.75em 1.1em; cursor: pointer;
+  transition: border-color 0.3s, background-color 0.3s, color 0.3s, opacity 0.4s;
+}
+.actions button:hover:not(:disabled) { border-color: var(--lamp); color: var(--lamp); }
+.actions button:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.actions button:disabled { opacity: 0.35; cursor: default; }
+.actions .hint { font-family: var(--mono); font-size: 0.62em; letter-spacing: 0.1em; text-transform: uppercase; }
+
+.net-alert{
+  margin-top:.55em;
+  font-family:var(--mono);
+  font-size:.58em;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--caption-hi);
+  background:rgba(10,12,17,.72);
+  border:1px solid rgba(217,210,192,.28);
+  padding:.62em .74em;
+  border-radius:.25em;
+  opacity:0;
+  transform:translateY(.2em);
+  pointer-events:none;
+  transition:opacity .25s ease, transform .25s ease;
+}
+.net-alert.on{opacity:1;transform:none}
+.net-alert.ok{border-color:rgba(242,194,122,.58);color:var(--lamp)}
+.net-alert.err{border-color:rgba(197,91,91,.52);color:#e7b4b4}
+
+.debug-log{
+  margin-top:.55em;
+  border:1px solid rgba(217,210,192,.22);
+  background:rgba(10,12,17,.62);
+  border-radius:.25em;
+  padding:.55em .65em;
+  font-family:var(--mono);
+  font-size:.52em;
+  letter-spacing:.04em;
+  line-height:1.45;
+  color:var(--caption-hi);
+  max-height:6.8em;
+  overflow:auto;
+}
+.debug-log .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.3em;color:var(--caption)}
+.debug-log .entry{white-space:pre-wrap;word-break:break-word}
+
+.live-labels{
+  grid-area: labels;
+  width:13.5em;
+  border:1px solid rgba(217,210,192,0.32); border-radius:.25em;
+  background:rgba(10,12,17,0.72); padding:.75em;
+  box-shadow:0 .8em 1.6em -.9em rgba(0,0,0,.7);
+}
+.live-labels h4{margin:0 0 .65em;font-family:var(--mono);font-size:.58em;letter-spacing:.14em;text-transform:uppercase;color:var(--caption-hi);font-weight:400}
+.label-list{display:flex;flex-wrap:wrap;gap:.45em}
+.label-pill{font-family:var(--mono);font-size:.56em;letter-spacing:.11em;text-transform:uppercase;color:var(--ink);background:#f6efdf;border:1px solid var(--paper-edge);padding:.45em .62em;border-radius:999px}
+.label-pill.dim{background:transparent;color:var(--caption);border-color:rgba(217,210,192,0.3)}
+.label-source{margin-top:.55em;font-family:var(--mono);font-size:.5em;letter-spacing:.12em;text-transform:uppercase;color:var(--caption)}
+.caption{grid-area:caption}
+.actions{grid-area:actions}
+
+@media (max-width: 980px){
+  .piece{
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "paper"
+      "labels"
+      "caption"
+      "actions";
+  }
+  .paper{width:100%}
+  .live-labels{width:auto}
+}
+
+.voice {
+  position: fixed; left: 0; top: 0;
+  width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+  background: #fff4dc;
+  box-shadow: 0 0 6px 2px rgba(255,230,180,0.9), 0 0 26px 8px rgba(242,194,122,0.35);
+  opacity: 0; pointer-events: none; transition: opacity 1.4s ease; will-change: transform;
+}
+.voice.on { opacity: 1; }
+.voice.pen { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp, .piece, .c, .voice, .strike::after, .paper, .chip, .lab { transition: none !important; }
+}
+</style>
+
+<div class="room" id="room">
+  <div class="lamp" aria-hidden="true"></div>
+  <div class="stack" id="stack">
+    <section class="portal" id="portal">
+      <div class="bar">
+        <span>Civic Synthesis</span>
+        <a href="https://dear-congress.fly.dev/" target="_blank" rel="noopener">Open dear-congress.fly.dev ↗</a>
+      </div>
+      <div class="embeds">
+        <div class="embed">
+          <!--<iframe src="https://dear-congress.fly.dev" title="Civic Synthesis"></iframe>-->
+          <!--<iframe src="https://localhost:8000/" title="Civic Synthesis"></iframe>-->
+<iframe src="https://dear-congress.fly.dev"></iframe>
+        </div>
+      </div>
+    </section>
+    <figure class="piece" style="margin:0">
+      <div class="paper" id="paper">
+        <div class="text" id="text" aria-label="A single journal entry"></div>
+        <div class="chips" id="chips" aria-live="polite"></div>
+      </div>
+      <aside class="live-labels" aria-live="polite">
+        <h4>Live labels</h4>
+        <div class="label-list" id="liveLabelList"></div>
+        <div class="label-source" id="labelSource">Source: local rules</div>
+      </aside>
+      <figcaption class="caption">
+        <span class="name">One Voice</span>
+        <span class="count" id="count">n = <b>1</b> · one person · one entry · nothing averaged</span>
+      </figcaption>
+      <div class="actions">
+        <input id="entryId" class="entry-id" type="text" placeholder="Entry ID (required for publish)" aria-label="Entry ID" />
+        <button id="latest_entry" type="button">Latest entry</button>
+        <button id="publish_labels" type="button" disabled>Publish labels</button>
+        <button id="publish_draft" type="button" disabled>Publish draft</button>
+        <span class="hint" id="hint">Ready when the entry is finished</span>
+      </div>
+      <div class="net-alert" id="netAlert" role="status" aria-live="polite"></div>
+      <div class="debug-log" id="debugLog" aria-live="polite">
+        <div class="head"><span>Debug log</span><span id="debugCount">0</span></div>
+        <div id="debugBody"></div>
+      </div>
+    </figure>
+  </div>
+</div>
+<div class="voice" id="voice" aria-hidden="true"></div>
+
+<script>
+(() => {
+  // The entry. Segments: plain text, a labeled phrase, a crossed-out phrase, or a pause.
+  const ENTRY = [
+    { cls: "date", segs: [{ t: "Tuesday, late." }] },
+    { segs: [
+      { t: "The " }, { t: "bus didn't come", label: "Transit" }, { t: " again this morning. I carried Maya the last mile on my shoulders and " },
+      { t: "we were still late", label: "Getting to school" }, { t: ". " },
+      { pause: 600 },
+      { t: "Her teacher was kind about it, which somehow made it worse." }
+    ]},
+    { segs: [
+      { strike: "I'm so tired of" },
+      { t: " " }, { pause: 900 },
+      { t: "I don't need much. I'd like to get her there on time. " },
+      { pause: 500 },
+      { t: "I'd like to stop " }, { t: "doing the rent in my head", label: "Housing cost" }, { t: " before I fall asleep." }
+    ]},
+    { segs: [
+      { t: "I don't know " }, { t: "who reads these", label: "Being heard" }, { t: ". " }, { pause: 1200 },
+      { t: "Maybe no one. " }, { pause: 900 },
+      { t: "I'm writing it down anyway, so that somewhere it's true that I said it." }
+    ]},
+    { cls: "sign", segs: [{ t: "— R." }] }
+  ];
+
+  const $ = id => document.getElementById(id);
+  const room = $("room"), stack = $("stack"), paper = $("paper"), textEl = $("text"), chipsEl = $("chips");
+  const liveLabelList = $("liveLabelList"), labelSourceEl = $("labelSource");
+  const voice = $("voice"), countEl = $("count"), hintEl = $("hint"), netAlertEl = $("netAlert");
+  const debugLogEl = $("debugLog"), debugBodyEl = $("debugBody"), debugCountEl = $("debugCount");
+  const entryIdEl = $("entryId");
+  const btnLatest = $("latest_entry"), btnLabels = $("publish_labels"), btnDraft = $("publish_draft");
+  const portal = $("portal");
+  const portalCenter = () => { const r = portal.querySelector("iframe").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const received = async () => { portal.classList.add("received"); await sleep(1800); portal.classList.remove("received"); };
+
+  let alertTimer = null;
+  let debugCount = 0;
+  function logEvent(tag, data = null){
+    const stamp = new Date().toLocaleTimeString();
+    let suffix = '';
+    if (data != null) {
+      try { suffix = ' ' + JSON.stringify(data); }
+      catch { suffix = ' [unserializable]'; }
+    }
+    const line = `[${stamp}] ${tag}${suffix}`;
+    console.log(line);
+    if (!debugBodyEl || !debugLogEl) return;
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.textContent = line;
+    debugBodyEl.prepend(div);
+    while (debugBodyEl.children.length > 10) debugBodyEl.removeChild(debugBodyEl.lastChild);
+    debugCount += 1;
+    if (debugCountEl) debugCountEl.textContent = String(debugCount);
+  }
+
+  function showNetAlert(message, kind = 'ok') {
+    if (!netAlertEl) return;
+    netAlertEl.textContent = message;
+    netAlertEl.className = `net-alert on ${kind}`;
+    if (alertTimer) clearTimeout(alertTimer);
+    alertTimer = setTimeout(() => {
+      netAlertEl.className = 'net-alert';
+    }, 2600);
+  }
+
+  const API_BASE = 'https://dear-congress.fly.dev';
+  const PUBLISH_ENDPOINT = `${API_BASE}/api/publish_labels`;
+  const LATEST_ENTRY_PROXY_ENDPOINT = '/api/one-voice-latest-entry';
+
+  const LABEL_ID_MAP = {
+    'transit': 'transit',
+    'getting to school': 'school-access',
+    'housing cost': 'housing-cost',
+    'being heard': 'being-heard',
+    'care work': 'care-work',
+    'childcare burden': 'childcare-burden',
+    'civic trust': 'civic-trust',
+    'parental stress': 'parental-stress'
+  };
+  const toNeedId = (label) => {
+    const k = String(label || '').trim().toLowerCase();
+    if (!k) return '';
+    if (LABEL_ID_MAP[k]) return LABEL_ID_MAP[k];
+    return k.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  };
+
+  async function fetchLatestEntryId(){
+    try {
+      logEvent('Trying latest-entry proxy endpoint', { endpoint: LATEST_ENTRY_PROXY_ENDPOINT });
+      const res = await fetch(LATEST_ENTRY_PROXY_ENDPOINT, { headers: { accept: 'application/json' } });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        logEvent('Latest-entry proxy non-OK', { status: res.status, body });
+        return null;
+      }
+      const entryId = typeof body?.entryId === 'string' ? body.entryId.trim() : '';
+      if (!entryId) {
+        logEvent('Latest-entry proxy returned empty entryId', { body });
+        return null;
+      }
+      return { entryId, endpoint: body?.source || LATEST_ENTRY_PROXY_ENDPOINT };
+    } catch (err) {
+      logEvent('Latest-entry proxy failed', { err: String(err) });
+      return null;
+    }
+  }
+
+  if (btnLatest) {
+    btnLatest.addEventListener('click', async () => {
+      btnLatest.disabled = true;
+      try {
+        const found = await fetchLatestEntryId();
+        if (!found) {
+          showNetAlert('Could not find latest entry', 'err');
+          alert('One Voice: could not find latest entry.');
+          return;
+        }
+        if (entryIdEl) entryIdEl.value = found.entryId;
+        try { localStorage.setItem('one-voice-entry-id', found.entryId); } catch {}
+        logEvent('Latest entry resolved', found);
+        showNetAlert(`Latest entry loaded · ${found.entryId}`, 'ok');
+      } finally {
+        btnLatest.disabled = false;
+      }
+    });
+  }
+
+  async function postToDearCongress(mode){
+    const entryId = (entryIdEl?.value || '').trim();
+    if (!entryId) {
+      logEvent('Publish blocked: missing entryId.', { mode });
+      showNetAlert('Missing entry ID', 'err');
+      alert('One Voice: entry ID is required for publish.');
+      entryIdEl?.focus();
+      return;
+    }
+
+    const needIds = [...new Set(liveLabels.map(toNeedId).filter(Boolean))];
+    const payload = {
+      entryId,
+      labels: needIds,
+      needs: needIds
+    };
+
+    logEvent('Posting /api/publish_labels…', { mode, endpoint: PUBLISH_ENDPOINT, entryId, needIds });
+    try {
+      const res = await fetch(PUBLISH_ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      let body = null;
+      try { body = await res.json(); } catch {}
+
+      if (!res.ok) {
+        const detail = (body && typeof body.error === 'string' && body.error) ? body.error : `HTTP ${res.status}`;
+        logEvent('Publish labels non-OK response.', { mode, status: res.status, body, detail });
+        showNetAlert(`Publish failed · ${detail}`, 'err');
+        alert(`One Voice: publish ${mode} failed — ${detail}`);
+        return;
+      }
+
+      logEvent('Publish labels OK.', { mode, status: res.status, body });
+      logEvent('one-voice app received publish post completion.', { mode, entryId });
+      showNetAlert(`Published · ${mode}`, 'ok');
+      alert(`One Voice: publish ${mode} request completed.`);
+    } catch (err) {
+      logEvent('Failed posting publish_labels.', { mode, err: String(err) });
+      logEvent('one-voice app received publish post failure.', { mode });
+      showNetAlert(`Publish failed · ${mode}`, 'err');
+      alert(`One Voice: publish ${mode} request failed.`);
+    }
+  }
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const EDITABLE_STILL = true;
+  const COUNT_DEFAULT = countEl.innerHTML;
+
+  // Build the page once. Every character exists from the start as a faint impression.
+  const steps = [], labels = [];
+  const LABEL_RULES = [
+    { label: 'Transit', re: /\b(bus|train|subway|route|transport|commute|station|late)\b/i },
+    { label: 'Getting to school', re: /\b(school|teacher|class|maya|students?)\b/i },
+    { label: 'Housing cost', re: /\b(rent|housing|evict|landlord|apartment|lease|bills?)\b/i },
+    { label: 'Being heard', re: /\b(heard|listen|voice|reads|noticed|seen|ignored)\b/i },
+    { label: 'Care work', re: /\b(carry|shoulders|care|daughter|son|child|family)\b/i }
+  ];
+  let liveLabels = [];
+  let labelsFrom = "local";
+  let classifyTimer = null;
+  let classifySeq = 0;
+  for (const para of ENTRY) {
+    const p = document.createElement("p");
+    if (para.cls) p.className = para.cls;
+    for (const seg of para.segs) {
+      if (seg.pause) { steps.push({ pause: seg.pause }); continue; }
+      let host = p;
+      if (seg.strike) host = Object.assign(document.createElement("span"), { className: "strike" });
+      if (seg.label) { host = Object.assign(document.createElement("span"), { className: "lab" }); labels.push(seg.label); }
+      for (const ch of seg.t ?? seg.strike) {
+        const s = document.createElement("span");
+        s.className = "c"; s.textContent = ch;
+        host.appendChild(s); steps.push({ el: s, ch });
+      }
+      if (host !== p) p.appendChild(host);
+      if (seg.strike) steps.push({ pause: 500 }, { strikeEl: host }, { pause: 700 });
+    }
+    textEl.appendChild(p);
+    steps.push({ pause: 1100 });
+  }
+
+  function detectLabelsFromText(raw){
+    const txt = (raw || '').toLowerCase();
+    const found = LABEL_RULES.filter(r => r.re.test(txt)).map(r => r.label);
+    return found.length ? found : ['Unlabeled draft'];
+  }
+
+  function setLabelSource(source){
+    labelsFrom = source;
+    if (!labelSourceEl) return;
+    if (source === 'claude') labelSourceEl.textContent = 'Source: Claude API';
+    else if (source === 'loading') labelSourceEl.textContent = 'Source: Claude API · analyzing…';
+    else labelSourceEl.textContent = 'Source: local rules';
+  }
+
+  function renderLiveLabels(){
+    if (!liveLabelList) return;
+    liveLabelList.innerHTML = '';
+    for (const l of liveLabels) {
+      const s = document.createElement('span');
+      s.className = 'label-pill' + (l === 'Unlabeled draft' ? ' dim' : '');
+      s.textContent = l;
+      liveLabelList.appendChild(s);
+    }
+  }
+
+  async function requestClaudeLabels(rawText, seq){
+    logEvent('Requesting labels from Claude API…', { seq, chars: rawText.length });
+    try {
+      const res = await fetch('/api/one-voice-labels', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ entry: rawText })
+      });
+      if (!res.ok) throw new Error('label api failed');
+      const payload = await res.json();
+      if (seq !== classifySeq) return;
+      const labels = Array.isArray(payload?.labels)
+        ? payload.labels.map(x => typeof x === 'string' ? x.trim() : '').filter(Boolean)
+        : [];
+      if (labels.length) {
+        liveLabels = [...new Set(labels)].slice(0, 8);
+        setLabelSource('claude');
+        logEvent('Claude labels updated', { labels: liveLabels });
+      } else {
+        liveLabels = detectLabelsFromText(rawText);
+        setLabelSource('local');
+        logEvent('Claude returned no labels; using local fallback', { labels: liveLabels });
+      }
+      renderLiveLabels();
+    } catch (err) {
+      if (seq !== classifySeq) return;
+      liveLabels = detectLabelsFromText(rawText);
+      setLabelSource('local');
+      logEvent('Claude label request failed; using local fallback', { err: String(err), labels: liveLabels });
+      renderLiveLabels();
+    }
+  }
+
+  function refreshLabelsFromEditor(){
+    const raw = (textEl.innerText || '').trim();
+    liveLabels = detectLabelsFromText(raw);
+    setLabelSource('local');
+    renderLiveLabels();
+
+    if (classifyTimer) clearTimeout(classifyTimer);
+    if (!raw) return;
+    const seq = ++classifySeq;
+    setLabelSource('loading');
+    classifyTimer = setTimeout(() => {
+      requestClaudeLabels(raw, seq);
+    }, 520);
+  }
+
+  textEl.setAttribute('contenteditable', 'true');
+  textEl.setAttribute('spellcheck', 'false');
+  textEl.setAttribute('aria-label', 'Editable journal entry');
+  textEl.addEventListener('input', refreshLabelsFromEditor);
+
+  addEventListener('error', (e) => {
+    logEvent('Window error', { message: e.message });
+  });
+  addEventListener('unhandledrejection', (e) => {
+    logEvent('Unhandled rejection', { reason: String(e.reason) });
+  });
+
+  const chars = steps.filter(s => s.el).map(s => s.el);
+  const strikes = [...textEl.querySelectorAll(".strike")];
+  const urlEntryId = (() => {
+    try { return new URL(location.href).searchParams.get('entryId') || ''; }
+    catch { return ''; }
+  })();
+  const savedEntryId = (() => {
+    try { return localStorage.getItem('one-voice-entry-id') || ''; }
+    catch { return ''; }
+  })();
+  if (entryIdEl) {
+    entryIdEl.value = urlEntryId || savedEntryId;
+    entryIdEl.addEventListener('input', () => {
+      try { localStorage.setItem('one-voice-entry-id', entryIdEl.value.trim()); } catch {}
+    });
+  }
+
+  liveLabels = [...new Set(labels)];
+  setLabelSource('local');
+  renderLiveLabels();
+  logEvent('one-voice loaded', { editableStill: EDITABLE_STILL, entryIdPreset: !!(entryIdEl?.value || '').trim() });
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const wait = ms => reduce ? Promise.resolve() : sleep(ms);
+  const place = (x, y, ms) => {
+    voice.style.transition = `opacity 1.4s ease, transform ${ms}ms cubic-bezier(.45,0,.25,1)`;
+    voice.style.transform = `translate(${x}px, ${y}px)`;
+  };
+  const center = () => [innerWidth / 2, innerHeight * 0.46];
+  const tipOf = el => { const r = el.getBoundingClientRect(); return [r.right, r.bottom - r.height * 0.28]; };
+  const fitScene = () => {
+    if (!stack) return;
+    room.style.setProperty('--fit', '1');
+    const r = stack.getBoundingClientRect();
+    const s = Math.min(1, (innerWidth - 24) / Math.max(1, r.width), (innerHeight - 24) / Math.max(1, r.height));
+    room.style.setProperty('--fit', String(Math.max(0.55, s)));
+  };
+  const delayFor = ch => {
+    if (".!?".includes(ch)) return 380 + Math.random() * 220;
+    if (",;—".includes(ch)) return 220 + Math.random() * 120;
+    if (ch === " ") return 70 + Math.random() * 90;
+    return 38 + Math.random() * 48;
+  };
+  let tip = null;
+  addEventListener("resize", () => { fitScene(); if (tip) place(...tipOf(tip), 0); });
+
+  // The buttons are live only while the finished entry rests on the page.
+  let choose = null;
+  let publishInFlight = false;
+  function arm(on) {
+    btnLabels.disabled = btnDraft.disabled = !on;
+    hintEl.textContent = on ? "Choose how this entry leaves the page" : "Ready when the entry is finished";
+  }
+
+  async function runPublish(mode) {
+    if (publishInFlight) return;
+    publishInFlight = true;
+    btnLabels.disabled = true;
+    btnDraft.disabled = true;
+    try {
+      logEvent('Publish button clicked.', { mode, editableStill: EDITABLE_STILL });
+      if (mode === 'labels') await publishLabels();
+      else await publishDraft();
+    } finally {
+      publishInFlight = false;
+      if (EDITABLE_STILL) {
+        btnLabels.disabled = false;
+        btnDraft.disabled = false;
+      }
+    }
+  }
+
+  btnLabels.addEventListener("click", () => {
+    if (EDITABLE_STILL) { runPublish("labels"); return; }
+    choose && choose("labels");
+  });
+  btnDraft.addEventListener("click", () => {
+    if (EDITABLE_STILL) { runPublish("draft"); return; }
+    choose && choose("draft");
+  });
+
+  const awaitChoice = ms => new Promise(res => {
+    choose = v => { choose = null; res(v); };
+    if (ms) setTimeout(() => { if (choose) { choose = null; res(null); } }, ms);
+  });
+
+  function setCount(html) {
+    countEl.style.opacity = 0;
+    setTimeout(() => { countEl.innerHTML = html; countEl.style.opacity = 1; }, 600);
+  }
+
+  async function publishLabels() {
+    // Mark the phrases the themes came from, then let the words go private.
+    textEl.classList.add("marking");
+    await wait(1600);
+    textEl.classList.remove("marking");
+    textEl.classList.add("private");
+    chipsEl.innerHTML = "";
+    const chips = liveLabels.map(l => Object.assign(document.createElement("span"), { className: "chip", textContent: l }));
+    chips.forEach(c => chipsEl.appendChild(c));
+    for (const c of chips) { await wait(30); c.classList.add("in"); await wait(320); }
+    setCount(`Published · <b>${liveLabels.length}</b> labels · the words stay here`);
+    await wait(2600);
+    if (reduce) return;
+    const r = chipsEl.getBoundingClientRect();
+    voice.classList.add("on");
+    place(r.left + r.width / 2, r.top + r.height / 2, 600);
+    await sleep(700);
+    chips.forEach((c, i) => setTimeout(() => c.classList.add("away"), i * 120));
+    place(...portalCenter(), 2600);
+    await sleep(2700);
+    voice.classList.remove("on");
+    await postToDearCongress('labels');
+    await received();
+  }
+
+  async function publishDraft() {
+    setCount(`Published · the full entry · <b>1</b> voice`);
+    if (reduce) return;
+    const r = paper.getBoundingClientRect();
+    voice.classList.add("on");
+    place(r.left + r.width / 2, r.top + r.height / 2, 900);
+    await sleep(1000);
+    paper.classList.add("sent");
+    place(...portalCenter(), 2400);
+    await sleep(2500);
+    voice.classList.remove("on");
+    await postToDearCongress('draft');
+    await received();
+  }
+
+  function reset() {
+    chars.forEach(c => c.classList.remove("dry", "wet"));
+    strikes.forEach(s => s.classList.remove("struck"));
+    textEl.classList.remove("private", "marking");
+    chipsEl.innerHTML = "";
+    paper.style.transition = "none";
+    paper.classList.remove("sent");
+    void paper.offsetWidth; paper.style.transition = "";
+    countEl.innerHTML = COUNT_DEFAULT; countEl.style.opacity = 1;
+    refreshLabelsFromEditor();
+    fitScene();
+  }
+
+  if (reduce || EDITABLE_STILL) {
+    // Editable still mode: keep the full entry on the page and let people revise it.
+    room.classList.add("lit");
+    chars.forEach(c => c.classList.add("dry"));
+    strikes.forEach(s => s.classList.add("struck"));
+    arm(true);
+    hintEl.textContent = "Edit the entry freely · labels update on change";
+    refreshLabelsFromEditor();
+    fitScene();
+    return;
+  }
+
+  async function cycle() {
+    room.classList.remove("lit");
+    voice.classList.remove("pen");
+    place(...center(), 0);
+    await sleep(1400);
+    voice.classList.add("on");
+    await sleep(2600);
+
+    room.classList.add("lit");
+    await sleep(1600);
+    voice.classList.add("pen");
+    const first = chars[0].getBoundingClientRect();
+    tip = null;
+    place(first.left, first.bottom - first.height * 0.28, 1400);
+    await sleep(1700);
+
+    for (const step of steps) {
+      if (step.pause) { await sleep(step.pause); continue; }
+      if (step.strikeEl) {
+        const r = step.strikeEl.getBoundingClientRect();
+        step.strikeEl.classList.add("struck");
+        place(r.right, r.top + r.height * 0.55, 550);
+        await sleep(600);
+        continue;
+      }
+      const el = step.el;
+      el.classList.add("wet"); tip = el;
+      place(...tipOf(el), 90);
+      setTimeout(() => { el.classList.remove("wet"); el.classList.add("dry"); }, 260);
+      await sleep(delayFor(step.ch));
+    }
+
+    // The pen lifts and the finished entry waits for a choice.
+    tip = null;
+    await sleep(800);
+    place(...center(), 2600);
+    await sleep(2600);
+    voice.classList.remove("pen", "on");
+    arm(true);
+    const choice = await awaitChoice(16000);
+    arm(false);
+    if (choice === "labels") await publishLabels();
+    else if (choice === "draft") await publishDraft();
+    await sleep(choice ? 2500 : 0);
+
+    room.classList.remove("lit");
+    voice.classList.remove("on");
+    await sleep(2600);
+    reset();
+    await sleep(1000);
+  }
+
+  (async () => {
+    fitScene();
+    room.classList.add("lit");
+    await sleep(2500);
+    room.classList.remove("lit");
+    await sleep(2200);
+    if (!EDITABLE_STILL) {
+      for (;;) await cycle();
+    }
+  })();
+})();
+</script>

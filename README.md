@@ -1,15 +1,10 @@
-# Petal Wind
-
-
+# Petal Wind 
 # Documenting Pensieve 
 
+Each painting is an idea a society runs on. Vote to change how it works.
 
-great unlock
-
-launch 2028
-
-
-
+# great unlock
+# Could get systemic-updates in a day instead of decades
 
 
 

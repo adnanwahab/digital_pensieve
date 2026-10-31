@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hogsmeade Map — D3</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    html,body{margin:0;height:100%;background:#fff;font-family:Georgia,"Times New Roman",serif}
+    #wrap{width:100%;height:100%;display:flex;align-items:flex-start;justify-content:center}
+    svg{width:100%;height:auto;display:block}
+    .label{
+      font-family:Arial,Helvetica,sans-serif;
+      font-size:12px;
+      fill:#3b008a;
+    }
+    .tiny{font-size:10px}
+    .title{
+      font-family:Georgia,"Times New Roman",serif;
+      font-size:78px;
+      fill:#111;
+      letter-spacing:2px;
+    }
+    .road{
+      fill:none;
+      stroke:#d8a790;
+      stroke-width:9;
+      stroke-linecap:round;
+    }
+    .minor-road{
+      fill:none;
+      stroke:#d8a790;
+      stroke-width:6;
+      stroke-linecap:round;
+    }
+    .rail-base{
+      fill:none;
+      stroke:#242424;
+      stroke-width:5;
+    }
+    .rail{
+      fill:none;
+      stroke:#d0a84e;
+      stroke-width:2.2;
+      stroke-dasharray:2.5 3.5;
+    }
+    .arrow{
+      fill:none;
+      stroke:#5a00a0;
+      stroke-width:1.1;
+      marker-end:url(#arrowHead);
+    }
+  </style>
+</head>
+<body>
+<div id="wrap"></div>
+
+<script>
+const W = 800, H = 390, mapH = 292;
+const svg = d3.select("#wrap").append("svg")
+  .attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio","xMidYMid meet");
+
+const defs = svg.append("defs");
+defs.append("marker")
+  .attr("id","arrowHead")
+  .attr("viewBox","0 0 10 10")
+  .attr("refX",9).attr("refY",5)
+  .attr("markerWidth",6).attr("markerHeight",6)
+  .attr("orient","auto-start-reverse")
+  .append("path").attr("d","M 0 0 L 10 5 L 0 10 z").attr("fill","#5a00a0");
+
+svg.append("rect").attr("width",W).attr("height",mapH).attr("fill","#c9f8c7");
+svg.append("rect").attr("y",mapH).attr("width",W).attr("height",H-mapH).attr("fill","#fff");
+
+const g = svg.append("g");
+
+// pond
+const pond = d3.line().curve(d3.curveBasisClosed)([
+  [43,0],[86,0],[113,4],[147,6],[187,4],[213,13],[236,27],
+  [231,45],[210,58],[192,72],[155,79],[119,76],[84,69],[60,54],[48,37]
+]);
+g.append("path").attr("d",pond).attr("fill","#bff5ef");
+for(let y=7;y<72;y+=6){
+  const x0 = 48 + (y*0.38);
+  const x1 = 210 - (y*0.18);
+  for(let x=x0;x<x1;x+=13){
+    g.append("path")
+      .attr("d",`M${x},${y} q3,2 6,0 q3,-2 6,0`)
+      .attr("stroke","#1876e8").attr("stroke-width",1).attr("fill","none");
+  }
+}
+
+// roads
+const line = d3.line().curve(d3.curveBasis);
+[
+ [[22,39],[34,72],[69,95],[123,112],[187,136],[259,160],[333,184],[411,202],[488,205],[566,194],[637,173],[704,154],[759,134],[790,142]],
+ [[366,76],[373,106],[370,140],[361,171],[346,208],[332,268]],
+ [[692,55],[694,87],[691,121],[684,163],[680,204],[682,246],[684,275]]
+].forEach((pts,i)=>g.append("path").attr("d",line(pts)).attr("class",i===0?"road":"minor-road"));
+
+// rail
+const railPts = [[117,274],[132,238],[151,202],[178,169],[213,141],[253,121],[298,105],[349,91],[403,76],[456,57],[510,34],[558,9]];
+g.append("path").attr("d",line(railPts)).attr("class","rail-base");
+g.append("path").attr("d",line(railPts)).attr("class","rail");
+for(let t=0;t<=1;t+=0.018){
+  const x = 117 + (558-117)*t;
+  const y = 274 + (9-274)*t;
+  // decorative ties roughly following diagonal
+  g.append("line")
+    .attr("x1",x-3).attr("y1",y-4).attr("x2",x+3).attr("y2",y+4)
+    .attr("stroke","#111").attr("stroke-width",0.8).attr("opacity",0.7);
+}
+
+// tree cluster
+function tree(x,y,r=8){
+  const tg=g.append("g");
+  tg.append("circle").attr("cx",x).attr("cy",y).attr("r",r).attr("fill","#0b9419").attr("stroke","#075d0e");
+  tg.append("circle").attr("cx",x-3).attr("cy",y-2).attr("r",r*0.55).attr("fill","#29c833");
+  tg.append("circle").attr("cx",x+3).attr("cy",y+1).attr("r",r*0.45).attr("fill","#49e856");
+}
+[
+ [88,70],[98,61],[110,64],[121,67],[130,61],
+ [213,61],[224,49],[237,45],[248,36],[263,32],[276,21],[289,20],[300,16],
+ [311,17],[322,12],[335,14],[348,18],[360,17],[372,22],[385,28],[394,37],
+ [210,73],[223,67],[238,65],[252,59],[268,54],[283,49],[298,45],[313,42],
+ [328,42],[343,43],[358,46],[373,53],[387,59]
+].forEach(d=>tree(d[0],d[1],7+Math.random()*2));
+
+// buildings helper
+function building(x,y,w,h,fill="#b95b20",angle=0,roof="#f0a037"){
+  const b=g.append("g").attr("transform",`translate(${x},${y}) rotate(${angle})`);
+  b.append("rect").attr("x",-w/2).attr("y",-h/2).attr("width",w).attr("height",h)
+   .attr("fill",fill).attr("stroke","#111").attr("stroke-width",1.4);
+  b.append("line").attr("x1",-w/2).attr("y1",-h/2).attr("x2",0).attr("y2",-h/2-4)
+   .attr("stroke","#111").attr("stroke-width",1);
+  b.append("line").attr("x1",0).attr("y1",-h/2-4).attr("x2",w/2).attr("y2",-h/2)
+   .attr("stroke","#111").attr("stroke-width",1);
+  b.append("line").attr("x1",0).attr("y1",-h/2-4).attr("x2",0).attr("y2",h/2)
+   .attr("stroke","#111").attr("stroke-width",0.7).attr("opacity",.55);
+}
+function shopRow(items){ items.forEach(d=>building(...d)); }
+
+shopRow([
+ [381,181,24,16],[414,177,27,25],[446,179,27,27],
+ [496,171,24,29,"#efca2e",-16],[521,162,23,23,"#e0bb27",-15],[544,151,37,26,"#edcf2c",-14],
+ [595,145,34,20,"#ad7d16",4],[639,146,34,21,"#bc5a1e",-11],[666,136,21,25,"#bb5e26",-17],
+ [687,168,26,18,"#bd5c21",-13],[715,160,35,19,"#be6427",-10],[744,158,21,18,"#bd5a1e",-12],
+ [523,205,23,16,"#bc6228",-8],[556,197,33,22,"#c86629",-12],[598,191,42,28,"#a84b15",-7],
+ [647,192,29,16,"#d5a51f",-4],[696,202,26,26,"#ba571f",-5],[711,212,17,25,"#ba571f",-5],
+ [327,201,26,16,"#ebcf2f",7],[449,219,15,14,"#b6521e",-4],[485,220,37,20,"#777",-6]
+]);
+
+// landmark-like yellow shapes
+building(225,115,25,14,"#d9861e",-31);
+building(380,120,10,19,"#8b4f25",-12);
+
+g.append("path").attr("d","M635,209 q20,-6 29,3 l-4,9 q-10,-3 -20,2 l-2,20 q11,1 22,-5 l3,9 q-17,9 -31,3 z")
+  .attr("fill","#f1d21d").attr("stroke","#111").attr("stroke-width",2);
+g.append("path").attr("d","M683,236 q21,-5 31,4 l7,15 -8,3 -6,-10 q-8,-6 -18,-2 l-4,28 -9,-1 z")
+  .attr("fill","#e3c51d").attr("stroke","#111").attr("stroke-width",2);
+
+// top-right buildings
+building(721,68,24,31,"#d51b11",0);
+building(706,101,14,20,"#c9851f",5);
+g.append("circle").attr("cx",708).attr("cy",126).attr("r",10).attr("fill","#e7bd18").attr("stroke","#111").attr("stroke-width",2);
+g.append("circle").attr("cx",708).attr("cy",126).attr("r",4).attr("fill","none").attr("stroke","#111");
+
+// labels helper
+function label(text,x,y,anchor="middle", cls="label"){
+  g.append("text").attr("x",x).attr("y",y).attr("text-anchor",anchor).attr("class",cls).text(text);
+}
+function multiline(lines,x,y,anchor="middle"){
+  const t=g.append("text").attr("x",x).attr("y",y).attr("text-anchor",anchor).attr("class","label");
+  lines.forEach((s,i)=>t.append("tspan").attr("x",x).attr("dy",i===0?0:15).text(s));
+}
+function arrow(x1,y1,x2,y2){g.append("line").attr("x1",x1).attr("y1",y1).attr("x2",x2).attr("y2",y2).attr("class","arrow");}
+
+multiline(["Hogsmeade","Station"],135,124); arrow(178,120,211,116);
+multiline(["The","Three","Broomsticks"],351,250); arrow(345,237,333,216);
+label("Post Office",478,284); arrow(482,272,483,235);
+multiline(["The","Shrieking","Shack"],441,102); arrow(418,115,387,116);
+label("Honeydukes",490,86); arrow(498,91,494,158);
+label("Zonkos",557,76); arrow(570,79,587,130);
+label("Gladrags",615,95); arrow(626,99,641,132);
+label("Scrivenshaft's",633,67); arrow(646,71,668,123);
+multiline(["Madam","Puddifoot's"],768,10); arrow(765,26,732,53);
+multiline(["Dervish","& Banges"],773,186); arrow(754,180,735,169);
+multiline(["The","Hog's","Head"],783,235,"end"); arrow(761,249,725,250);
+
+// title
+svg.append("text")
+  .attr("x",W/2).attr("y",383)
+  .attr("text-anchor","middle")
+  .attr("class","title")
+  .text("HOGSMEADE");
+
+// subtle hover effect
+g.selectAll("rect,circle,path")
+  .on("mouseenter", function(){
+    d3.select(this).interrupt().transition().duration(120).attr("opacity",0.82);
+  })
+  .on("mouseleave", function(){
+    d3.select(this).interrupt().transition().duration(160).attr("opacity",1);
+  });
+</script>
+</body>
+</html>
