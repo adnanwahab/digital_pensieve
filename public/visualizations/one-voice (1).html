@@ -395,7 +395,8 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
   }
 
   const API_BASE = 'https://dear-congress.fly.dev';
-  const PUBLISH_ENDPOINT = `${API_BASE}/api/publish_labels`;
+  const PUBLISH_LABELS_ENDPOINT = `${API_BASE}/api/publish_labels`;
+  const PUBLISH_DRAFT_ENDPOINT = `${API_BASE}/api/publish_draft`;
   const LATEST_ENTRY_PROXY_ENDPOINT = '/api/one-voice-latest-entry';
 
   const LABEL_ID_MAP = {
@@ -467,15 +468,23 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
     }
 
     const needIds = [...new Set(liveLabels.map(toNeedId).filter(Boolean))];
-    const payload = {
-      entryId,
-      labels: needIds,
-      needs: needIds
-    };
+    const endpoint = mode === 'draft' ? PUBLISH_DRAFT_ENDPOINT : PUBLISH_LABELS_ENDPOINT;
+    const payload = mode === 'draft'
+      ? {
+          entryId,
+          text: (textEl.innerText || '').trim(),
+          labels: needIds,
+          needs: needIds,
+        }
+      : {
+          entryId,
+          labels: needIds,
+          needs: needIds,
+        };
 
-    logEvent('Posting /api/publish_labels…', { mode, endpoint: PUBLISH_ENDPOINT, entryId, needIds });
+    logEvent(`Posting publish request (${mode})…`, { endpoint, entryId, needIds });
     try {
-      const res = await fetch(PUBLISH_ENDPOINT, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
@@ -486,18 +495,18 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
 
       if (!res.ok) {
         const detail = (body && typeof body.error === 'string' && body.error) ? body.error : `HTTP ${res.status}`;
-        logEvent('Publish labels non-OK response.', { mode, status: res.status, body, detail });
+        logEvent('Publish request non-OK response.', { mode, endpoint, status: res.status, body, detail });
         showNetAlert(`Publish failed · ${detail}`, 'err');
         alert(`One Voice: publish ${mode} failed — ${detail}`);
         return;
       }
 
-      logEvent('Publish labels OK.', { mode, status: res.status, body });
+      logEvent('Publish request OK.', { mode, endpoint, status: res.status, body });
       logEvent('one-voice app received publish post completion.', { mode, entryId });
       showNetAlert(`Published · ${mode}`, 'ok');
       alert(`One Voice: publish ${mode} request completed.`);
     } catch (err) {
-      logEvent('Failed posting publish_labels.', { mode, err: String(err) });
+      logEvent('Failed posting publish request.', { mode, endpoint, err: String(err) });
       logEvent('one-voice app received publish post failure.', { mode });
       showNetAlert(`Publish failed · ${mode}`, 'err');
       alert(`One Voice: publish ${mode} request failed.`);
@@ -717,6 +726,13 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
   }
 
   async function publishLabels() {
+    if (EDITABLE_STILL) {
+      setCount(`Published · <b>${liveLabels.length}</b> labels · the words stay here`);
+      logEvent('Editable mode: publish labels -> posting now');
+      await postToDearCongress('labels');
+      return;
+    }
+
     // Mark the phrases the themes came from, then let the words go private.
     textEl.classList.add("marking");
     await wait(1600);
@@ -728,7 +744,10 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
     for (const c of chips) { await wait(30); c.classList.add("in"); await wait(320); }
     setCount(`Published · <b>${liveLabels.length}</b> labels · the words stay here`);
     await wait(2600);
-    if (reduce) return;
+    if (reduce) {
+      await postToDearCongress('labels');
+      return;
+    }
     const r = chipsEl.getBoundingClientRect();
     voice.classList.add("on");
     place(r.left + r.width / 2, r.top + r.height / 2, 600);
@@ -743,7 +762,17 @@ body { background: var(--room); color: var(--caption); overflow: hidden; }
 
   async function publishDraft() {
     setCount(`Published · the full entry · <b>1</b> voice`);
-    if (reduce) return;
+
+    if (EDITABLE_STILL) {
+      logEvent('Editable mode: publish draft -> posting now');
+      await postToDearCongress('draft');
+      return;
+    }
+
+    if (reduce) {
+      await postToDearCongress('draft');
+      return;
+    }
     const r = paper.getBoundingClientRect();
     voice.classList.add("on");
     place(r.left + r.width / 2, r.top + r.height / 2, 900);
