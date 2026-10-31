@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D Molecular Reaction Sandbox</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #121722;
+      --card: #171d29;
+      --text: #f2f5fb;
+      --muted: #9aa7ba;
+      --border: #2a3445;
+      --accent: #69e6ff;
+      --accent2: #9b8cff;
+      --good: #64e39a;
+      --warn: #ffcf66;
+      --danger: #ff7d8f;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(105,230,255,.08), transparent 28rem),
+        radial-gradient(circle at 85% 5%, rgba(155,140,255,.09), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body { padding: 18px; }
+
+    button, input, select { font: inherit; }
+
+    button, select, input[type="search"] {
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    button {
+      cursor: pointer;
+      min-height: 42px;
+      padding: 9px 12px;
+    }
+
+    button:hover { border-color: #4a5a73; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .app {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    .titlebar {
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .subtitle, .muted { color: var(--muted); }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,.018), transparent), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-inner { padding: 14px; }
+
+    .scene {
+      position: relative;
+      min-height: 440px;
+      aspect-ratio: 16 / 8;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(255,255,255,.035), transparent 38%),
+        #0d1118;
+    }
+
+    .scene canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      z-index: 5;
+      pointer-events: none;
+      background: rgba(16, 21, 30, .82);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 11px;
+    }
+
+    .overlay.top-left {
+      left: 12px;
+      top: 12px;
+      max-width: min(560px, calc(100% - 24px));
+    }
+
+    .overlay.bottom-right {
+      right: 12px;
+      bottom: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, rgba(105,230,255,.19), rgba(155,140,255,.18));
+      border-color: #516777;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      border-top: 1px solid var(--border);
+    }
+
+    .stat {
+      padding: 12px;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+    .stat:last-child { border-right: 0; }
+    .stat-label { font-size: 12px; color: var(--muted); }
+    .stat-value { margin-top: 3px; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0,1.1fr) minmax(290px,.9fr);
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 8px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      margin-top: 14px;
+    }
+
+    .controls label {
+      display: grid;
+      gap: 7px;
+    }
+
+    .controls label.full { grid-column: 1 / -1; }
+
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+    select, input[type="search"] {
+      min-height: 42px;
+      padding: 8px 10px;
+      width: 100%;
+    }
+
+    .hint {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.025);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .preset, .mol-btn {
+      text-align: left;
+      min-height: 66px;
+      padding: 11px;
+    }
+
+    .preset strong, .mol-btn strong { display: block; }
+    .preset span, .mol-btn span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+
+    .library {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pathway {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .bond-change {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 9px;
+    }
+
+    .bond-change.form { background: rgba(100,227,154,.06); }
+    .bond-change.break { background: rgba(255,125,143,.045); }
+
+    .energy-wrap {
+      margin-top: 10px;
+      position: relative;
+    }
+
+    .energy-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .periodic-wrap { overflow-x: auto; margin-top: 12px; }
+
+    .periodic {
+      display: grid;
+      grid-template-columns: repeat(18, minmax(38px,1fr));
+      gap: 4px;
+      min-width: 780px;
+    }
+
+    .element {
+      min-height: 53px;
+      padding: 3px;
+      text-align: center;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      transition: transform .12s ease, opacity .12s ease, border-color .12s ease;
+    }
+
+    .element:hover { transform: translateY(-1px); }
+    .element.dim { opacity: .18; }
+    .element.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .element .z { display: block; font-size: 9px; color: var(--muted); }
+    .element .sym { display: block; font-size: 15px; font-weight: 800; line-height: 1.15; }
+    .element .name {
+      display: block;
+      font-size: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .element-info {
+      margin-top: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .top-search {
+      width: min(310px, 100%);
+    }
+
+    .status-good { color: var(--good); }
+    .status-warn { color: var(--warn); }
+
+    @media (max-width: 900px) {
+      body { padding: 10px; }
+      .scene { min-height: 380px; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .stat:nth-child(2) { border-right: 0; }
+      .stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+      .grid-4, .library { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .scene { min-height: 330px; aspect-ratio: auto; }
+      .controls { grid-template-columns: 1fr; }
+      .controls label.full { grid-column: auto; }
+      .grid-4, .library { grid-template-columns: 1fr 1fr; }
+      .overlay.bottom-right { display:none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .element { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="titlebar">
+      <div>
+        <h1>3D Molecular Reaction Sandbox</h1>
+        <p class="subtitle">Three.js reaction chamber + D3 chemistry UI</p>
+      </div>
+      <p class="muted">Educational visualization — not a predictive chemistry engine.</p>
+    </header>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2>Reaction chamber</h2>
+          <p class="muted">Molecules drift, collide visually, and transform when a demo pathway is activated.</p>
+        </div>
+        <div class="toolbar-group">
+          <button id="runReaction" class="primary" type="button">Run reaction</button>
+          <button id="pause" type="button">Pause</button>
+          <button id="clear" type="button">Clear chamber</button>
+        </div>
+      </div>
+
+      <div id="scene" class="scene">
+        <div id="loading" class="overlay top-left">Loading Three.js + D3…</div>
+        <div class="overlay top-left" id="reactionOverlay" style="display:none">
+          <strong id="equation">No reaction selected</strong>
+          <div id="caption" class="muted" style="margin-top:3px;font-size:12px">Load a preset or add molecules.</div>
+        </div>
+        <div class="overlay bottom-right">drag = orbit · wheel = zoom</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Molecules</div><div id="statMolecules" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">Thermal energy</div><div id="statHeat" class="stat-value">25%</div></div>
+        <div class="stat"><div class="stat-label">Light</div><div id="statLight" class="stat-value">Off</div></div>
+        <div class="stat"><div class="stat-label">Catalyst</div><div id="statCatalyst" class="stat-value">None</div></div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel">
+        <div class="panel-inner">
+          <h2>Conditions</h2>
+          <div class="controls">
+            <label>
+              <span>Thermal energy</span>
+              <input id="heat" type="range" min="0" max="100" value="25" />
+              <span class="muted"><span id="heatLabel">25%</span> — cold → high</span>
+            </label>
+
+            <label>
+              <span>Light intensity</span>
+              <input id="light" type="range" min="0" max="100" value="0" />
+              <span class="muted"><span id="lightLabel">0%</span> — dark → bright</span>
+            </label>
+
+            <label class="full">
+              <span>Catalyst</span>
+              <select id="catalyst">
+                <option value="none">None</option>
+                <option value="iron">Iron surface</option>
+                <option value="platinum">Platinum surface</option>
+                <option value="enzyme">Enzyme-like catalyst</option>
+              </select>
+            </label>
+          </div>
+          <div class="hint">Reaction thresholds are deliberately simplified for visualization and are not laboratory operating instructions.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div>
+              <h2>Reaction energy</h2>
+              <p class="muted">Catalysts lower the illustrated activation barrier.</p>
+            </div>
+            <div id="barrierLabel" class="muted">Barrier —</div>
+          </div>
+          <div class="energy-wrap">
+            <svg id="energyChart" class="energy-svg" viewBox="0 0 430 220" aria-label="Reaction energy profile"></svg>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-inner">
+        <h2>Reaction presets</h2>
+        <div class="grid-4" style="margin-top:12px">
+          <button class="preset" data-preset="water" type="button"><strong>Make water</strong><span>2 H₂ + O₂</span></button>
+          <button class="preset" data-preset="ammonia" type="button"><strong>Ammonia pathway</strong><span>N₂ + 3 H₂</span></button>
+          <button class="preset" data-preset="co2" type="button"><strong>CO oxidation</strong><span>2 CO + O₂</span></button>
+          <button class="preset" data-preset="peroxide" type="button"><strong>Peroxide decomposition</strong><span>2 H₂O₂</span></button>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel">
+        <div class="panel-inner">
+          <h2>Molecule inventory</h2>
+          <p class="muted">Add molecules directly to the chamber.</p>
+          <div id="library" class="library"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-inner">
+          <h2>Possible pathway</h2>
+          <div id="pathway" class="pathway" style="margin-top:10px">The simulator will inspect the chamber contents and conditions.</div>
+          <div id="bondChanges"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-inner">
+        <div class="titlebar">
+          <div>
+            <h2>D3 element explorer</h2>
+            <p class="muted">Click an element to inspect its properties.</p>
+          </div>
+          <label class="top-search">
+            <span class="muted">Search elements</span>
+            <input id="search" type="search" placeholder="Oxygen, C, 8…" />
+          </label>
+        </div>
+        <div class="periodic-wrap">
+          <div id="periodic" class="periodic"></div>
+        </div>
+        <div id="elementInfo" class="element-info">Select an element.</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let THREE, d3, OrbitControls;
+    try {
+      [THREE, d3] = await Promise.all([
+        import("https://cdn.jsdelivr.net/npm/three@0.180.0/+esm"),
+        import("https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm")
+      ]);
+      ({ OrbitControls } = await import("https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js/+esm"));
+    } catch (err) {
+      $("#loading").textContent = "Could not load Three.js or D3. Check your internet connection.";
+      throw err;
+    }
+
+    const elements = [
+      ["H","Hydrogen",1,1.008,1,1,1,2.20,"nonmetal"],
+      ["He","Helium",2,4.003,1,18,0,null,"noble gas"],
+      ["Li","Lithium",3,6.94,2,1,1,.98,"alkali metal"],
+      ["Be","Beryllium",4,9.012,2,2,2,1.57,"alkaline earth"],
+      ["B","Boron",5,10.81,2,13,3,2.04,"metalloid"],
+      ["C","Carbon",6,12.011,2,14,4,2.55,"nonmetal"],
+      ["N","Nitrogen",7,14.007,2,15,3,3.04,"nonmetal"],
+      ["O","Oxygen",8,15.999,2,16,2,3.44,"nonmetal"],
+      ["F","Fluorine",9,18.998,2,17,1,3.98,"halogen"],
+      ["Ne","Neon",10,20.180,2,18,0,null,"noble gas"],
+      ["Na","Sodium",11,22.990,3,1,1,.93,"alkali metal"],
+      ["Mg","Magnesium",12,24.305,3,2,2,1.31,"alkaline earth"],
+      ["Al","Aluminium",13,26.982,3,13,3,1.61,"metal"],
+      ["Si","Silicon",14,28.085,3,14,4,1.90,"metalloid"],
+      ["P","Phosphorus",15,30.974,3,15,3,2.19,"nonmetal"],
+      ["S","Sulfur",16,32.06,3,16,2,2.58,"nonmetal"],
+      ["Cl","Chlorine",17,35.45,3,17,1,3.16,"halogen"],
+      ["Ar","Argon",18,39.948,3,18,0,null,"noble gas"],
+      ["K","Potassium",19,39.098,4,1,1,.82,"alkali metal"],
+      ["Ca","Calcium",20,40.078,4,2,2,1.00,"alkaline earth"],
+      ["Sc","Scandium",21,44.956,4,3,3,1.36,"transition metal"],
+      ["Ti","Titanium",22,47.867,4,4,4,1.54,"transition metal"],
+      ["V","Vanadium",23,50.942,4,5,5,1.63,"transition metal"],
+      ["Cr","Chromium",24,51.996,4,6,3,1.66,"transition metal"],
+      ["Mn","Manganese",25,54.938,4,7,2,1.55,"transition metal"],
+      ["Fe","Iron",26,55.845,4,8,3,1.83,"transition metal"],
+      ["Co","Cobalt",27,58.933,4,9,3,1.88,"transition metal"],
+      ["Ni","Nickel",28,58.693,4,10,2,1.91,"transition metal"],
+      ["Cu","Copper",29,63.546,4,11,2,1.90,"transition metal"],
+      ["Zn","Zinc",30,65.38,4,12,2,1.65,"transition metal"],
+      ["Ga","Gallium",31,69.723,4,13,3,1.81,"metal"],
+      ["Ge","Germanium",32,72.630,4,14,4,2.01,"metalloid"],
+      ["As","Arsenic",33,74.922,4,15,3,2.18,"metalloid"],
+      ["Se","Selenium",34,78.971,4,16,2,2.55,"nonmetal"],
+      ["Br","Bromine",35,79.904,4,17,1,2.96,"halogen"],
+      ["Kr","Krypton",36,83.798,4,18,0,3.00,"noble gas"]
+    ].map(x => ({
+      symbol:x[0], name:x[1], z:x[2], mass:x[3],
+      period:x[4], group:x[5], valence:x[6], en:x[7], family:x[8]
+    }));
+
+    const templates = {
+      H2: {
+        name:"Hydrogen", formula:"H₂",
+        atoms:[["H",-0.48,0,0],["H",0.48,0,0]],
+        bonds:[[0,1,1]]
+      },
+      O2: {
+        name:"Oxygen", formula:"O₂",
+        atoms:[["O",-0.52,0,0],["O",0.52,0,0]],
+        bonds:[[0,1,2]]
+      },
+      N2: {
+        name:"Nitrogen", formula:"N₂",
+        atoms:[["N",-0.5,0,0],["N",0.5,0,0]],
+        bonds:[[0,1,3]]
+      },
+      CO: {
+        name:"Carbon monoxide", formula:"CO",
+        atoms:[["C",-0.48,0,0],["O",0.48,0,0]],
+        bonds:[[0,1,3]]
+      },
+      CO2: {
+        name:"Carbon dioxide", formula:"CO₂",
+        atoms:[["O",-0.9,0,0],["C",0,0,0],["O",0.9,0,0]],
+        bonds:[[0,1,2],[1,2,2]]
+      },
+      H2O: {
+        name:"Water", formula:"H₂O",
+        atoms:[["O",0,0,0],["H",-0.7,0.5,0],["H",0.7,0.5,0]],
+        bonds:[[0,1,1],[0,2,1]]
+      },
+      NH3: {
+        name:"Ammonia", formula:"NH₃",
+        atoms:[["N",0,0.15,0],["H",-0.7,-0.35,0.2],["H",0.7,-0.35,0.2],["H",0,-0.35,-0.65]],
+        bonds:[[0,1,1],[0,2,1],[0,3,1]]
+      },
+      H2O2: {
+        name:"Hydrogen peroxide", formula:"H₂O₂",
+        atoms:[["O",-0.42,0,0],["O",0.42,0,0],["H",-0.9,0.45,0.1],["H",0.9,-0.45,-0.1]],
+        bonds:[[0,1,1],[0,2,1],[1,3,1]]
+      }
+    };
+
+    const rules = [
+      {
+        id:"water", equation:"2 H₂ + O₂ → 2 H₂O",
+        needs:{H2:2,O2:1}, products:{H2O:2},
+        baseBarrier:78, delta:-30,
+        condition:() => heat() >= 55 || light() >= 65,
+        conditionText:"Needs high thermal or light energy in this toy model.",
+        breaks:["Break H–H bonds","Weaken O=O bond"],
+        forms:["Form four O–H bonds"]
+      },
+      {
+        id:"ammonia", equation:"N₂ + 3 H₂ → 2 NH₃",
+        needs:{N2:1,H2:3}, products:{NH3:2},
+        baseBarrier:92, delta:-18,
+        condition:() => heat() >= 60 && catalyst() === "iron",
+        conditionText:"Needs high thermal energy plus the iron-surface catalyst.",
+        breaks:["Break H–H bonds","Weaken N≡N bond"],
+        forms:["Form six N–H bonds"]
+      },
+      {
+        id:"co2", equation:"2 CO + O₂ → 2 CO₂",
+        needs:{CO:2,O2:1}, products:{CO2:2},
+        baseBarrier:67, delta:-38,
+        condition:() => heat() >= 45 || catalyst() === "platinum",
+        conditionText:"Needs moderate energy or the platinum-surface catalyst.",
+        breaks:["Weaken O=O bond"],
+        forms:["Form two new C=O bonds"]
+      },
+      {
+        id:"peroxide", equation:"2 H₂O₂ → 2 H₂O + O₂",
+        needs:{H2O2:2}, products:{H2O:2,O2:1},
+        baseBarrier:62, delta:-22,
+        condition:() => light() >= 35 || catalyst() === "enzyme",
+        conditionText:"Activated by light or the enzyme-like catalyst in this model.",
+        breaks:["Break two O–O bonds"],
+        forms:["Rearrange O–H bonds","Form O=O bond"]
+      }
+    ];
+
+    const sceneEl = $("#scene");
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    sceneEl.appendChild(renderer.domElement);
+
+    $("#loading").remove();
+    $("#reactionOverlay").style.display = "block";
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(8, 5.5, 9);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 5;
+    controls.maxDistance = 22;
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x202030, 2.2));
+
+    const key = new THREE.DirectionalLight(0xffffff, 3.5);
+    key.position.set(5, 8, 5);
+    scene.add(key);
+
+    const lightA = new THREE.PointLight(0xffffff, 0, 20);
+    lightA.position.set(-4, 3, 2);
+    scene.add(lightA);
+
+    const lightB = new THREE.PointLight(0xffffff, 0, 20);
+    lightB.position.set(4, -2, -3);
+    scene.add(lightB);
+
+    const chamber = new THREE.Group();
+    scene.add(chamber);
+
+    const cage = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(9, 5.3, 6)),
+      new THREE.LineBasicMaterial({ color:0x8c8c99, transparent:true, opacity:0.22 })
+    );
+    chamber.add(cage);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(9,6),
+      new THREE.MeshPhysicalMaterial({
+        color:0x777780, transparent:true, opacity:0.10,
+        roughness:0.45, metalness:0.25, side:THREE.DoubleSide
+      })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2.65;
+    chamber.add(floor);
+
+    const catalystGroup = new THREE.Group();
+    scene.add(catalystGroup);
+
+    const atomColors = {
+      H:0xf6f6f6,
+      C:0x4b4c54,
+      N:0x6076d9,
+      O:0xdd6268,
+      F:0x78c97a,
+      Cl:0x74c86d,
+      S:0xd8c85f,
+      P:0xd9925c,
+      Fe:0x9a7868
+    };
+
+    function atomColor(symbol) {
+      return atomColors[symbol] ?? 0xa8a8b0;
+    }
+
+    function addBondCylinder(a, b, order, group) {
+      const dir = b.clone().sub(a);
+      const len = dir.length();
+      const mid = a.clone().add(b).multiplyScalar(0.5);
+
+      const offsets = order === 1 ? [0] : order === 2 ? [-0.09,0.09] : [-0.14,0,0.14];
+
+      for (const off of offsets) {
+        let perp = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,0,1));
+        if (perp.lengthSq() < 0.001) perp.crossVectors(dir, new THREE.Vector3(1,0,0));
+        perp.normalize().multiplyScalar(off);
+
+        const mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.055,0.055,len,14),
+          new THREE.MeshPhysicalMaterial({
+            color:0xb3b3bb,
+            metalness:0.18,
+            roughness:0.28
+          })
+        );
+        mesh.position.copy(mid).add(perp);
+        mesh.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0,1,0),
+          dir.clone().normalize()
+        );
+        group.add(mesh);
+      }
+    }
+
+    function createMoleculeGroup(key) {
+      const t = templates[key];
+      const g = new THREE.Group();
+      g.userData.template = key;
+
+      for (const a of t.atoms) {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.26,28,20),
+          new THREE.MeshPhysicalMaterial({
+            color:atomColor(a[0]),
+            roughness:0.18,
+            metalness:0.06,
+            clearcoat:1,
+            clearcoatRoughness:0.1
+          })
+        );
+        mesh.position.set(a[1],a[2],a[3]);
+        g.add(mesh);
+      }
+
+      for (const b of t.bonds) {
+        const a = t.atoms[b[0]];
+        const c = t.atoms[b[1]];
+        addBondCylinder(
+          new THREE.Vector3(a[1],a[2],a[3]),
+          new THREE.Vector3(c[1],c[2],c[3]),
+          b[2],
+          g
+        );
+      }
+
+      return g;
+    }
+
+    let molecules = [];
+    let paused = false;
+    let reactionBusy = false;
+
+    function randomPosition() {
+      return new THREE.Vector3(
+        (Math.random() - 0.5) * 7.2,
+        (Math.random() - 0.5) * 3.7,
+        (Math.random() - 0.5) * 4.6
+      );
+    }
+
+    function addMolecule(key) {
+      const group = createMoleculeGroup(key);
+      group.position.copy(randomPosition());
+      group.rotation.set(Math.random()*2, Math.random()*2, Math.random()*2);
+      scene.add(group);
+
+      const velocity = new THREE.Vector3(
+        Math.random() - 0.5,
+        Math.random() - 0.5,
+        Math.random() - 0.5
+      ).normalize().multiplyScalar(0.006 + 0.007*Math.random());
+
+      molecules.push({ key, group, velocity, target:null });
+      updateUI();
+    }
+
+    function disposeObject(o) {
+      o.traverse(child => {
+        child.geometry?.dispose?.();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose?.());
+          else child.material.dispose?.();
+        }
+      });
+    }
+
+    function removeMolecule(m) {
+      scene.remove(m.group);
+      disposeObject(m.group);
+      molecules = molecules.filter(x => x !== m);
+    }
+
+    function clearMolecules() {
+      [...molecules].forEach(removeMolecule);
+      updateUI();
+    }
+
+    function heat() { return +$("#heat").value; }
+    function light() { return +$("#light").value; }
+    function catalyst() { return $("#catalyst").value; }
+
+    function inventory() {
+      const out = {};
+      for (const m of molecules) out[m.key] = (out[m.key] || 0) + 1;
+      return out;
+    }
+
+    function ruleAvailable(rule) {
+      const inv = inventory();
+      return Object.entries(rule.needs).every(([k,n]) => (inv[k] || 0) >= n);
+    }
+
+    function activeRule() {
+      return rules.find(ruleAvailable) || null;
+    }
+
+    function catalystBonus(rule) {
+      const c = catalyst();
+      if (c === "none") return 0;
+      if (rule.id === "ammonia" && c === "iron") return 34;
+      if (rule.id === "co2" && c === "platinum") return 28;
+      if (rule.id === "peroxide" && c === "enzyme") return 30;
+      return 8;
+    }
+
+    function energyScore() {
+      return Math.min(100, heat()*0.72 + light()*0.38 + (catalyst() === "none" ? 0 : 20));
+    }
+
+    function updateCatalystVisual() {
+      while (catalystGroup.children.length) {
+        const obj = catalystGroup.children.pop();
+        obj.geometry?.dispose?.();
+        obj.material?.dispose?.();
+      }
+
+      const c = catalyst();
+      if (c === "none") return;
+
+      const geometry = c === "enzyme"
+        ? new THREE.IcosahedronGeometry(0.52,1)
+        : new THREE.CylinderGeometry(0.7,0.7,0.12,32);
+
+      const color =
+        c === "iron" ? 0x8b8f96 :
+        c === "platinum" ? 0xd9d9e0 :
+        0x9fbf9f;
+
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshPhysicalMaterial({
+          color,
+          metalness:c === "enzyme" ? 0.05 : 0.8,
+          roughness:0.22,
+          clearcoat:0.7
+        })
+      );
+      mesh.position.set(0,-2.25,0);
+      catalystGroup.add(mesh);
+    }
+
+    function drawEnergy(rule) {
+      const svg = d3.select("#energyChart");
+      svg.selectAll("*").remove();
+
+      const W = 430, H = 220;
+      const m = { l:48, r:20, t:22, b:38 };
+
+      const barrier = rule ? Math.max(25, rule.baseBarrier - catalystBonus(rule)) : 0;
+      const product = rule ? 50 + rule.delta*0.65 : 50;
+
+      $("#barrierLabel").textContent = rule ? `Barrier ${barrier.toFixed(0)}` : "Barrier —";
+
+      const data = rule
+        ? [
+            {x:0,y:50},
+            {x:.22,y:55},
+            {x:.48,y:barrier},
+            {x:.72,y:Math.max(product+8,32)},
+            {x:1,y:product}
+          ]
+        : [{x:0,y:50},{x:1,y:50}];
+
+      const x = d3.scaleLinear().domain([0,1]).range([m.l,W-m.r]);
+      const y = d3.scaleLinear().domain([0,100]).range([H-m.b,m.t]);
+
+      svg.append("line")
+        .attr("x1",m.l).attr("x2",W-m.r)
+        .attr("y1",H-m.b).attr("y2",H-m.b)
+        .attr("stroke","#384457");
+
+      svg.append("line")
+        .attr("x1",m.l).attr("x2",m.l)
+        .attr("y1",m.t).attr("y2",H-m.b)
+        .attr("stroke","#384457");
+
+      const line = d3.line()
+        .x(d => x(d.x))
+        .y(d => y(d.y))
+        .curve(d3.curveCatmullRom.alpha(0.6));
+
+      svg.append("path")
+        .datum(data)
+        .attr("d",line)
+        .attr("fill","none")
+        .attr("stroke","#69e6ff")
+        .attr("stroke-width",3);
+
+      svg.append("text")
+        .attr("x",m.l).attr("y",H-10)
+        .attr("fill","#9aa7ba").attr("font-size",11)
+        .text("Reactants");
+
+      svg.append("text")
+        .attr("x",W-m.r).attr("y",H-10)
+        .attr("text-anchor","end")
+        .attr("fill","#9aa7ba").attr("font-size",11)
+        .text("Products");
+
+      svg.append("text")
+        .attr("x",10).attr("y",18)
+        .attr("fill","#9aa7ba").attr("font-size",10)
+        .text("relative energy");
+
+      if (rule) {
+        svg.append("circle")
+          .attr("cx",x(.48))
+          .attr("cy",y(barrier))
+          .attr("r",5)
+          .attr("fill","#9b8cff");
+
+        svg.append("text")
+          .attr("x",x(.48))
+          .attr("y",y(barrier)-10)
+          .attr("text-anchor","middle")
+          .attr("fill","#f2f5fb")
+          .attr("font-size",10)
+          .text(catalyst() === "none" ? "activation barrier" : "lowered barrier");
+      }
+    }
+
+    function updateUI() {
+      const rule = activeRule();
+
+      $("#statMolecules").textContent = molecules.length;
+      $("#statHeat").textContent = heat() + "%";
+      $("#statLight").textContent = light() ? light() + "%" : "Off";
+      $("#statCatalyst").textContent =
+        catalyst() === "none" ? "None" : catalyst()[0].toUpperCase() + catalyst().slice(1);
+
+      $("#heatLabel").textContent = heat() + "%";
+      $("#lightLabel").textContent = light() + "%";
+
+      lightA.intensity = light() * 0.16;
+      lightB.intensity = light() * 0.10;
+      updateCatalystVisual();
+
+      if (rule) {
+        $("#equation").textContent = rule.equation;
+        $("#caption").textContent = rule.condition()
+          ? "Conditions can activate this pathway."
+          : "Reactants match, but the current conditions are below this toy pathway threshold.";
+
+        $("#pathway").innerHTML =
+          `<strong style="color:var(--text)">${rule.equation}</strong>` +
+          `<div style="margin-top:5px">${rule.conditionText}</div>` +
+          `<div style="margin-top:8px">Condition score: <strong style="color:var(--text)">${energyScore().toFixed(0)}/100</strong></div>`;
+
+        $("#bondChanges").innerHTML =
+          rule.breaks.map(x => `<div class="bond-change break">↯ ${x}</div>`).join("") +
+          rule.forms.map(x => `<div class="bond-change form">＋ ${x}</div>`).join("");
+
+        drawEnergy(rule);
+      } else {
+        $("#equation").textContent = "No matching reaction";
+        $("#caption").textContent = molecules.length
+          ? "The chamber contents do not match one of the demo pathways yet."
+          : "Load molecules or a preset.";
+
+        $("#pathway").textContent =
+          "Try one of the reaction presets or assemble matching reactants from the molecule inventory.";
+        $("#bondChanges").innerHTML = "";
+        drawEnergy(null);
+      }
+    }
+
+    function loadPreset(id) {
+      clearMolecules();
+      const rule = rules.find(r => r.id === id);
+      if (!rule) return;
+
+      for (const [key,count] of Object.entries(rule.needs)) {
+        for (let i=0;i<count;i++) addMolecule(key);
+      }
+      updateUI();
+    }
+
+    async function runReaction() {
+      if (reactionBusy) return;
+
+      const rule = activeRule();
+      if (!rule) {
+        $("#caption").textContent = "No demo pathway matches the current inventory.";
+        return;
+      }
+
+      if (!rule.condition()) {
+        $("#caption").textContent =
+          "The reactants match, but more energy or the matching catalyst is needed.";
+        return;
+      }
+
+      reactionBusy = true;
+      $("#runReaction").disabled = true;
+      $("#caption").textContent = "Bonds are reorganizing…";
+
+      const groups = {};
+      for (const m of molecules) (groups[m.key] ??= []).push(m);
+
+      const needed = [];
+      for (const [key,count] of Object.entries(rule.needs)) {
+        needed.push(...groups[key].slice(0,count));
+      }
+
+      if (!reducedMotion) {
+        needed.forEach((m,i) => {
+          m.target = new THREE.Vector3((i - needed.length/2)*0.45, 0, 0);
+        });
+        await new Promise(r => setTimeout(r,900));
+      }
+
+      needed.forEach(removeMolecule);
+
+      for (const [key,count] of Object.entries(rule.products)) {
+        for (let i=0;i<count;i++) addMolecule(key);
+      }
+
+      $("#caption").textContent = "Products formed in the educational model.";
+      reactionBusy = false;
+      $("#runReaction").disabled = false;
+      updateUI();
+    }
+
+    const libraryKeys = ["H2","O2","N2","CO","CO2","H2O","NH3","H2O2"];
+    $("#library").innerHTML = libraryKeys.map(key => `
+      <button class="mol-btn" data-key="${key}" type="button">
+        <strong>${templates[key].formula}</strong>
+        <span>${templates[key].name}</span>
+      </button>
+    `).join("");
+
+    document.querySelectorAll(".mol-btn").forEach(btn => {
+      btn.addEventListener("click", () => addMolecule(btn.dataset.key));
+    });
+
+    document.querySelectorAll(".preset").forEach(btn => {
+      btn.addEventListener("click", () => loadPreset(btn.dataset.preset));
+    });
+
+    $("#runReaction").addEventListener("click", runReaction);
+    $("#clear").addEventListener("click", clearMolecules);
+
+    $("#pause").addEventListener("click", () => {
+      paused = !paused;
+      $("#pause").textContent = paused ? "Resume" : "Pause";
+    });
+
+    ["#heat","#light"].forEach(id => {
+      $(id).addEventListener("input", updateUI);
+    });
+    $("#catalyst").addEventListener("change", updateUI);
+
+    const familyColor = d3.scaleOrdinal()
+      .domain([
+        "nonmetal","noble gas","alkali metal","alkaline earth",
+        "metalloid","halogen","metal","transition metal"
+      ])
+      .range([
+        "#69e6ff","#9b8cff","#ffcf66","#e39c64",
+        "#64e39a","#ff7d8f","#9aa7ba","#7aa6ff"
+      ]);
+
+    let selectedElement = null;
+    const periodic = d3.select("#periodic");
+
+    function renderPeriodic() {
+      const q = $("#search").value.trim().toLowerCase();
+
+      periodic.selectAll("button")
+        .data(elements, d => d.symbol)
+        .join("button")
+        .attr("type","button")
+        .attr("class", d => {
+          const dim = q && !(
+            d.name.toLowerCase().includes(q) ||
+            d.symbol.toLowerCase().includes(q) ||
+            String(d.z) === q
+          );
+          return "element" +
+            (dim ? " dim" : "") +
+            (selectedElement === d.symbol ? " active" : "");
+        })
+        .style("grid-column", d => d.group)
+        .style("grid-row", d => d.period)
+        .style("border-top", d => `4px solid ${familyColor(d.family)}`)
+        .html(d => `
+          <span class="z">${d.z}</span>
+          <span class="sym">${d.symbol}</span>
+          <span class="name">${d.name}</span>
+        `)
+        .on("click", (event,d) => {
+          selectedElement = d.symbol;
+          $("#elementInfo").innerHTML =
+            `<strong style="color:var(--text)">${d.name} (${d.symbol})</strong>` +
+            ` · atomic number ${d.z}` +
+            ` · mass ${d.mass} u` +
+            ` · ${d.family}` +
+            ` · typical valence ${d.valence}` +
+            ` · electronegativity ${d.en ?? "—"}`;
+          renderPeriodic();
+        });
+    }
+
+    $("#search").addEventListener("input", renderPeriodic);
+    renderPeriodic();
+
+    function resize() {
+      const w = Math.max(1, sceneEl.clientWidth);
+      const h = Math.max(1, sceneEl.clientHeight);
+      renderer.setSize(w,h,false);
+      camera.aspect = w/h;
+      camera.updateProjectionMatrix();
+    }
+
+    new ResizeObserver(resize).observe(sceneEl);
+    resize();
+
+    let last = performance.now();
+
+    function animate(now) {
+      const dt = Math.min(3, (now-last)/16.67);
+      last = now;
+
+      if (!paused && !reducedMotion) {
+        const speed = 0.55 + heat()/40;
+
+        for (const m of molecules) {
+          if (m.target) {
+            m.group.position.lerp(m.target, 0.045*dt);
+          } else {
+            m.group.position.addScaledVector(m.velocity, speed*dt);
+
+            const limits = {x:4.1, y:2.3, z:2.6};
+            for (const axis of ["x","y","z"]) {
+              const lim = limits[axis];
+              if (Math.abs(m.group.position[axis]) > lim) {
+                m.group.position[axis] = Math.sign(m.group.position[axis]) * lim;
+                m.velocity[axis] *= -1;
+              }
+            }
+
+            m.group.rotation.x += 0.003*dt;
+            m.group.rotation.y += 0.004*dt;
+          }
+        }
+      }
+
+      controls.update();
+      renderer.render(scene,camera);
+      requestAnimationFrame(animate);
+    }
+
+    updateUI();
+    drawEnergy(null);
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bouncing anime eye</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; align-items: center; justify-content: center; background: #f4f4f2; }
+  #stage { width: min(680px, 100vw); }
+  svg { display: block; width: 100%; height: auto; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const W = 680, H = 420;
+const EYE = "M220 260 Q250 160 345 168 Q440 172 470 240 Q420 320 340 322 Q260 322 220 260Z";
+const INK = "#1d1d1f";
+const star = r => `M0 ${-r} L${r*.27} ${-r*.27} L${r} 0 L${r*.27} ${r*.27} L0 ${r} L${-r*.27} ${r*.27} L${-r} 0 L${-r*.27} ${-r*.27}Z`;
+
+const svg = d3.select("#stage").append("svg")
+  .attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("role", "img")
+  .attr("aria-label", "A bouncing anime eye with an iridescent iris");
+
+const defs = svg.append("defs");
+defs.append("clipPath").attr("id", "eyeclip").append("path").attr("d", EYE);
+defs.append("clipPath").attr("id", "irisclip")
+  .append("ellipse").attr("cx", 342).attr("cy", 250).attr("rx", 62).attr("ry", 72);
+
+const irisStops = [
+  { o: 0,   c: "#f6ffb0" },
+  { o: .25, c: "#7ef0a0" },
+  { o: .5,  c: "#2fc9b8" },
+  { o: .72, c: "#3a7de0" },
+  { o: .88, c: "#8a4fd6" },
+  { o: 1,   c: "#1c3b6b" }
+];
+const irisStopSel = defs.append("radialGradient").attr("id", "irisg")
+    .attr("cx", "50%").attr("cy", "62%").attr("r", "60%")
+  .selectAll("stop").data(irisStops).join("stop")
+    .attr("offset", d => d.o).attr("stop-color", d => d.c);
+
+defs.append("linearGradient").attr("id", "sheen")
+    .attr("x1", 0).attr("y1", 0).attr("x2", 1).attr("y2", 1)
+  .selectAll("stop").data([
+    [0, "#ff7ad9", 0], [.35, "#ff7ad9", .55], [.5, "#fff6a8", .7],
+    [.65, "#6ff7ff", .55], [1, "#6ff7ff", 0]
+  ]).join("stop")
+    .attr("offset", d => d[0]).attr("stop-color", d => d[1]).attr("stop-opacity", d => d[2]);
+
+const shadow = svg.append("ellipse")
+  .attr("cx", 340).attr("cy", 372).attr("rx", 90).attr("ry", 12).attr("fill", "#1a1a1a");
+
+const bounce = svg.append("g");
+
+bounce.append("path").attr("d", EYE).attr("fill", "#fbfbf7");
+
+const inside = bounce.append("g").attr("clip-path", "url(#eyeclip)");
+inside.append("path")
+  .attr("d", "M220 200 Q340 150 470 210 L470 230 Q340 190 220 235Z")
+  .attr("fill", "#c9d6cc").attr("opacity", .6);
+
+const iris = inside.append("g");
+iris.append("ellipse").attr("cx", 342).attr("cy", 250).attr("rx", 62).attr("ry", 72)
+  .attr("fill", "url(#irisg)");
+
+const irisInner = iris.append("g").attr("clip-path", "url(#irisclip)");
+const spokes = irisInner.append("g").attr("opacity", .5)
+  .attr("fill", "none").attr("stroke-width", 2.5).attr("stroke-linecap", "round");
+const spokeColors = ["#d9fff0", "#ffd1f4", "#c7f6ff", "#fff4b8"];
+spokes.selectAll("line").data(d3.range(12)).join("line")
+  .each(function (i) {
+    const a = i / 12 * Math.PI * 2;
+    d3.select(this)
+      .attr("x1", 342 + Math.cos(a) * 34).attr("y1", 250 + Math.sin(a) * 38)
+      .attr("x2", 342 + Math.cos(a) * 66).attr("y2", 250 + Math.sin(a) * 72)
+      .attr("stroke", spokeColors[i % 4]);
+  });
+irisInner.append("ellipse").attr("cx", 342).attr("cy", 300).attr("rx", 50).attr("ry", 22)
+  .attr("fill", "#d6ff9a").attr("opacity", .45);
+const sweep = irisInner.append("rect")
+  .attr("x", 230).attr("y", 140).attr("width", 230).attr("height", 230)
+  .attr("fill", "url(#sheen)");
+
+iris.append("ellipse").attr("cx", 342).attr("cy", 250).attr("rx", 62).attr("ry", 72)
+  .attr("fill", "none").attr("stroke", "#1c2f5e").attr("stroke-width", 4);
+iris.append("ellipse").attr("cx", 342).attr("cy", 252).attr("rx", 22).attr("ry", 30).attr("fill", "#0d0d14");
+iris.append("ellipse").attr("cx", 342).attr("cy", 252).attr("rx", 22).attr("ry", 30)
+  .attr("fill", "none").attr("stroke", "#8a4fd6").attr("stroke-width", 2).attr("opacity", .6);
+iris.append("ellipse").attr("cx", 318).attr("cy", 220).attr("rx", 18).attr("ry", 22).attr("fill", "#fff");
+iris.append("ellipse").attr("cx", 330).attr("cy", 236).attr("rx", 6).attr("ry", 7).attr("fill", "#fff").attr("opacity", .85);
+iris.append("circle").attr("cx", 368).attr("cy", 290).attr("r", 8).attr("fill", "#fff");
+iris.append("path").attr("d", "M300 280 Q342 312 386 276")
+  .attr("fill", "none").attr("stroke", "#fff").attr("stroke-width", 3)
+  .attr("stroke-linecap", "round").attr("opacity", .55);
+
+const lid = inside.append("rect")
+  .attr("x", 200).attr("y", 150).attr("width", 290).attr("height", 180).attr("fill", "#e8c9b0");
+
+[
+  "M205 252 Q228 168 345 160 Q445 160 482 232 L470 240 Q438 178 345 174 Q252 178 222 262Z",
+  "M455 205 L500 190 L470 222Z",
+  "M470 228 L508 226 L474 244Z",
+  "M215 240 L190 232 L214 256Z"
+].forEach(d => bounce.append("path").attr("d", d).attr("fill", INK));
+bounce.append("path").attr("d", "M262 312 Q300 330 345 328 Q400 326 432 300")
+  .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 3).attr("stroke-linecap", "round");
+bounce.append("path").attr("d", "M245 140 Q345 112 450 150")
+  .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 6).attr("stroke-linecap", "round");
+
+const twinkles = bounce.selectAll("path.twinkle")
+  .data([
+    { x: 372, y: 225, r: 11, c: "#fff",    p: 0 },
+    { x: 520, y: 142, r: 22, c: "#7ef0a0", p: .3 },
+    { x: 165, y: 184, r: 14, c: "#b48cff", p: .7 }
+  ])
+  .join("path").attr("class", "twinkle")
+  .attr("d", d => star(d.r)).attr("fill", d => d.c);
+twinkles.filter((d, i) => i === 0).raise();
+iris.node().appendChild(twinkles.filter((d, i) => i === 0).node());
+
+let paused = false, offset = 0, pausedAt = 0;
+svg.on("click", () => {
+  paused = !paused;
+  if (paused) pausedAt = performance.now();
+  else offset += performance.now() - pausedAt;
+});
+
+const ease = d3.easeCubicInOut;
+
+d3.timer(() => {
+  if (paused) return;
+  const t = performance.now() - offset;
+
+  const p = (t % 1000) / 1000;
+  const s = Math.abs(2 * p - 1);
+  const height = 170 * (1 - s * s);
+  const contact = Math.max(0, (s - 0.88) / 0.12);
+  const sy = 1 + 0.12 * s * (1 - contact) - 0.22 * contact;
+  const sx = 1 / sy;
+  bounce.attr("transform",
+    `translate(340 ${330 - height}) scale(${sx} ${sy}) translate(-340 -330)`);
+
+  const k = height / 170;
+  shadow
+    .attr("transform", `translate(340 372) scale(${1.15 - 0.6 * k}) translate(-340 -372)`)
+    .attr("opacity", 0.35 - 0.23 * k);
+
+  iris.attr("transform", `translate(${3 + 3 * Math.sin(t / 3000 * 2 * Math.PI)} 0)`);
+  spokes.attr("transform", `rotate(${(t / 6000 * 360) % 360} 342 250)`);
+
+  const q = (t % 2200) / 2200;
+  const sw = q < 0.6 ? -140 + 280 * ease(q / 0.6) : 140;
+  sweep.attr("transform", `translate(${sw} ${sw})`);
+
+  const shift = 25 * Math.sin(t / 3000 * 2 * Math.PI);
+  irisStopSel.attr("stop-color", d => {
+    const c = d3.hsl(d.c);
+    c.h = (c.h + shift + 360) % 360;
+    return c.formatHex();
+  });
+
+  const b = (t % 4000) / 4000;
+  let lidScale = 0;
+  if (b > 0.92) lidScale = b < 0.95 ? (b - 0.92) / 0.03 : (1 - b) / 0.05;
+  lid.attr("transform", `translate(0 150) scale(1 ${lidScale}) translate(0 -150)`);
+
+  twinkles.attr("transform", d => {
+    const tw = 0.8 + 0.2 * Math.cos((t / 1400 + d.p) * 2 * Math.PI);
+    return `translate(${d.x} ${d.y}) scale(${tw})`;
+  }).attr("opacity", d => 0.8 + 0.2 * Math.cos((t / 1400 + d.p) * 2 * Math.PI));
+});
+</script>
+</body>
+</html>

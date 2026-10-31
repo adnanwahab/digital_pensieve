@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Humanity's Mandala — Palace Edition</title>
+<style>
+:root{
+  --bg:#d98ca3;
+  --panel:rgba(29,14,26,.72);
+  --line:rgba(255,255,255,.16);
+  --text:#fff8fb;
+  --muted:rgba(255,248,251,.72);
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(255,205,218,.2),transparent 42%),
+    linear-gradient(135deg,#c66e8d,#e5a1b3 48%,#c86f92);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#ui{
+  position:fixed;left:18px;top:18px;z-index:12;
+  width:min(470px,calc(100vw - 36px));
+  padding:15px 16px;border:1px solid var(--line);
+  border-radius:18px;background:var(--panel);backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:0 22px 80px rgba(0,0,0,.32)
+}
+.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.48);margin-bottom:5px}
+h1{font-size:18px;line-height:1.1;margin:0 0 6px}
+p{font-size:12px;line-height:1.45;margin:0;color:var(--muted)}
+.controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+button{
+  border:1px solid rgba(255,255,255,.17);color:#fff;background:rgba(255,255,255,.07);
+  padding:8px 10px;border-radius:999px;font:inherit;font-size:11px;cursor:pointer;
+}
+button:hover{background:rgba(255,255,255,.13)}
+button.active{background:rgba(255,255,255,.17)}
+#tip{
+  position:fixed;z-index:14;display:none;pointer-events:none;
+  min-width:180px;padding:10px 11px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(22,10,21,.92);font-size:11px;line-height:1.45;
+}
+#status{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:10;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.65);pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.5)
+}
+#sig{
+  position:fixed;right:18px;bottom:16px;z-index:10;
+  font-size:10px;color:rgba(255,255,255,.52);letter-spacing:.08em;text-align:right
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <div class="eyebrow">Collective decision space</div>
+  <h1>Humanity's Mandala</h1>
+  <p>
+    A ceremonial voting fingerprint inspired by layered mandala architecture:
+    communities form the outer rings, relationships flow like waves, and individual votes build the nested civic palace at the center.
+  </p>
+  <div class="controls">
+    <button id="voteA">+ Cyan vote</button>
+    <button id="voteB">+ Violet vote</button>
+    <button id="voteC">+ Gold vote</button>
+    <button id="pulse">Ceremonial pulse</button>
+    <button id="regen">New election</button>
+  </div>
+</div>
+<div id="tip"></div>
+<div id="status">scroll to zoom · drag to orbit · click a community</div>
+<div id="sig"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const app=document.querySelector('#app');
+const tip=document.querySelector('#tip');
+const sig=document.querySelector('#sig');
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x4b2034,.028);
+
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,120);
+camera.position.set(0,0,15.5);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.18;
+app.appendChild(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=.055;
+controls.enablePan=false;
+controls.minDistance=3.2;
+controls.maxDistance=26;
+controls.autoRotate=true;
+controls.autoRotateSpeed=.08;
+
+scene.add(new THREE.AmbientLight(0xffffff,.68));
+const key=new THREE.PointLight(0xffe6b0,28,50,2);
+key.position.set(2,3,8);scene.add(key);
+const cool=new THREE.PointLight(0x72b9ff,19,42,2);
+cool.position.set(-6,-2,6);scene.add(cool);
+
+const root=new THREE.Group();
+scene.add(root);
+
+const GOLD=new THREE.Color('#caa252');
+const GOLD2=new THREE.Color('#f0d38b');
+const BLUE=new THREE.Color('#67b9ff');
+const BLUE2=new THREE.Color('#315cbd');
+const ROSE=new THREE.Color('#d87e9a');
+const CREAM=new THREE.Color('#fff0df');
+const PLUM=new THREE.Color('#351626');
+const CYAN=new THREE.Color('#73f0ff');
+const VIOLET=new THREE.Color('#b88cff');
+const VOTEGOLD=new THREE.Color('#ffd66d');
+const votePalette=[CYAN,VIOLET,VOTEGOLD];
+
+let seed=Math.floor(Math.random()*1e9);
+let communities=[];
+let microMarks=[];
+let pulses=[];
+let squareLayers=[];
+let waveSegments=[];
+let ornamentGroup=null;
+let ringGlyphs=[];
+let centerJewel=null;
+
+function rngFactory(a){
+  return function(){
+    let t=a+=0x6D2B79F5;
+    t=Math.imul(t^t>>>15,t|1);
+    t^=t+Math.imul(t^t>>>7,t|61);
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function disposeObject(o){
+  o.traverse?.(x=>{
+    x.geometry?.dispose?.();
+    if(Array.isArray(x.material)) x.material.forEach(m=>m.dispose?.());
+    else x.material?.dispose?.();
+  });
+}
+function clearRoot(){
+  communities=[];microMarks=[];pulses=[];squareLayers=[];waveSegments=[];ringGlyphs=[];
+  while(root.children.length){
+    const o=root.children.pop();
+    disposeObject(o);
+  }
+}
+
+function addFilledCircle(radius,color,z,opacity=1){
+  const g=new THREE.CircleGeometry(radius,256);
+  const m=new THREE.MeshBasicMaterial({color,transparent:opacity<1,opacity,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(g,m);
+  mesh.position.z=z;root.add(mesh);return mesh;
+}
+function addRing(inner,outer,color,z,opacity=1){
+  const g=new THREE.RingGeometry(inner,outer,256);
+  const m=new THREE.MeshBasicMaterial({
+    color,transparent:opacity<1,opacity,side:THREE.DoubleSide,
+    blending:opacity<.8?THREE.AdditiveBlending:THREE.NormalBlending,
+    depthWrite:opacity>=.8
+  });
+  const mesh=new THREE.Mesh(g,m);mesh.position.z=z;root.add(mesh);return mesh;
+}
+function addLineLoop(points,color,opacity=.4,z=.2){
+  const g=new THREE.BufferGeometry().setFromPoints(points);
+  const m=new THREE.LineBasicMaterial({
+    color,transparent:true,opacity,
+    blending:THREE.AdditiveBlending,depthWrite:false
+  });
+  const line=new THREE.LineLoop(g,m);line.position.z=z;root.add(line);return line;
+}
+
+function makeOuterField(rand){
+  // fabric-like scattered specks
+  const n=3200;
+  const pos=new Float32Array(n*3);
+  const col=new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    const a=rand()*Math.PI*2;
+    const r=6.3+rand()*6.5;
+    const x=Math.cos(a)*r,y=Math.sin(a)*r;
+    pos[i*3]=x;pos[i*3+1]=y;pos[i*3+2]=-1-rand()*.8;
+    const c=(i%3===0?GOLD2:(i%3===1?CREAM:BLUE));
+    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const m=new THREE.PointsMaterial({size:.018,vertexColors:true,transparent:true,opacity:.2,depthWrite:false});
+  const p=new THREE.Points(g,m);root.add(p);
+}
+
+function makeGoldFiligreeRing(rand){
+  const group=new THREE.Group();
+  const R=5.55;
+  const count=180;
+  for(let i=0;i<count;i++){
+    const a=i/count*Math.PI*2;
+    const r=R + Math.sin(i*.63)*.08 + Math.sin(i*.17)*.04;
+    const size=.025 + (i%6===0?.035:0);
+    const geo=new THREE.TorusGeometry(size,size*.28,5,10);
+    const mat=new THREE.MeshBasicMaterial({
+      color:(i%4===0?GOLD2:GOLD),transparent:true,opacity:.75
+    });
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(Math.cos(a)*r,Math.sin(a)*r,.12);
+    mesh.rotation.z=a;
+    mesh.scale.set(1.4,.7,1);
+    group.add(mesh);
+  }
+  // four ornamental cardinal medallions
+  for(let q=0;q<4;q++){
+    const a=q*Math.PI/2;
+    const med=new THREE.Group();
+    const c1=new THREE.Mesh(
+      new THREE.TorusGeometry(.16,.03,8,28),
+      new THREE.MeshBasicMaterial({color:GOLD2,transparent:true,opacity:.9})
+    );
+    med.add(c1);
+    for(let k=0;k<8;k++){
+      const petal=new THREE.Mesh(
+        new THREE.CircleGeometry(.038,5),
+        new THREE.MeshBasicMaterial({color:CREAM,transparent:true,opacity:.9})
+      );
+      const aa=k/8*Math.PI*2;
+      petal.position.set(Math.cos(aa)*.18,Math.sin(aa)*.18,.01);
+      med.add(petal);
+    }
+    med.position.set(Math.cos(a)*5.05,Math.sin(a)*5.05,.26);
+    group.add(med);
+  }
+  root.add(group);
+  ornamentGroup=group;
+}
+
+function makeGlyphRing(rand){
+  const group=new THREE.Group();
+  const count=44;
+  for(let i=0;i<count;i++){
+    const a=i/count*Math.PI*2;
+    const r=4.9;
+    const h=.14+rand()*.07;
+    // abstract glyph: 2-4 little bars + diamond, avoids copying any actual script
+    const glyph=new THREE.Group();
+    const bars=2+Math.floor(rand()*3);
+    for(let b=0;b<bars;b++){
+      const geo=new THREE.PlaneGeometry(.04,.11+rand()*.06);
+      const mat=new THREE.MeshBasicMaterial({
+        color:i%3===0?CREAM:(i%3===1?GOLD2:new THREE.Color('#d7ddff')),
+        side:THREE.DoubleSide
+      });
+      const bar=new THREE.Mesh(geo,mat);
+      bar.position.x=(b-(bars-1)/2)*.05;
+      bar.rotation.z=(rand()-.5)*.35;
+      glyph.add(bar);
+    }
+    const diamond=new THREE.Mesh(
+      new THREE.CircleGeometry(.045,4),
+      new THREE.MeshBasicMaterial({color:GOLD2})
+    );
+    diamond.position.y=.11;
+    glyph.add(diamond);
+
+    glyph.position.set(Math.cos(a)*r,Math.sin(a)*r,.32);
+    glyph.rotation.z=a-Math.PI/2;
+    glyph.scale.setScalar(.85+h);
+    glyph.userData={phase:rand()*Math.PI*2};
+    group.add(glyph);ringGlyphs.push(glyph);
+  }
+  root.add(group);
+}
+
+function makeWaveBand(){
+  const group=new THREE.Group();
+  const count=72;
+  for(let i=0;i<count;i++){
+    const a=i/count*Math.PI*2;
+    const centerR=4.25;
+    const width=Math.PI*2/count*.85;
+    const pts=[];
+    const inner=[];
+    for(let k=0;k<=10;k++){
+      const t=k/10;
+      const aa=a+(t-.5)*width;
+      const rr=centerR+.11*Math.sin(t*Math.PI*2+i*.75);
+      pts.push(new THREE.Vector2(Math.cos(aa)*(rr+.19),Math.sin(aa)*(rr+.19)));
+      inner.unshift(new THREE.Vector2(Math.cos(aa)*(rr-.19),Math.sin(aa)*(rr-.19)));
+    }
+    const shape=new THREE.Shape();
+    shape.moveTo(pts[0].x,pts[0].y);
+    for(let k=1;k<pts.length;k++)shape.lineTo(pts[k].x,pts[k].y);
+    for(const p of inner)shape.lineTo(p.x,p.y);
+    shape.closePath();
+
+    const geo=new THREE.ShapeGeometry(shape);
+    const c=i%2===0?BLUE:BLUE2;
+    const mat=new THREE.MeshBasicMaterial({
+      color:c,transparent:true,opacity:.72,side:THREE.DoubleSide
+    });
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.z=.08;
+    mesh.userData={phase:i*.4};
+    group.add(mesh);waveSegments.push(mesh);
+
+    // white crest line
+    const crestPts=[];
+    for(let k=0;k<=12;k++){
+      const t=k/12;
+      const aa=a+(t-.5)*width;
+      const rr=centerR+.06*Math.sin(t*Math.PI*2+i*.75);
+      crestPts.push(new THREE.Vector3(Math.cos(aa)*rr,Math.sin(aa)*rr,.12));
+    }
+    const lg=new THREE.BufferGeometry().setFromPoints(crestPts);
+    const lm=new THREE.LineBasicMaterial({color:0xeaf5ff,transparent:true,opacity:.65});
+    group.add(new THREE.Line(lg,lm));
+  }
+  root.add(group);
+}
+
+function makeCommunityRing(rand){
+  const group=new THREE.Group();
+  const count=64;
+  const inner=3.35, outer=3.92;
+  for(let i=0;i<count;i++){
+    const a0=i/count*Math.PI*2+.02;
+    const a1=(i+1)/count*Math.PI*2-.02;
+    const shape=new THREE.Shape();
+    const n=6;
+    for(let k=0;k<=n;k++){
+      const a=THREE.MathUtils.lerp(a0,a1,k/n);
+      if(k===0)shape.moveTo(Math.cos(a)*outer,Math.sin(a)*outer);
+      else shape.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);
+    }
+    for(let k=n;k>=0;k--){
+      const a=THREE.MathUtils.lerp(a0,a1,k/n);
+      shape.lineTo(Math.cos(a)*inner,Math.sin(a)*inner);
+    }
+    const geo=new THREE.ShapeGeometry(shape);
+    const c=[GOLD2,CREAM,ROSE,BLUE][i%4];
+    const mat=new THREE.MeshPhysicalMaterial({
+      color:c,emissive:c.clone().multiplyScalar(.15),emissiveIntensity:.5,
+      metalness:.14,roughness:.32,transparent:true,opacity:.9,side:THREE.DoubleSide
+    });
+    const mesh=new THREE.Mesh(geo,mat);
+    mesh.position.z=.16;
+    mesh.userData={
+      kind:'community',id:i,
+      population:Math.floor(12000+rand()*4800000),
+      participation:Math.round(45+rand()*52),
+      cohesion:Math.round(25+rand()*72),
+      phase:rand()*Math.PI*2
+    };
+    group.add(mesh);communities.push(mesh);
+
+    // little micro ornaments
+    const marks=2+Math.floor(rand()*5);
+    for(let j=0;j<marks;j++){
+      const aa=THREE.MathUtils.lerp(a0,a1,(j+.5)/marks);
+      const rr=THREE.MathUtils.lerp(inner+.08,outer-.08,.35+rand()*.3);
+      const mark=new THREE.Mesh(
+        new THREE.CircleGeometry(.016+rand()*.012,4+Math.floor(rand()*3)),
+        new THREE.MeshBasicMaterial({color:VOTEGOLD,transparent:true,opacity:0})
+      );
+      mark.position.set(Math.cos(aa)*rr,Math.sin(aa)*rr,.25);
+      mark.rotation.z=rand()*Math.PI;
+      mark.userData={phase:rand()*Math.PI*2};
+      group.add(mark);microMarks.push(mark);
+    }
+  }
+  root.add(group);
+}
+
+function squareFrame(size,thickness,color,z,opacity=1){
+  const shape=new THREE.Shape();
+  shape.moveTo(-size/2,-size/2);
+  shape.lineTo(size/2,-size/2);
+  shape.lineTo(size/2,size/2);
+  shape.lineTo(-size/2,size/2);
+  shape.closePath();
+
+  const hole=new THREE.Path();
+  const inS=size-2*thickness;
+  hole.moveTo(-inS/2,-inS/2);
+  hole.lineTo(-inS/2,inS/2);
+  hole.lineTo(inS/2,inS/2);
+  hole.lineTo(inS/2,-inS/2);
+  hole.closePath();
+  shape.holes.push(hole);
+
+  const geo=new THREE.ShapeGeometry(shape);
+  const mat=new THREE.MeshBasicMaterial({
+    color,transparent:opacity<1,opacity,side:THREE.DoubleSide
+  });
+  const mesh=new THREE.Mesh(geo,mat);mesh.position.z=z;root.add(mesh);return mesh;
+}
+
+function makePalace(rand){
+  // cream ground disk behind square palace
+  addFilledCircle(3.12,CREAM,.02,.94);
+  addRing(3.0,3.1,GOLD,.08,.95);
+
+  const sizes=[5.45,4.7,4.0,3.35,2.75,2.18,1.7,1.25,.88,.58];
+  const cols=[GOLD,CREAM,PLUM,GOLD2,CREAM,ROSE,GOLD,CREAM,PLUM,GOLD2];
+  sizes.forEach((s,i)=>{
+    const frame=squareFrame(s,.13+(i%3)*.015,cols[i],.22+i*.015,.96);
+    frame.rotation.z=(i%2===0?0:Math.PI/4);
+    frame.userData={phase:rand()*Math.PI*2};
+    squareLayers.push(frame);
+
+    // small "gates" extending from four sides
+    if(i<6){
+      for(let q=0;q<4;q++){
+        const gate=new THREE.Group();
+        const w=.25+.02*i, h=.36+.03*i;
+        const base=new THREE.Mesh(
+          new THREE.PlaneGeometry(w,h),
+          new THREE.MeshBasicMaterial({
+            color:i%2===0?GOLD2:ROSE,
+            transparent:true,opacity:.9,side:THREE.DoubleSide
+          })
+        );
+        gate.add(base);
+        for(let k=0;k<3;k++){
+          const bar=new THREE.Mesh(
+            new THREE.PlaneGeometry(w*.82,.025),
+            new THREE.MeshBasicMaterial({color:PLUM,side:THREE.DoubleSide})
+          );
+          bar.position.y=(k-1)*h*.23;
+          bar.position.z=.01;
+          gate.add(bar);
+        }
+        const r=s*.5+.16;
+        if(q===0){gate.position.set(0,r,.32+i*.015)}
+        if(q===1){gate.position.set(r,0,.32+i*.015);gate.rotation.z=-Math.PI/2}
+        if(q===2){gate.position.set(0,-r,.32+i*.015);gate.rotation.z=Math.PI}
+        if(q===3){gate.position.set(-r,0,.32+i*.015);gate.rotation.z=Math.PI/2}
+        root.add(gate);
+      }
+    }
+  });
+
+  // nested wall-line maze details
+  for(let ring=0;ring<7;ring++){
+    const size=4.95-ring*.57;
+    const inset=.11+ring*.015;
+    const pts=[
+      new THREE.Vector3(-size/2+inset,-size/2,.58),
+      new THREE.Vector3(size/2,-size/2,.58),
+      new THREE.Vector3(size/2,size/2-inset,.58),
+      new THREE.Vector3(-size/2,size/2-inset,.58),
+      new THREE.Vector3(-size/2+inset,-size/2,.58)
+    ];
+    addLineLoop(pts,ring%2===0?0x7b3b54:0xcaa252,.42,.1+ring*.01);
+  }
+
+  // center jewel
+  const jewelGeo=new THREE.OctahedronGeometry(.12,3);
+  const jewelMat=new THREE.MeshPhysicalMaterial({
+    color:0xffefff,emissive:0xff4fd8,emissiveIntensity:2.4,
+    metalness:.1,roughness:.15,transparent:true,opacity:.95
+  });
+  centerJewel=new THREE.Mesh(jewelGeo,jewelMat);
+  centerJewel.position.z=.9;root.add(centerJewel);
+
+  const halo=new THREE.Mesh(
+    new THREE.RingGeometry(.2,.215,64),
+    new THREE.MeshBasicMaterial({color:0xff8cf0,transparent:true,opacity:.85,side:THREE.DoubleSide})
+  );
+  halo.position.z=.78;root.add(halo);
+}
+
+function makeCornerFlourishes(rand){
+  const group=new THREE.Group();
+  const corners=[
+    [-6.4,6.25,0], [6.4,6.25,Math.PI/2],
+    [6.4,-6.25,Math.PI],[-6.4,-6.25,-Math.PI/2]
+  ];
+  for(const [x,y,rot] of corners){
+    const g=new THREE.Group();
+    for(let i=0;i<5;i++){
+      const pts=[];
+      for(let k=0;k<40;k++){
+        const t=k/39;
+        const a=t*Math.PI*1.55+i*.18;
+        const r=.18+t*.68;
+        pts.push(new THREE.Vector3(
+          Math.cos(a)*r+i*.06,
+          Math.sin(a)*r,
+          0
+        ));
+      }
+      const geo=new THREE.BufferGeometry().setFromPoints(pts);
+      const mat=new THREE.LineBasicMaterial({
+        color:i%2===0?0x3e69b2:0xf3a4c0,
+        transparent:true,opacity:.8
+      });
+      g.add(new THREE.Line(geo,mat));
+    }
+    g.position.set(x,y,-.25);
+    g.rotation.z=rot;
+    group.add(g);
+  }
+  root.add(group);
+}
+
+function makeVoteMark(colorIndex){
+  const rand=rngFactory(seed+performance.now()|0);
+  const c=votePalette[colorIndex];
+  const a=rand()*Math.PI*2;
+  const r=.7+Math.pow(rand(),.7)*2.6;
+  const x=Math.cos(a)*r,y=Math.sin(a)*r;
+
+  const mark=new THREE.Mesh(
+    new THREE.CircleGeometry(.026+rand()*.025,4+Math.floor(rand()*4)),
+    new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.96})
+  );
+  mark.position.set(x,y,.95);
+  mark.rotation.z=rand()*Math.PI;
+  root.add(mark);
+
+  const ring=new THREE.Mesh(
+    new THREE.RingGeometry(.03,.05,32),
+    new THREE.MeshBasicMaterial({
+      color:c,transparent:true,opacity:1,side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
+  );
+  ring.position.set(x,y,1.0);root.add(ring);
+  pulses.push({mesh:ring,born:performance.now(),life:1700,max:24});
+
+  // influence nearest square layer and community
+  if(squareLayers.length){
+    const s=squareLayers[Math.floor(rand()*squareLayers.length)];
+    s.material.color.lerp(c,.25);
+  }
+  if(communities.length){
+    const community=communities[Math.floor(rand()*communities.length)];
+    community.material.emissive.copy(c);
+    community.material.emissiveIntensity=1.8;
+    setTimeout(()=>{if(community.material)community.material.emissiveIntensity=.5},650);
+  }
+}
+
+function ceremonialPulse(){
+  for(let i=0;i<8;i++){
+    setTimeout(()=>{
+      const c=i%3;
+      const ring=new THREE.Mesh(
+        new THREE.RingGeometry(.05,.075,64),
+        new THREE.MeshBasicMaterial({
+          color:votePalette[c],transparent:true,opacity:1,side:THREE.DoubleSide,
+          blending:THREE.AdditiveBlending,depthWrite:false
+        })
+      );
+      ring.position.z=1.0;root.add(ring);
+      pulses.push({mesh:ring,born:performance.now(),life:2200,max:65});
+    },i*90);
+  }
+}
+
+function build(){
+  clearRoot();
+  const rand=rngFactory(seed);
+
+  makeOuterField(rand);
+
+  // layered circular body
+  addFilledCircle(5.95,new THREE.Color('#b98145'),-.5,.95);
+  addRing(5.72,5.95,GOLD2,-.42,.98);
+  addRing(5.58,5.72,PLUM,-.38,.98);
+  addRing(5.25,5.58,GOLD,-.34,.98);
+
+  // decorative filigree strip
+  makeGoldFiligreeRing(rand);
+
+  // dark glyph band
+  addRing(4.65,5.23,PLUM,-.18,.99);
+  makeGlyphRing(rand);
+
+  // blue wave band
+  addRing(3.98,4.62,new THREE.Color('#1a2c72'),-.05,.98);
+  makeWaveBand();
+
+  // inner civic/community ring
+  makeCommunityRing(rand);
+
+  // nested central square palace
+  makePalace(rand);
+
+  makeCornerFlourishes(rand);
+
+  sig.textContent='mandala fingerprint · '+seed.toString(16).padStart(8,'0').toUpperCase();
+}
+
+document.querySelector('#voteA').onclick=()=>makeVoteMark(0);
+document.querySelector('#voteB').onclick=()=>makeVoteMark(1);
+document.querySelector('#voteC').onclick=()=>makeVoteMark(2);
+document.querySelector('#pulse').onclick=ceremonialPulse;
+document.querySelector('#regen').onclick=()=>{
+  seed=Math.floor(Math.random()*1e9);
+  build();
+};
+
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown',e=>{
+  mouse.x=e.clientX/innerWidth*2-1;
+  mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(communities,false);
+  if(hits.length){
+    const d=hits[0].object.userData;
+    tip.style.display='block';
+    tip.style.left=Math.min(e.clientX+14,innerWidth-210)+'px';
+    tip.style.top=Math.min(e.clientY+14,innerHeight-120)+'px';
+    tip.innerHTML=`
+      <b>Community ${d.id+1}</b><br>
+      simulated population · ${d3.format(',')(d.population)}<br>
+      participation · ${d.participation}%<br>
+      connection density · ${d.cohesion}%<br>
+      <span style="opacity:.55">zoom inward for individual vote marks</span>`;
+    controls.autoRotate=false;
+  }else{
+    tip.style.display='none';
+  }
+});
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+build();
+
+const clock=new THREE.Clock();
+function animate(t){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta();
+  controls.update();
+
+  root.rotation.z+=dt*.0065;
+
+  const dist=camera.position.length();
+  const zoom=THREE.MathUtils.clamp((12.5-dist)/8,0,1);
+
+  for(const m of microMarks){
+    const target=THREE.MathUtils.smoothstep(zoom,.18,.8)*.92;
+    m.material.opacity+=(target-m.material.opacity)*.08;
+    m.scale.setScalar(1+Math.sin(t*.0022+m.userData.phase)*.18);
+  }
+
+  for(const g of ringGlyphs){
+    const s=1+Math.sin(t*.0017+g.userData.phase)*.035;
+    g.scale.setScalar(s);
+  }
+
+  for(let i=0;i<waveSegments.length;i++){
+    const w=waveSegments[i];
+    w.material.opacity=.62+.18*(.5+.5*Math.sin(t*.0016+w.userData.phase));
+  }
+
+  for(let i=0;i<squareLayers.length;i++){
+    const s=squareLayers[i];
+    const phase=s.userData.phase;
+    const k=1+Math.sin(t*.0009+phase)*.0025;
+    s.scale.setScalar(k);
+  }
+
+  if(centerJewel){
+    centerJewel.rotation.x+=dt*.3;
+    centerJewel.rotation.y+=dt*.42;
+    const s=.95+.12*(.5+.5*Math.sin(t*.003));
+    centerJewel.scale.setScalar(s);
+  }
+
+  if(ornamentGroup)ornamentGroup.rotation.z-=dt*.0035;
+
+  for(let i=pulses.length-1;i>=0;i--){
+    const p=pulses[i],q=(t-p.born)/p.life;
+    if(q>=1){
+      root.remove(p.mesh);disposeObject(p.mesh);pulses.splice(i,1);
+    }else{
+      p.mesh.scale.setScalar(1+q*p.max);
+      p.mesh.material.opacity=(1-q)*.9;
+    }
+  }
+
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

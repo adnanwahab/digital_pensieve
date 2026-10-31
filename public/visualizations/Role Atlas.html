@@ -1,0 +1,451 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Role Atlas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky group bar on top, then four labeled bands of view panels in an auto-fit grid; the 3D cubes span the full width */
+:root{
+  --bg:#f4f5f8; --panel:#ffffff; --fg:#1a1c23; --muted:#5a5f6e; --line:#dde0e7; --soft:#eceef3;
+  --good:#1f9a6a; --bad:#d4435b;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --g0:#E5484D; --g1:#F2762E; --g2:#E5A00D; --g3:#46A758; --g4:#12A594; --g5:#3E7BFA; --g6:#8E4EC6;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111218;--panel:#1a1c23;--fg:#eceef3;--muted:#9ba1b0;--line:#2c2f3a;--soft:#23262f;--good:#3cc48f;--bad:#f0647a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111218;--panel:#1a1c23;--fg:#eceef3;--muted:#9ba1b0;--line:#2c2f3a;--soft:#23262f;--good:#3cc48f;--bad:#f0647a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto}
+header{padding-block:28px 8px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,5vw,46px);line-height:1.05;margin:0 0 8px;letter-spacing:-0.01em;text-wrap:balance}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-bottom:1px solid var(--line)}
+.bar .lab{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:4px}
+.chip{font:500 13px var(--body);padding:5px 12px 5px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.chip[aria-pressed="true"]{border-color:var(--fg)}
+.chip.dim{opacity:.45}
+.band{margin-top:34px}
+.band h2{font-family:var(--display);font-weight:500;font-size:22px;margin:0 0 4px}
+.band > p{color:var(--muted);margin:0 0 14px;max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.panel.wide{grid-column:1/-1}
+.panel h3{font-family:var(--display);font-weight:500;font-size:17px;margin:0}
+.panel .sub{color:var(--muted);font-size:13px;margin:0}
+.panel svg{width:100%;height:auto;display:block;overflow:visible}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tag{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+select,input[type=text],input[type=number],textarea,button{font:inherit;font-size:14px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button:hover,select:hover{border-color:var(--muted)}
+:focus-visible{outline:2px solid var(--g5);outline-offset:2px}
+textarea{width:100%;min-height:64px;resize:vertical}
+.note{font-size:13px;color:var(--muted);min-height:1.5em;margin:0}
+.err{font-size:13px;color:var(--bad);margin:0}
+#cube{height:400px;cursor:grab;touch-action:none;border-radius:10px;background:var(--soft)}
+.cubeside{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
+@media (max-width:760px){.cubeside{grid-template-columns:minmax(0,1fr)}#cube{height:320px}}
+.info{background:var(--soft);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.info .big{font-family:var(--display);font-size:20px;font-weight:500;margin:0}
+.entries{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.entry{font-size:13px;border-left:3px solid var(--line);padding:2px 0 2px 10px}
+.entry b{font-weight:500}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.svgtxt{font-family:var(--body)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Role Atlas</h1>
+  <p class="lede">One set of roles, seen nine ways. Pick a group anywhere and every view follows. All names and numbers here are example data you can replace through the role editor and the journal.</p>
+</header>
+
+<div class="bar" id="bar"><span class="lab">Focus</span></div>
+
+<section class="band">
+  <h2>Where your groups meet</h2>
+  <p>The intersecting cubes from before, with each cube sized by the hours you give that group each week.</p>
+  <div class="grid">
+    <div class="panel wide">
+      <div class="cubeside">
+        <div id="cube" aria-label="Intersecting group cubes; drag to rotate"></div>
+        <div class="info">
+          <span class="tag" id="ig">No group selected</span>
+          <p class="big" id="ir">Where the cubes overlap is where you are</p>
+          <p class="note" id="ih"></p>
+          <label for="ri" class="tag">Your role here</label>
+          <div class="row"><input type="text" id="ri" placeholder="Partner, mentor, teammate" style="flex:1;min-width:0"><button id="save">Set role</button></div>
+          <p class="err" id="rerr" hidden></p>
+          <label for="spread" class="tag">Overlap</label>
+          <input type="range" id="spread" min="0" max="100" step="1" value="45">
+          <div class="row"><button id="spin">Pause spin</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Same data, different lens</h2>
+  <p>The people in your life are the threads between groups. These views show who sits in the overlaps and how the roles push on each other.</p>
+  <div class="grid">
+    <div class="panel">
+      <h3>Venn of three groups</h3>
+      <p class="sub">Choose any three groups to see who sits in each overlap.</p>
+      <div class="row"><select id="va" aria-label="First group"></select><select id="vb" aria-label="Second group"></select><select id="vc" aria-label="Third group"></select></div>
+      <svg id="venn" viewBox="0 0 400 310" role="img" aria-label="Three-circle Venn diagram of people by group"></svg>
+    </div>
+    <div class="panel">
+      <h3>Network of people</h3>
+      <p class="sub">Large dots are groups, small dots are people. People pulled toward the middle bridge more than one group.</p>
+      <svg id="net" viewBox="0 0 420 360" role="img" aria-label="Network graph of groups and people"></svg>
+    </div>
+    <div class="panel wide">
+      <h3>Role tension matrix</h3>
+      <p class="sub">Green means two roles support each other, red means they compete for time or energy. Click a cell to change it.</p>
+      <div style="overflow-x:auto"><svg id="mat" viewBox="0 0 560 330" style="min-width:420px" role="img" aria-label="Matrix of support and conflict between group pairs"></svg></div>
+      <p class="note" id="matnote">Click a cell to cycle from strong conflict to strong support.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Zoom in or out</h2>
+  <p>Drill into a single group, or step back to see the larger systems that shape all of them.</p>
+  <div class="grid">
+    <div class="panel">
+      <h3 id="drillt">Inside a group</h3>
+      <p class="sub" id="drills">Pick a group to open its own diagram.</p>
+      <svg id="drill" viewBox="0 0 420 300" role="img" aria-label="Tree diagram inside the selected group"></svg>
+    </div>
+    <div class="panel">
+      <h3>Nested systems</h3>
+      <p class="sub">Bronfenbrenner's ecological model: close groups sit near you, institutions and culture wrap around them.</p>
+      <svg id="nest" viewBox="0 0 420 360" role="img" aria-label="Nested squares from microsystem to macrosystem"></svg>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Time and energy</h2>
+  <p>How much of your week each role takes, what comes back, and how each one feels.</p>
+  <div class="grid">
+    <div class="panel wide">
+      <h3>Hours per week, by month</h3>
+      <p class="sub">Stacked hours since June. Journal entries with hours add to November.</p>
+      <div style="overflow-x:auto"><svg id="area" viewBox="0 0 640 270" style="min-width:420px" role="img" aria-label="Stacked area chart of weekly hours per group"></svg></div>
+    </div>
+    <div class="panel">
+      <h3>Give and get</h3>
+      <p class="sub">This week's hours flow out to each group. The right side is the support or energy you get back, in hour-equivalents.</p>
+      <svg id="sankey" viewBox="0 0 420 330" role="img" aria-label="Sankey diagram of hours given and support received"></svg>
+    </div>
+    <div class="panel">
+      <h3>Fulfillment by role</h3>
+      <p class="sub">Score out of 10. Journal moods nudge each score up or down.</p>
+      <svg id="radar" viewBox="0 0 420 340" role="img" aria-label="Radar chart of fulfillment per group"></svg>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Feed it from your journal</h2>
+  <p>Tag an entry with a group and a mood. Moods move the fulfillment scores and hours grow the cubes, the stack and the flows. Entries stay in this browser only.</p>
+  <div class="grid">
+    <div class="panel">
+      <h3>New entry</h3>
+      <label for="jt" class="tag">What happened</label>
+      <textarea id="jt" placeholder="Long day at work, missed dinner with family"></textarea>
+      <div class="row">
+        <label for="jg" class="tag">Group</label><select id="jg"></select>
+        <label for="jm" class="tag">Mood</label>
+        <select id="jm"><option value="-2">Drained</option><option value="-1">Low</option><option value="0" selected>Neutral</option><option value="1">Good</option><option value="2">Energized</option></select>
+        <label for="jh" class="tag">Hours</label><input type="number" id="jh" min="0" max="40" step="0.5" value="0" style="width:80px">
+      </div>
+      <div class="row"><button id="jadd">Add entry</button><button id="jclear">Clear entries</button></div>
+      <p class="err" id="jerr" hidden></p>
+    </div>
+    <div class="panel">
+      <h3>Recent entries</h3>
+      <div class="entries" id="jlist"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const G=[
+ {g:"Family",r:"Son, sibling, partner"},
+ {g:"Friends",r:"Confidant"},
+ {g:"Office",r:"Engineer, teammate"},
+ {g:"Community",r:"Neighbor, citizen"},
+ {g:"Hobbies",r:"Creator, player"},
+ {g:"Learning",r:"Student, reader"},
+ {g:"Self",r:"Caretaker of me"}
+];
+const HEX=["#E5484D","#F2762E","#E5A00D","#46A758","#12A594","#3E7BFA","#8E4EC6"];
+G.forEach((o,i)=>o.c=HEX[i]);
+const col=i=>`var(--g${i})`;
+const PEOPLE=[
+ ["Mom",[0]],["Dad",[0]],["Sara",[0]],["Ali",[0,1]],["Nadia",[0]],
+ ["Jen",[2,1]],["Mark",[2]],["Priya",[2,5]],["Lee",[1,4]],["Sam",[1]],
+ ["Tara",[1,3]],["Omar",[3,4]],["Ray",[3]],["Dana",[5]],["Coach Kim",[6,4]]
+];
+const DRILL=[
+ {k:"Family tree",n:[["Parents",["Mom","Dad"]],["Siblings",["Sara","Ali"]],["Partner",["Nadia"]]]},
+ {k:"Circles of closeness",n:[["Close",["Ali","Jen","Lee"]],["Wider",["Sam","Tara"]]]},
+ {k:"Org chart",n:[["Manager",["Mark"]],["Team",["Jen","Priya"]],["Reports",["Intern"]]]},
+ {k:"Local ties",n:[["Neighborhood",["Ray"]],["Volunteer group",["Omar","Tara"]],["Civic",["Town hall"]]]},
+ {k:"Skill tree",n:[["Game dev",["three.js","Shaders"]],["Sports",["Pickup soccer"]],["Play partners",["Lee","Omar"]]]},
+ {k:"Skill tree",n:[["Courses",["Systems design"]],["Reading",["Books queue"]],["Mentors",["Priya","Dana"]]]},
+ {k:"Care map",n:[["Body",["Sleep","Exercise"]],["Mind",["Journal","Coach Kim"]]]}
+];
+const MONTHS=["Jun","Jul","Aug","Sep","Oct","Nov"];
+const BASEH=[[14,12,10,9,10,11],[8,9,6,5,6,7],[40,42,46,48,45,44],[2,3,3,2,4,5],[10,8,6,5,7,9],[5,5,6,7,6,6],[7,6,5,4,6,7]];
+const GET=[9,8,3,3,7,5,8];
+const SAT=[7,8,4,6,8,7,5];
+const T=Array.from({length:7},()=>Array(7).fill(0));
+[[0,1,1],[0,2,-2],[0,3,1],[0,4,-1],[0,6,1],[1,2,1],[1,3,1],[1,4,2],[1,6,1],[2,3,-1],[2,4,-1],[2,5,2],[2,6,-2],[3,4,1],[4,5,1],[4,6,2],[5,6,1]].forEach(([a,b,v])=>{T[a][b]=v;T[b][a]=v});
+const TLAB={"-2":"strong conflict","-1":"some conflict","0":"neutral","1":"some support","2":"strong support"};
+
+let sel=-1, entries=[];
+try{const s=JSON.parse(localStorage.getItem("roleatlas")||"null");if(s){entries=s.entries||[];(s.roles||[]).forEach((r,i)=>{if(G[i]&&r)G[i].r=r})}}catch(e){}
+function persist(){try{localStorage.setItem("roleatlas",JSON.stringify({entries,roles:G.map(o=>o.r)}))}catch(e){}}
+
+const hours=()=>BASEH.map((a,i)=>{const extra=entries.filter(e=>e.g===i).reduce((s,e)=>s+(+e.h||0),0);return a.map((v,k)=>k===a.length-1?v+extra:v)});
+const sat=()=>SAT.map((v,i)=>{const m=entries.filter(e=>e.g===i).reduce((s,e)=>s+(+e.m),0);return Math.max(1,Math.min(10,v+m*0.5))});
+const op=i=>sel<0||sel===i?1:0.18;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const bar=document.getElementById("bar");
+G.forEach((o,i)=>{const b=document.createElement("button");b.className="chip";b.dataset.g=i;b.setAttribute("aria-pressed","false");b.innerHTML=`<i style="background:${col(i)}"></i>${o.g}`;bar.appendChild(b)});
+document.addEventListener("click",e=>{const t=e.target.closest("[data-g]");if(t&&!t.closest("#cube"))pick(+t.dataset.g)});
+function pick(i){sel=sel===i?-1:i;renderAll()}
+
+function renderBar(){[...bar.querySelectorAll(".chip")].forEach((b,i)=>{b.setAttribute("aria-pressed",String(sel===i));b.classList.toggle("dim",sel>=0&&sel!==i)})}
+
+function renderInfo(){
+ const H=hours();
+ document.getElementById("ig").textContent=sel<0?"No group selected":G[sel].g;
+ document.getElementById("ir").textContent=sel<0?"Where the cubes overlap is where you are":G[sel].r;
+ document.getElementById("ih").innerHTML=sel<0?"Drag to rotate. Click a cube or a chip to focus it.":`<span class="num">${H[sel][5]}</span> h/week · fulfillment <span class="num">${sat()[sel].toFixed(1)}</span>/10 · ${PEOPLE.filter(p=>p[1].includes(sel)).length} people`;
+}
+document.getElementById("save").onclick=()=>{const v=document.getElementById("ri").value.trim(),er=document.getElementById("rerr");
+ if(sel<0){er.textContent="Pick a group first";er.hidden=false;return}
+ if(!v){er.textContent="Enter a role first";er.hidden=false;return}
+ G[sel].r=v;document.getElementById("ri").value="";persist();renderAll()};
+document.getElementById("ri").oninput=()=>document.getElementById("rerr").hidden=true;
+
+/* Venn */
+const VS=["va","vb","vc"].map(id=>document.getElementById(id));
+VS.forEach((s,k)=>{G.forEach((o,i)=>{const op=document.createElement("option");op.value=i;op.textContent=o.g;s.appendChild(op)});s.value=k;s.onchange=renderVenn});
+function renderVenn(){
+ const ids=VS.map(s=>+s.value);
+ const C=[[150,120],[250,120],[200,205]],R=88;
+ const pos={1:[112,100],2:[288,100],4:[200,262],3:[200,92],5:[152,184],6:[248,184],7:[200,150]};
+ const buckets={};let outside=0;
+ PEOPLE.forEach(([n,gs])=>{let m=0;ids.forEach((g,k)=>{if(gs.includes(g))m|=1<<k});if(m)(buckets[m]=buckets[m]||[]).push(n);else outside++});
+ let s="";
+ ids.forEach((g,k)=>{const [x,y]=C[k];const a=sel<0||sel===g?1:0.25;s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="${col(g)}" fill-opacity="${0.16*a+0.04}" stroke="${col(g)}" stroke-width="2" stroke-opacity="${a}" data-g="${g}" style="cursor:pointer"/>`});
+ const lp=[[70,22,"start"],[330,22,"end"],[200,304,"middle"]];
+ ids.forEach((g,k)=>{s+=`<text x="${lp[k][0]}" y="${lp[k][1]}" text-anchor="${lp[k][2]}" font-size="13" font-weight="500" fill="${col(g)}" class="svgtxt">${G[g].g}</text>`});
+ Object.entries(buckets).forEach(([m,names])=>{const [x,y]=pos[m];const h=names.length*14;names.forEach((n,j)=>{s+=`<text x="${x}" y="${y-h/2+10+j*14}" text-anchor="middle" font-size="11.5" fill="var(--fg)" class="svgtxt" pointer-events="none">${esc(n)}</text>`})});
+ if(new Set(ids).size<3)s+=`<text x="200" y="150" text-anchor="middle" font-size="12" fill="var(--muted)">Pick three different groups</text>`;
+ s+=`<text x="398" y="304" text-anchor="end" font-size="11" fill="var(--muted)" class="svgtxt">${outside} people outside these three</text>`;
+ document.getElementById("venn").innerHTML=s;
+}
+
+/* Network */
+function renderNet(){
+ const cx=210,cy=180,R=125;
+ const gp=G.map((_,i)=>{const a=-Math.PI/2+i*2*Math.PI/7;return[cx+R*Math.cos(a),cy+R*Math.sin(a)]});
+ let edges="",nodes="",labels="";
+ PEOPLE.forEach(([n,gs],k)=>{
+  let x=gs.reduce((s,g)=>s+gp[g][0],0)/gs.length,y=gs.reduce((s,g)=>s+gp[g][1],0)/gs.length;
+  const a=k*2.4;
+  if(gs.length===1){const dx=x-cx,dy=y-cy;x+=dx*0.42+Math.cos(a)*22;y+=dy*0.42+Math.sin(a)*22}else{x=x*0.85+cx*0.15+Math.cos(a)*8;y=y*0.85+cy*0.15+Math.sin(a)*8}
+  const on=sel<0||gs.includes(sel)?1:0.15;
+  gs.forEach(g=>{edges+=`<line x1="${x}" y1="${y}" x2="${gp[g][0]}" y2="${gp[g][1]}" stroke="${col(g)}" stroke-width="${gs.length>1?1.8:1}" stroke-opacity="${on*0.75}"/>`});
+  nodes+=`<circle cx="${x}" cy="${y}" r="${gs.length>1?6:4.5}" fill="var(--panel)" stroke="var(--fg)" stroke-width="${gs.length>1?2:1.2}" opacity="${on}"/>`;
+  labels+=`<text x="${x}" y="${y-9}" text-anchor="middle" font-size="10.5" fill="var(--fg)" opacity="${on}" class="svgtxt" pointer-events="none">${esc(n)}</text>`;
+ });
+ G.forEach((o,i)=>{const [x,y]=gp[i];nodes+=`<g data-g="${i}" style="cursor:pointer" opacity="${op(i)}"><circle cx="${x}" cy="${y}" r="17" fill="${col(i)}"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="500" fill="#fff" class="svgtxt">${o.g.slice(0,3)}</text></g>`});
+ document.getElementById("net").innerHTML=edges+nodes+labels;
+}
+
+/* Tension matrix */
+function renderMat(){
+ const x0=110,y0=20,c=40;let s="";
+ G.forEach((o,i)=>{
+  s+=`<text x="${x0-10}" y="${y0+i*c+c/2+4}" text-anchor="end" font-size="12" fill="var(--fg)" opacity="${op(i)}" class="svgtxt" data-g="${i}" style="cursor:pointer">${o.g}</text>`;
+  s+=`<circle cx="${x0-4}" cy="${y0+i*c+c/2}" r="0"/>`;
+  s+=`<text x="${x0+i*c+c/2}" y="${y0+7*c+16}" text-anchor="middle" font-size="11" fill="var(--fg)" opacity="${op(i)}" class="svgtxt">${o.g.slice(0,3)}</text>`;
+ });
+ for(let i=0;i<7;i++)for(let j=0;j<7;j++){
+  const v=T[i][j],x=x0+j*c,y=y0+i*c,hot=sel<0||sel===i||sel===j;
+  if(i===j){s+=`<rect x="${x+2}" y="${y+2}" width="${c-4}" height="${c-4}" rx="5" fill="${col(i)}" opacity="${hot?0.85:0.2}"/>`;continue}
+  const f=v>0?"var(--good)":v<0?"var(--bad)":"var(--soft)";const a=v===0?1:Math.abs(v)*0.38+0.14;
+  s+=`<rect x="${x+2}" y="${y+2}" width="${c-4}" height="${c-4}" rx="5" fill="${f}" fill-opacity="${a*(hot?1:0.3)}" stroke="var(--line)" data-cell="${i},${j}" style="cursor:pointer"><title>${G[i].g} and ${G[j].g}: ${TLAB[v]}</title></rect>`;
+  s+=`<text x="${x+c/2}" y="${y+c/2+4}" text-anchor="middle" font-size="11" fill="var(--fg)" opacity="${hot?1:0.3}" class="num" pointer-events="none">${v>0?"+"+v:v}</text>`;
+ }
+ const lx=x0+7*c+30;
+ s+=`<text x="${lx}" y="${y0+12}" font-size="12" font-weight="500" fill="var(--fg)" class="svgtxt">Scale</text>`;
+ [2,1,0,-1,-2].forEach((v,k)=>{const f=v>0?"var(--good)":v<0?"var(--bad)":"var(--soft)";const a=v===0?1:Math.abs(v)*0.38+0.14;s+=`<rect x="${lx}" y="${y0+24+k*24}" width="18" height="18" rx="4" fill="${f}" fill-opacity="${a}" stroke="var(--line)"/><text x="${lx+26}" y="${y0+37+k*24}" font-size="11.5" fill="var(--muted)" class="svgtxt">${TLAB[v]}</text>`});
+ document.getElementById("mat").innerHTML=s;
+}
+document.getElementById("mat").addEventListener("click",e=>{const r=e.target.closest("[data-cell]");if(!r)return;const [i,j]=r.dataset.cell.split(",").map(Number);let v=T[i][j]+1;if(v>2)v=-2;T[i][j]=T[j][i]=v;document.getElementById("matnote").textContent=`${G[i].g} and ${G[j].g}: ${TLAB[v]}`;renderMat()});
+
+/* Drill-down */
+function renderDrill(){
+ const i=sel<0?0:sel,d=DRILL[i];
+ document.getElementById("drillt").textContent=`Inside ${G[i].g}`;
+ document.getElementById("drills").textContent=sel<0?`Showing Family as a start. Pick a group to open its ${"diagram"}.`:`${d.k} for ${G[i].g}.`;
+ const leaves=d.n.reduce((s,b)=>s+b[1].length,0),H=300,step=Math.min(44,(H-30)/leaves);
+ let y=(H-step*leaves)/2+step/2,s="",rx=50,ry=H/2;
+ d.n.forEach(([b,ls])=>{
+  const by=y+(ls.length-1)*step/2;
+  s+=`<path d="M${rx+38},${ry} C${rx+80},${ry} ${150},${by} ${178},${by}" fill="none" stroke="${col(i)}" stroke-width="2"/>`;
+  ls.forEach((l,k)=>{const ly=y+k*step;s+=`<path d="M${250},${by} C${275},${by} ${280},${ly} ${300},${ly}" fill="none" stroke="var(--line)" stroke-width="1.5"/><circle cx="${304}" cy="${ly}" r="4" fill="${col(i)}"/><text x="${314}" y="${ly+4}" font-size="12" fill="var(--fg)" class="svgtxt">${esc(l)}</text>`});
+  s+=`<rect x="178" y="${by-14}" width="72" height="28" rx="7" fill="var(--soft)" stroke="${col(i)}"/><text x="214" y="${by+4}" text-anchor="middle" font-size="11.5" fill="var(--fg)" class="svgtxt">${esc(b)}</text>`;
+  y+=ls.length*step;
+ });
+ s+=`<rect x="${rx-40}" y="${ry-18}" width="80" height="36" rx="9" fill="${col(i)}"/><text x="${rx}" y="${ry+5}" text-anchor="middle" font-size="13" font-weight="500" fill="#fff" class="svgtxt">${G[i].g}</text>`;
+ document.getElementById("drill").innerHTML=s;
+}
+
+/* Nested systems */
+function renderNest(){
+ const cx=210,cy=182;let s="";
+ const shells=[[200,"Macrosystem · culture, economy, policy"],[150,"Exosystem · institutions"],[100,"Mesosystem · links between close groups"],[58,"Microsystem"]];
+ shells.forEach(([h,l],k)=>{s+=`<rect x="${cx-h}" y="${cy-h*0.86}" width="${h*2}" height="${h*1.72}" rx="${14-k*2}" fill="var(--soft)" fill-opacity="${0.35+k*0.2}" stroke="var(--line)"/><text x="${cx-h+10}" y="${cy-h*0.86+16}" font-size="11" fill="var(--muted)" class="svgtxt">${l}</text>`});
+ const micro=[[0,-36,-6],[1,36,-6],[2,-34,30],[4,34,30],[6,0,-34]];
+ const pts={};micro.forEach(([g,dx,dy])=>pts[g]=[cx+dx*1.25,cy+dy*1.05]);
+ [[0,1],[1,4],[0,2],[2,4],[2,6],[0,6]].forEach(([a,b])=>{const on=sel<0||sel===a||sel===b?0.7:0.12;s+=`<line x1="${pts[a][0]}" y1="${pts[a][1]}" x2="${pts[b][0]}" y2="${pts[b][1]}" stroke="var(--muted)" stroke-dasharray="3 3" stroke-opacity="${on}"/>`});
+ micro.forEach(([g])=>{const [x,y]=pts[g];s+=`<g data-g="${g}" style="cursor:pointer" opacity="${op(g)}"><circle cx="${x}" cy="${y}" r="13" fill="${col(g)}"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="9.5" font-weight="500" fill="#fff" class="svgtxt">${G[g].g.slice(0,3)}</text></g>`});
+ s+=`<circle cx="${cx}" cy="${cy+12}" r="10" fill="var(--fg)"/><text x="${cx}" y="${cy+15.5}" text-anchor="middle" font-size="9" fill="var(--panel)" class="svgtxt">You</text>`;
+ [[3,-118,40],[5,118,40]].forEach(([g,dx,dy])=>{const x=cx+dx,y=cy+dy;s+=`<g data-g="${g}" style="cursor:pointer" opacity="${op(g)}"><circle cx="${x}" cy="${y}" r="16" fill="${col(g)}"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" class="svgtxt">${G[g].g.slice(0,3)}</text></g>`});
+ [["Workplace norms",-120,138],["Cost of living",0,152],["Local policy",120,138]].forEach(([t,dx,dy])=>{s+=`<text x="${cx+dx}" y="${cy+dy}" text-anchor="middle" font-size="11" fill="var(--muted)" class="svgtxt">${t}</text>`});
+ document.getElementById("nest").innerHTML=s;
+}
+
+/* Stacked area */
+function renderArea(){
+ const H=hours(),W=640,Ht=270,L=46,Rr=110,Tp=14,B=34,pw=W-L-Rr,ph=Ht-Tp-B;
+ const tot=MONTHS.map((_,k)=>H.reduce((s,a)=>s+a[k],0)),max=Math.ceil(Math.max(...tot)/20)*20;
+ const X=k=>L+k*pw/(MONTHS.length-1),Y=v=>Tp+ph-v/max*ph;
+ let s="";
+ for(let v=0;v<=max;v+=20){s+=`<line x1="${L}" x2="${L+pw}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" class="num">${v}</text>`}
+ s+=`<text x="${L}" y="${Tp-2}" font-size="11" fill="var(--muted)" class="svgtxt">hours / week</text>`;
+ const base=MONTHS.map(()=>0);
+ H.forEach((a,i)=>{
+  const top=a.map((v,k)=>base[k]+v);
+  const d="M"+top.map((v,k)=>`${X(k)},${Y(v)}`).join(" L")+" L"+base.map((v,k)=>`${X(k)},${Y(v)}`).reverse().join(" L")+"Z";
+  s+=`<path d="${d}" fill="${col(i)}" fill-opacity="${sel<0?0.78:sel===i?0.95:0.15}" stroke="var(--panel)" stroke-width="1" data-g="${i}" style="cursor:pointer"><title>${G[i].g}: ${a.join(", ")} h/week</title></path>`;
+  const mid=(top[5]+base[5])/2;
+  s+=`<text x="${L+pw+8}" y="${Y(mid)+4}" font-size="11.5" fill="var(--fg)" opacity="${op(i)}" class="svgtxt">${G[i].g} <tspan class="num" fill="var(--muted)">${a[5]}</tspan></text>`;
+  top.forEach((v,k)=>base[k]=v);
+ });
+ MONTHS.forEach((m,k)=>{s+=`<text x="${X(k)}" y="${Tp+ph+20}" text-anchor="middle" font-size="11.5" fill="var(--muted)" class="svgtxt">${m}</text>`});
+ document.getElementById("area").innerHTML=s;
+}
+
+/* Sankey */
+function renderSankey(){
+ const H=hours().map(a=>a[5]),tot=H.reduce((a,b)=>a+b,0),gt=GET.reduce((a,b)=>a+b,0);
+ const top=20,avail=290,gap=6,k=(avail-gap*6)/tot;
+ const lx=24,mx=180,rx=370,nw=14;
+ let s="",yL=top+(avail-tot*k)/2-((avail-tot*k)/2),yM=top,yR=top+(avail-gt*k*1.6)/2;
+ s+=`<rect x="${lx}" y="${top}" width="${nw}" height="${tot*k}" fill="var(--fg)" rx="3"/><text x="${lx}" y="${top-6}" font-size="11.5" fill="var(--fg)" class="svgtxt">You · <tspan class="num">${tot}</tspan> h</text>`;
+ const rH=gt*k*1.6;
+ s+=`<rect x="${rx}" y="${yR}" width="${nw}" height="${rH}" fill="var(--fg)" rx="3"/><text x="${rx+nw}" y="${yR-6}" text-anchor="end" font-size="11.5" fill="var(--fg)" class="svgtxt">Back · <tspan class="num">${gt}</tspan></text>`;
+ let yl=top,yr=yR;
+ H.forEach((h,i)=>{
+  const t=h*k,g=GET[i]*k*1.6,o=sel<0?0.55:sel===i?0.8:0.08;
+  const ym=yM;
+  s+=`<path d="M${lx+nw},${yl} C${(lx+mx)/2},${yl} ${(lx+mx)/2},${ym} ${mx},${ym} L${mx},${ym+t} C${(lx+mx)/2},${ym+t} ${(lx+mx)/2},${yl+t} ${lx+nw},${yl+t}Z" fill="${col(i)}" fill-opacity="${o}" data-g="${i}" style="cursor:pointer"><title>${G[i].g}: ${h} h/week</title></path>`;
+  const gm=ym+(t-g)/2;
+  s+=`<path d="M${mx+nw},${gm} C${(mx+rx)/2+10},${gm} ${(mx+rx)/2},${yr} ${rx},${yr} L${rx},${yr+g} C${(mx+rx)/2},${yr+g} ${(mx+rx)/2+10},${gm+g} ${mx+nw},${gm+g}Z" fill="${col(i)}" fill-opacity="${o}" data-g="${i}" style="cursor:pointer"><title>${G[i].g}: ${GET[i]} back</title></path>`;
+  s+=`<rect x="${mx}" y="${ym}" width="${nw}" height="${Math.max(t,2)}" fill="${col(i)}" rx="2" opacity="${op(i)}"/>`;
+  s+=`<text x="${mx+nw+6}" y="${ym+Math.max(t,10)/2+4}" font-size="11" fill="var(--fg)" opacity="${op(i)}" class="svgtxt">${G[i].g} <tspan class="num" fill="var(--muted)">${h}→${GET[i]}</tspan></text>`;
+  yl+=t;yM+=t+gap;yr+=g;
+ });
+ document.getElementById("sankey").innerHTML=s;
+}
+
+/* Radar */
+function renderRadar(){
+ const S=sat(),cx=210,cy=172,R=118;
+ const P=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/7;return[cx+R*v/10*Math.cos(a),cy+R*v/10*Math.sin(a)]};
+ let s="";
+ [2,4,6,8,10].forEach(v=>{s+=`<polygon points="${G.map((_,i)=>P(i,v).join(",")).join(" ")}" fill="none" stroke="var(--line)"/>`});
+ s+=`<text x="${cx+4}" y="${cy-R-4}" font-size="10" fill="var(--muted)" class="num">10</text><text x="${cx+4}" y="${cy-R*0.5+4}" font-size="10" fill="var(--muted)" class="num">5</text>`;
+ G.forEach((o,i)=>{const [x,y]=P(i,10);s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`;const [lx,ly]=P(i,12.2);s+=`<text x="${lx}" y="${ly+4}" text-anchor="middle" font-size="12" fill="${col(i)}" font-weight="500" opacity="${op(i)}" class="svgtxt" data-g="${i}" style="cursor:pointer">${o.g}</text>`});
+ s+=`<polygon points="${S.map((v,i)=>P(i,v).join(",")).join(" ")}" fill="var(--g5)" fill-opacity="0.14" stroke="var(--fg)" stroke-width="1.5"/>`;
+ S.forEach((v,i)=>{const [x,y]=P(i,v);s+=`<circle cx="${x}" cy="${y}" r="${sel===i?7:5}" fill="${col(i)}" stroke="var(--panel)" stroke-width="2" opacity="${op(i)}" data-g="${i}" style="cursor:pointer"><title>${G[i].g}: ${v.toFixed(1)}</title></circle>`});
+ if(sel>=0){const [x,y]=P(sel,S[sel]);s+=`<text x="${x+10}" y="${y-8}" font-size="12" fill="var(--fg)" class="num">${S[sel].toFixed(1)}</text>`}
+ document.getElementById("radar").innerHTML=s;
+}
+
+/* Journal */
+const jg=document.getElementById("jg");G.forEach((o,i)=>{const op=document.createElement("option");op.value=i;op.textContent=o.g;jg.appendChild(op)});
+const MOOD={"-2":"Drained","-1":"Low","0":"Neutral","1":"Good","2":"Energized"};
+function renderJournal(){
+ if(sel>=0)jg.value=sel;
+ const list=document.getElementById("jlist");
+ if(!entries.length){list.innerHTML=`<p class="note">No entries yet. Add one to see the scores, cubes and flows shift.</p>`;return}
+ list.innerHTML=entries.slice().reverse().map(e=>`<div class="entry" style="border-left-color:${col(e.g)};opacity:${op(e.g)}"><b>${G[e.g].g}</b> · ${MOOD[e.m]}${+e.h?` · <span class="num">${e.h}</span> h`:""}<br>${esc(e.t)}</div>`).join("");
+}
+document.getElementById("jadd").onclick=()=>{const t=document.getElementById("jt").value.trim(),er=document.getElementById("jerr"),h=+document.getElementById("jh").value||0;
+ if(!t){er.textContent="Write a line about what happened first";er.hidden=false;return}
+ if(h<0||h>40){er.textContent="Hours must be between 0 and 40";er.hidden=false;return}
+ entries.push({t,g:+jg.value,m:+document.getElementById("jm").value,h});document.getElementById("jt").value="";document.getElementById("jh").value=0;persist();renderAll()};
+document.getElementById("jt").oninput=()=>document.getElementById("jerr").hidden=true;
+document.getElementById("jclear").onclick=()=>{entries=[];persist();renderAll()};
+
+/* Cubes */
+const cube={};
+(function initCube(){
+ const wrap=document.getElementById("cube");
+ if(!window.THREE){wrap.innerHTML='<p class="note" style="padding:16px">The 3D view could not load.</p>';return}
+ const R=new THREE.WebGLRenderer({antialias:true,alpha:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.setClearColor(0,0);wrap.appendChild(R.domElement);
+ const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,1,0.1,100);cam.position.set(0,0,10);
+ const root=new THREE.Group();root.rotation.set(-0.4,0.6,0);scene.add(root);
+ function label(text,bg){const cv=document.createElement("canvas"),x=cv.getContext("2d");cv.width=256;cv.height=72;x.fillStyle=bg;x.beginPath();if(x.roundRect)x.roundRect(4,4,248,64,30);else x.rect(4,4,248,64);x.fill();x.fillStyle="#fff";x.font='500 32px "IBM Plex Sans", sans-serif';x.textAlign="center";x.textBaseline="middle";x.fillText(text,128,39);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true}));sp.scale.set(1.1,0.31,1);sp.renderOrder=10;return sp}
+ const dirs=G.map((_,i)=>{const y=1-(i/6)*2,rr=Math.sqrt(1-y*y),t=i*2.39996;return new THREE.Vector3(Math.cos(t)*rr,y,Math.sin(t)*rr)});
+ const geo=new THREE.BoxGeometry(1,1,1),eg=new THREE.EdgesGeometry(geo);
+ cube.items=G.map((o,i)=>{const grp=new THREE.Group(),box=new THREE.Group();
+  const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:o.c,transparent:true,opacity:0.16,depthWrite:false,side:THREE.DoubleSide}));
+  const e=new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:o.c,transparent:true,opacity:0.95}));
+  m.userData.i=i;box.add(m,e);const lb=label(o.g,o.c);grp.add(box,lb);root.add(grp);return{grp,box,m,e,lb}});
+ const coreMat=new THREE.MeshBasicMaterial({color:0x1a1c23,transparent:true,opacity:0.9});
+ root.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5),coreMat));
+ let spread=0.45,spin=true,drag=false,moved=false,px=0,py=0;
+ cube.update=()=>{const H=hours();const dist=0.2+spread*1.7;
+  cube.items.forEach((c,i)=>{const s=1.1+Math.sqrt(H[i][5])*0.2;c.box.scale.setScalar(s);c.grp.position.copy(dirs[i]).multiplyScalar(dist);c.lb.position.set(0,s/2+0.25,0);
+   c.m.material.opacity=sel<0?0.16:(sel===i?0.42:0.04);c.e.material.opacity=sel<0||sel===i?0.95:0.15;c.lb.material.opacity=sel<0||sel===i?1:0.25});
+  coreMat.color.set(getComputedStyle(document.documentElement).getPropertyValue("--fg").trim()||"#1a1c23")};
+ function size(){const w=wrap.clientWidth,h=wrap.clientHeight;R.setSize(w,h);cam.aspect=w/h;cam.position.z=w<500?13:10;cam.updateProjectionMatrix()}
+ size();addEventListener("resize",size);
+ document.getElementById("spread").oninput=e=>{spread=e.target.value/100;cube.update()};
+ const sb=document.getElementById("spin");sb.onclick=()=>{spin=!spin;sb.textContent=spin?"Pause spin":"Resume spin"};
+ if(matchMedia("(prefers-reduced-motion: reduce)").matches){spin=false;sb.textContent="Resume spin"}
+ wrap.addEventListener("pointerdown",e=>{drag=true;moved=false;px=e.clientX;py=e.clientY;wrap.style.cursor="grabbing"});
+ addEventListener("pointermove",e=>{if(!drag)return;const dx=e.clientX-px,dy=e.clientY-py;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;root.rotation.y+=dx*0.01;root.rotation.x=Math.max(-1.4,Math.min(1.4,root.rotation.x+dy*0.01));px=e.clientX;py=e.clientY});
+ addEventListener("pointerup",()=>{drag=false;wrap.style.cursor="grab"});
+ const ray=new THREE.Raycaster(),mv=new THREE.Vector2();
+ wrap.addEventListener("click",e=>{if(moved)return;const b=wrap.getBoundingClientRect();mv.set(((e.clientX-b.left)/b.width)*2-1,-((e.clientY-b.top)/b.height)*2+1);ray.setFromCamera(mv,cam);const hit=ray.intersectObjects(cube.items.map(c=>c.m));if(hit.length)pick(hit[0].object.userData.i);else if(sel>=0)pick(sel)});
+ matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>cube.update());
+ (function loop(){if(spin&&!drag)root.rotation.y+=0.003;R.render(scene,cam);requestAnimationFrame(loop)})();
+})();
+
+function renderAll(){renderBar();renderInfo();renderVenn();renderNet();renderMat();renderDrill();renderNest();renderArea();renderSankey();renderRadar();renderJournal();cube.update&&cube.update()}
+renderAll();
+</script>
+
+</body></html>

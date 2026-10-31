@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Optimized WebGPU Transmission Eye</title>
+<style>
+  html,body{
+    margin:0;width:100%;height:100%;overflow:hidden;
+    background:#7b7d80;
+  }
+  canvas{display:block;width:100%;height:100%}
+  .hint{
+    position:fixed;left:16px;bottom:14px;z-index:5;
+    color:rgba(255,255,255,.82);
+    font:12px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    text-shadow:0 1px 6px rgba(0,0,0,.25);
+    pointer-events:none;user-select:none;
+  }
+  .tag{
+    position:fixed;right:16px;top:14px;z-index:5;
+    color:rgba(255,255,255,.76);
+    background:rgba(40,42,44,.16);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;padding:6px 10px;
+    font:11px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    backdrop-filter:blur(8px);
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div class="hint">drag to orbit • wheel to zoom</div>
+<div class="tag">optimized WebGPU-style transmission</div>
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.webgpu.js",
+    "three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.webgpu.js",
+    "three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.tsl.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three/webgpu';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { UltraHDRLoader } from 'three/addons/loaders/UltraHDRLoader.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7b7d80);
+
+const camera = new THREE.PerspectiveCamera(43, innerWidth/innerHeight, .1, 100);
+camera.position.set(0,.25,15);
+
+const renderer = new THREE.WebGPURenderer({
+  antialias:true,
+  powerPreference:'high-performance'
+});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+document.body.appendChild(renderer.domElement);
+
+// Same overall strategy as the official WebGPU transmission demo:
+// neutral physical material + transmission + bright HDR environment.
+new UltraHDRLoader()
+  .load(
+    'https://threejs.org/examples/textures/equirectangular/royal_esplanade_2k.hdr.jpg',
+    texture=>{
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      scene.environment = texture;
+    },
+    undefined,
+    ()=>{}
+  );
+
+scene.add(new THREE.HemisphereLight(0xf6fbff,0x4b4c50,1.1));
+
+const key = new THREE.DirectionalLight(0xffffff,3.3);
+key.position.set(-4,6,7);
+scene.add(key);
+
+const rim = new THREE.DirectionalLight(0xeaf8ff,2.2);
+rim.position.set(5,-2,5);
+scene.add(rim);
+
+const root = new THREE.Group();
+root.rotation.z = Math.PI;
+root.rotation.x = -.035;
+scene.add(root);
+
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+function halfWidth(y){
+  const t=THREE.MathUtils.clamp(
+    1-Math.pow(Math.abs(y)/2.52,1.65),
+    0,1
+  );
+  return 5.95*Math.pow(t,.56);
+}
+
+function glassMaterial({
+  color=0xffffff,
+  roughness=.045,
+  transmission=.98,
+  thickness=.42,
+  ior=1.47,
+  env=2.4,
+  attenuation=0xffffff,
+  attenuationDistance=4.0,
+  specular=1.0
+}={}){
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    metalness:0,
+    roughness,
+    ior,
+    thickness,
+    transmission,
+    opacity:1,              // correct for physical transmission
+    transparent:true,
+    specularIntensity:specular,
+    specularColor:new THREE.Color(0xffffff),
+    clearcoat:1,
+    clearcoatRoughness:.018,
+    envMapIntensity:env,
+    attenuationColor:new THREE.Color(attenuation),
+    attenuationDistance,
+    side:THREE.FrontSide,
+    depthWrite:false
+  });
+}
+
+// Deliberately very low-saturation.
+// Almost all of the perceived color now comes from environment reflection.
+const matShell = glassMaterial({
+  color:0xf7f7f7,
+  transmission:.985,
+  roughness:.032,
+  thickness:.34,
+  env:2.8,
+  attenuation:0xf7f7f7,
+  attenuationDistance:6
+});
+
+const matInner = glassMaterial({
+  color:0xf1f0ec,
+  transmission:.98,
+  roughness:.038,
+  thickness:.40,
+  env:2.65,
+  attenuation:0xf5f2ea,
+  attenuationDistance:5
+});
+
+const matIris = glassMaterial({
+  color:0xeef3ef,
+  transmission:.975,
+  roughness:.035,
+  thickness:.43,
+  env:2.75,
+  attenuation:0xe9f1ec,
+  attenuationDistance:4
+});
+
+const matPupil = glassMaterial({
+  color:0xeee9e9,
+  transmission:.95,
+  roughness:.05,
+  thickness:.48,
+  env:2.6,
+  attenuation:0xf0e7e7,
+  attenuationDistance:3
+});
+
+const matLine = glassMaterial({
+  color:0xbfc0c1,
+  transmission:.72,
+  roughness:.075,
+  thickness:.20,
+  env:2.25,
+  attenuation:0xc7c8c9,
+  attenuationDistance:2.2
+});
+
+const matLineLight = glassMaterial({
+  color:0xe7e7e5,
+  transmission:.88,
+  roughness:.048,
+  thickness:.18,
+  env:2.65,
+  attenuation:0xf2f2ef,
+  attenuationDistance:4
+});
+
+// Extremely cheap bead geometry: 20 faces instead of a smooth UV sphere.
+const beadGeo = new THREE.IcosahedronGeometry(1,0);
+
+function makeInstancedBeads(positions,material,baseRadius=.065,jitter=.32,flatten=.92){
+  const mesh = new THREE.InstancedMesh(beadGeo,material,positions.length);
+  const matrix = new THREE.Matrix4();
+  const pos = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+
+  for(let i=0;i<positions.length;i++){
+    pos.copy(positions[i]);
+
+    // tiny non-uniform droplets create more changing specular highlights
+    const r=baseRadius*rand(1-jitter,1+jitter);
+    scale.set(
+      r*rand(.78,1.15),
+      r*rand(.78,1.15),
+      r*flatten*rand(.72,1.10)
+    );
+
+    quat.setFromEuler(new THREE.Euler(
+      rand(-.6,.6),rand(-.6,.6),rand(-.6,.6)
+    ));
+
+    matrix.compose(pos,quat,scale);
+    mesh.setMatrixAt(i,matrix);
+  }
+
+  mesh.instanceMatrix.needsUpdate=true;
+  mesh.frustumCulled=false;
+  root.add(mesh);
+  return mesh;
+}
+
+// ---------- FEWER, LARGER, CLEARER PARTICLES ----------
+// No per-instance animation: huge CPU performance improvement.
+
+const shellPos=[];
+for(let i=0;i<1150;i++){
+  const y=rand(-2.50,2.50);
+  const hw=halfWidth(y);
+  let x=rand(-hw,hw);
+
+  if(Math.random()<.64){
+    const s=Math.random()<.5?-1:1;
+    x=s*rand(hw*.50,hw);
+  }
+
+  shellPos.push(new THREE.Vector3(
+    x,y,rand(-.18,.18)
+  ));
+}
+makeInstancedBeads(shellPos,matShell,.078,.35,.82);
+
+const innerPos=[];
+for(let i=0;i<340;i++){
+  const a=Math.random()*Math.PI*2;
+  const r=Math.sqrt(Math.random());
+  innerPos.push(new THREE.Vector3(
+    Math.cos(a)*r*2.94,
+    Math.sin(a)*r*1.70,
+    .32+rand(-.05,.05)
+  ));
+}
+makeInstancedBeads(innerPos,matInner,.079,.28,.84);
+
+const irisPos=[];
+for(let i=0;i<390;i++){
+  const a=Math.random()*Math.PI*2;
+  const r=Math.sqrt(Math.random());
+  irisPos.push(new THREE.Vector3(
+    Math.cos(a)*r*1.82,
+    Math.sin(a)*r*1.18,
+    .49+rand(-.045,.045)
+  ));
+}
+makeInstancedBeads(irisPos,matIris,.078,.30,.84);
+
+const pupilPos=[];
+for(let i=0;i<125;i++){
+  const a=Math.random()*Math.PI*2;
+  const r=Math.sqrt(Math.random());
+  pupilPos.push(new THREE.Vector3(
+    Math.cos(a)*r*.78,
+    Math.sin(a)*r*.57,
+    .64+rand(-.035,.035)
+  ));
+}
+makeInstancedBeads(pupilPos,matPupil,.080,.25,.84);
+
+// Sparse bright glass catchlights.
+const glintPos=[];
+for(let i=0;i<100;i++){
+  const src=shellPos[(Math.random()*shellPos.length)|0];
+  if(src.y>.0 || Math.random()<.25){
+    glintPos.push(new THREE.Vector3(
+      src.x+rand(-.015,.015),
+      src.y+rand(-.015,.015),
+      src.z+.11
+    ));
+  }
+}
+makeInstancedBeads(glintPos,matLineLight,.038,.25,.72);
+
+// ---------- MERGED TRANSMISSIVE LINEWORK ----------
+// Tubes are merged by material, so all of the detailed drawing costs only
+// two additional draw calls rather than hundreds of bead instances.
+
+function curvePoints(fn,steps=120){
+  const arr=[];
+  for(let i=0;i<=steps;i++) arr.push(fn(i/steps));
+  return arr;
+}
+
+function polylineCurve(points){
+  return new THREE.CatmullRomCurve3(
+    points.map(p=>new THREE.Vector3(p.x,p.y,p.z??.76)),
+    false,
+    'centripetal',
+    .3
+  );
+}
+
+function tubeFromPoints(points,radius=.018,radial=5){
+  const c=polylineCurve(points);
+  const segs=Math.max(8,Math.min(220,points.length*2));
+  return new THREE.TubeGeometry(c,segs,radius,radial,false);
+}
+
+const darkTubeGeos=[];
+const lightTubeGeos=[];
+
+function addTube(points,r=.021,light=false,z=.76){
+  const pts=points.map(p=>new THREE.Vector3(p.x,p.y,p.z??z));
+  const g=tubeFromPoints(pts,r,5);
+  (light?lightTubeGeos:darkTubeGeos).push(g);
+}
+
+// main almond outlines
+addTube(curvePoints(t=>{
+  const x=THREE.MathUtils.lerp(-5.78,5.78,t);
+  const y=1.92*Math.pow(Math.max(0,1-Math.pow(Math.abs(x)/5.78,1.55)),.55);
+  return new THREE.Vector3(x,y,.76);
+},150),.027);
+
+addTube(curvePoints(t=>{
+  const x=THREE.MathUtils.lerp(5.78,-5.78,t);
+  const y=-1.84*Math.pow(Math.max(0,1-Math.pow(Math.abs(x)/5.78,1.55)),.56);
+  return new THREE.Vector3(x,y,.76);
+},150),.027);
+
+// inner eyelid folds
+addTube(curvePoints(t=>{
+  const x=THREE.MathUtils.lerp(-4.4,4.4,t);
+  const y=.90*Math.cos((t-.5)*Math.PI)+.38;
+  return new THREE.Vector3(x,y,.80);
+},100),.015);
+
+addTube(curvePoints(t=>{
+  const x=THREE.MathUtils.lerp(-4.2,4.2,t);
+  const y=-.82*Math.cos((t-.5)*Math.PI)-.31;
+  return new THREE.Vector3(x,y,.80);
+},100),.015);
+
+// inner eye / iris / pupil
+for(const [rx,ry,z,r] of [
+  [2.95,1.70,.87,.021],
+  [1.83,1.19,.91,.022],
+  [1.69,1.06,.92,.012],
+  [.79,.58,.95,.021]
+]){
+  addTube(curvePoints(t=>{
+    const a=t*Math.PI*2;
+    return new THREE.Vector3(Math.cos(a)*rx,Math.sin(a)*ry,z);
+  },120),r);
+}
+
+// pupil spiral
+const spiral=[];
+for(let i=0;i<=100;i++){
+  const t=i/100;
+  const a=t*Math.PI*5.4;
+  const r=.02+t*.46;
+  spiral.push(new THREE.Vector3(
+    Math.cos(a)*r,
+    Math.sin(a)*r*.67,
+    .98
+  ));
+}
+addTube(spiral,.015);
+
+// lashes / crown
+const lashes=[
+  [[-5.25,.50],[-6.30,1.17],[-6.95,1.50]],
+  [[-4.18,1.18],[-4.88,2.27],[-4.55,2.68]],
+  [[-2.43,1.70],[-3.03,3.02],[-2.68,3.42]],
+  [[0,1.92],[0,3.56]],
+  [[2.43,1.70],[3.03,3.02],[2.68,3.42]],
+  [[4.18,1.18],[4.88,2.27],[4.55,2.68]],
+  [[5.25,.50],[6.30,1.17],[6.95,1.50]]
+];
+for(const arr of lashes){
+  addTube(arr.map(([x,y])=>new THREE.Vector3(x,y,.75)),.026);
+}
+
+// small hand-drawn detail strokes
+const accents=[
+  [[-4.1,.96],[-3.55,.72],[-3.08,.62]],
+  [[-3.9,.54],[-3.25,.37],[-2.76,.30]],
+  [[3.02,.73],[3.52,.80],[4.0,1.01]],
+  [[3.15,.43],[3.58,.49],[3.96,.64]],
+  [[2.63,-.93],[3.15,-1.16],[3.76,-1.09]],
+  [[-3.74,-1.09],[-3.14,-1.23],[-2.69,-1.09]]
+];
+for(const a of accents){
+  addTube(a.map(([x,y])=>new THREE.Vector3(x,y,.94)),.010);
+}
+
+// radial iris hatching
+for(let i=0;i<28;i++){
+  const a=(i/28)*Math.PI*2;
+  const x=Math.cos(a)*1.88;
+  const y=Math.sin(a)*1.22;
+  const L=rand(.10,.19);
+
+  addTube([
+    new THREE.Vector3(x,y,.94),
+    new THREE.Vector3(
+      x+Math.cos(a)*L,
+      y+Math.sin(a)*L*.72,
+      .94
+    )
+  ],.008);
+}
+
+// glossy catchlight arcs
+addTube(curvePoints(t=>{
+  const a=THREE.MathUtils.lerp(.20,.75,t);
+  return new THREE.Vector3(
+    Math.cos(a)*1.43-.06,
+    Math.sin(a)*.83+.08,
+    1.03
+  );
+},40),.020,true);
+
+addTube(curvePoints(t=>{
+  const a=THREE.MathUtils.lerp(3.55,3.95,t);
+  return new THREE.Vector3(
+    Math.cos(a)*2.48,
+    Math.sin(a)*1.35,
+    1.00
+  );
+},34),.017,true);
+
+// merge geometry => very low draw-call count
+if(darkTubeGeos.length){
+  const merged=BufferGeometryUtils.mergeGeometries(darkTubeGeos,false);
+  root.add(new THREE.Mesh(merged,matLine));
+}
+if(lightTubeGeos.length){
+  const merged=BufferGeometryUtils.mergeGeometries(lightTubeGeos,false);
+  root.add(new THREE.Mesh(merged,matLineLight));
+}
+
+// ---------- VERY LIGHT SACRED HALO ----------
+const haloMat = glassMaterial({
+  color:0xf8f8f4,
+  transmission:.90,
+  roughness:.06,
+  thickness:.10,
+  env:2.1,
+  attenuation:0xffffff,
+  attenuationDistance:8
+});
+haloMat.opacity=1;
+
+for(let i=0;i<3;i++){
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(3.35+i*.83,.012,5,100),
+    haloMat
+  );
+  ring.scale.y=.72;
+  ring.position.z=-.72-i*.04;
+  root.add(ring);
+}
+
+// faint physical panel behind the eye gives transmission something
+// neutral to bend, without changing the grey background.
+const backMat = new THREE.MeshStandardMaterial({
+  color:0x919395,
+  roughness:.78,
+  metalness:0
+});
+const panel=new THREE.Mesh(
+  new THREE.PlaneGeometry(18,11),
+  backMat
+);
+panel.position.z=-2.4;
+root.add(panel);
+
+// ---------- CONTROLS / ANIMATION ----------
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=.06;
+controls.minDistance=8;
+controls.maxDistance=24;
+controls.target.set(0,0,0);
+
+const clock=new THREE.Clock();
+
+renderer.setAnimationLoop(()=>{
+  const t=clock.getElapsedTime();
+
+  // Only transform one parent group. No particle CPU updates.
+  root.position.y=Math.sin(t*.32)*.045;
+  root.rotation.y=Math.sin(t*.20)*.035;
+
+  controls.update();
+  renderer.render(scene,camera);
+});
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

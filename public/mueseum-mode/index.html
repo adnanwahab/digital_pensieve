@@ -26,13 +26,38 @@
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
     }
 
-    #stage{position:fixed;inset:0;outline:none}
+    body::before,
+    body::after{
+      content:'';
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:1;
+    }
+
+    /* subtle cinematic grading to get closer to the reference style */
+    body::before{
+      background:
+        radial-gradient(90% 65% at 50% 12%, rgba(255,228,167,.18), transparent 58%),
+        radial-gradient(110% 85% at 50% 105%, rgba(0,0,0,.48), rgba(0,0,0,.62));
+      mix-blend-mode:soft-light;
+      opacity:.75;
+    }
+
+    body::after{
+      background:
+        linear-gradient(110deg, rgba(255,226,164,.12) 12%, transparent 26%),
+        linear-gradient(72deg, rgba(255,214,138,.08) 14%, transparent 28%);
+      opacity:.6;
+    }
+
+    #stage{position:fixed;inset:0;outline:none;z-index:2}
 
     .back{
       position:fixed;
       top:16px;
       left:16px;
-      z-index:10;
+      z-index:12;
       text-decoration:none;
       color:#ececec;
       font-size:13px;
@@ -49,7 +74,7 @@
       left:20px;
       right:20px;
       bottom:16px;
-      z-index:10;
+      z-index:12;
       text-align:left;
       font-size:52px;
       letter-spacing:.01em;
@@ -74,7 +99,7 @@
       pointer-events:none;
       opacity:0;
       transition:opacity .15s ease;
-      z-index:9;
+      z-index:12;
     }
     .crosshair::before,.crosshair::after{
       content:'';
@@ -84,7 +109,7 @@
     }
     .crosshair::before{left:8px;top:0;width:2px;height:18px}
     .crosshair::after{left:0;top:8px;width:18px;height:2px}
-    body.locked:not(.interact-on) .crosshair{opacity:.9}
+    body.locked .crosshair{opacity:.9}
 
     /* Museum geometry is scenery and should never capture pointer events */
     .wall,
@@ -93,6 +118,15 @@
     .frame,
     .frame::before{
       pointer-events:none !important;
+    }
+
+    .wall,
+    .floor,
+    .ceiling{
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+      transform-style:preserve-3d;
+      will-change:transform;
     }
 
     .frame{
@@ -123,7 +157,7 @@
       box-shadow:inset 0 0 0 1px rgba(107,72,15,.6), inset 0 0 18px rgba(71,46,10,.35);
     }
 
-    /* Disabled while walking */
+    /* Paintings are always interactive; the cursor is free whenever you're not looking around */
     .frame iframe{
       width:100%;
       height:100%;
@@ -131,27 +165,132 @@
       display:block;
       background:#090b16;
       box-shadow:0 0 0 1px rgba(255,236,180,.22);
-      pointer-events:none !important;
+      pointer-events:auto !important;
       transform:none;
       will-change:auto;
       backface-visibility:visible;
       -webkit-backface-visibility:visible;
     }
 
-    /* iframe is the only interactive surface in interact mode */
-    body.interact-on .frame{
-      pointer-events:none;
+    .painting-label{
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:4px 10px;
+      font-size:12px;
+      letter-spacing:.03em;
+      color:#efe5cb;
+      background:rgba(22,18,12,.72);
+      border:1px solid rgba(247,219,149,.45);
+      border-radius:6px;
+      text-shadow:0 1px 6px rgba(0,0,0,.75);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      pointer-events:none !important;
+      user-select:none;
     }
-    body.interact-on .frame iframe{
-      pointer-events:auto !important;
+    .ballot{
+      position:fixed;
+      right:16px;
+      top:16px;
+      z-index:12;
+      width:min(360px,calc(100vw - 32px));
+      max-height:calc(100vh - 32px);
+      overflow:auto;
+      background:rgba(12,10,10,.66);
+      border:1px solid rgba(248,224,161,.45);
+      border-radius:10px;
+      padding:12px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      box-shadow:0 12px 28px rgba(0,0,0,.36);
+    }
+    .ballot h2{
+      margin:0 0 8px;
+      font-size:14px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:#f6e2af;
+    }
+    .ballot p{
+      margin:0 0 10px;
+      font-size:12px;
+      color:#e9e2d4;
+      line-height:1.45;
+    }
+    .ballot-row{display:flex;gap:8px;align-items:center}
+    .ballot select,
+    .ballot input,
+    .ballot textarea,
+    .ballot button{
+      width:100%;
+      border:1px solid rgba(255,230,171,.3);
+      background:rgba(28,22,14,.6);
+      color:#f4efe4;
+      border-radius:7px;
+      font:12px/1.35 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      padding:8px;
+    }
+    .ballot button{
+      width:auto;
+      cursor:pointer;
+      background:rgba(129,96,39,.7);
+      font-weight:600;
+      min-width:90px;
+    }
+    .ballot button:hover{background:rgba(149,111,47,.82)}
+    .ballot-stats{font-size:12px;color:#ecdcb8;white-space:nowrap}
+    .ballot textarea{resize:vertical;min-height:74px}
+    .ballot-comments{
+      list-style:none;
+      margin:10px 0 0;
+      padding:0;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height:220px;
+      overflow:auto;
+    }
+    .ballot-comments li{
+      border:1px solid rgba(255,224,160,.22);
+      background:rgba(18,14,8,.5);
+      border-radius:8px;
+      padding:8px;
+    }
+    .ballot-comments .meta{font-size:10px;letter-spacing:.02em;color:#d8c9a7;margin-bottom:4px}
+    .ballot-comments .text{font-size:12px;line-height:1.45;color:#f4efe4;white-space:pre-wrap;word-break:break-word}
+    .ballot-empty{font-size:11px;color:#cfbea0}
+    .ballot-status{min-height:16px;font-size:11px;color:#f1dfb3;margin-top:6px}
+
+    @media (max-width:900px){
+      .ballot{top:62px;max-height:calc(100vh - 78px)}
     }
   </style>
 </head>
 <body>
   <div id="stage" aria-label="Mueseum mode 3D gallery" tabindex="0"></div>
   <a class="back" href="/">← Back to pensieve</a>
-  <div class="controls" id="controlsText">click to lock mouse · WASD move · Shift sprint · Space jump · E toggle interaction mode</div>
+  <div class="controls" id="controlsText">WASD move · Shift sprint · Space jump · hold right-click (or drag empty space) to look · click paintings to interact</div>
   <div class="crosshair" aria-hidden="true"></div>
+
+  <aside class="ballot" aria-label="Open ballot for museum paintings">
+    <h2></h2>Open Ballot</h2>
+    <p>Vote and comment on each artwork.</p>
+    <select id="ballotArtwork" aria-label="Select artwork"></select>
+    <div class="ballot-row" style="margin-top:8px;">
+      <button id="ballotVote" type="button">Vote</button>
+      <span class="ballot-stats" id="ballotVotes">Votes: 0</span>
+    </div>
+    <form id="ballotForm" style="margin-top:10px;">
+      <input id="ballotName" type="text" maxlength="80" placeholder="Your name (optional)" />
+      <textarea id="ballotComment" maxlength="600" required placeholder="Share your thoughts on this artwork"></textarea>
+      <button type="submit">Post comment</button>
+    </form>
+    <div id="ballotStatus" class="ballot-status" aria-live="polite"></div>
+    <ul id="ballotComments" class="ballot-comments"></ul>
+  </aside></p>
 
   <script type="importmap">
     {
@@ -166,7 +305,6 @@
     import { CSS3DRenderer, CSS3DObject } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/renderers/CSS3DRenderer.js';
 
     const stage = document.getElementById('stage');
-    const controlsText = document.getElementById('controlsText');
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 1, 9000);
@@ -193,19 +331,52 @@
       return el;
     }
 
+    const visualizationFiles = await loadVisualizationFiles();
+
     // Multi-room shell
-    const ROOM_COUNT = 3;
+    const PAINTINGS_PER_WALL = 4;
+    const WALLS_PER_ROOM = 2;
+    const ROOM_COUNT = Math.max(1, Math.ceil(visualizationFiles.length / (PAINTINGS_PER_WALL * WALLS_PER_ROOM)));
     const ROOM_WIDTH = 4300;
     const ROOM_DEPTH = 2200;
     const ROOM_FRONT_Z = 900;
     const ROOM_SIDE_X = 2140;
     const DOOR_GAP = 1100;
 
+    // Avoid coplanar/overlapping shell surfaces between adjacent rooms.
+    // CSS3D has no depth buffer, so overlapping planes can create cutout/flicker artifacts.
+    const ROOM_SHELL_WIDTH = ROOM_WIDTH;
+    const ROOM_SHELL_DEPTH = ROOM_DEPTH - 120;
+
+    const WALL_TEXTURE_URL = '/visualizations/Seamless%20Warm%20Plaster%20Wall%20Texture.png';
+
     function wallMaterial(bg){
-      return `background:${bg}; box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);`;
+      return `
+        background:
+          linear-gradient(180deg, rgba(255,245,214,.10) 0%, rgba(0,0,0,.20) 100%),
+          url("${WALL_TEXTURE_URL}"),
+          ${bg};
+        background-size:
+          100% 100%,
+          880px 880px,
+          auto;
+        background-repeat:
+          no-repeat,
+          repeat,
+          no-repeat;
+        background-position:
+          center,
+          center,
+          center;
+        box-shadow:
+          inset 0 0 0 2px rgba(0,0,0,.34),
+          inset 0 140px 220px rgba(255,221,167,.10),
+          inset 0 -220px 260px rgba(0,0,0,.24);
+      `;
     }
 
     const roomMeta = [];
+    const floorPanels = [];
 
     for (let i = 0; i < ROOM_COUNT; i++){
       const frontZ = ROOM_FRONT_Z - i * ROOM_DEPTH;
@@ -213,49 +384,53 @@
       const centerZ = (frontZ + backZ) / 2;
       roomMeta.push({ frontZ, backZ, centerZ });
 
-      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_DEPTH + 120, 2600, wallMaterial('#9f9f9f')));
+      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, 2600, wallMaterial('#3f3b35')));
       sideWallL.position.set(-ROOM_SIDE_X, 310, centerZ);
       sideWallL.rotation.y = Math.PI / 2;
       scene.add(sideWallL);
 
-      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_DEPTH + 120, 2600, wallMaterial('#a0a0a0')));
+      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, 2600, wallMaterial('#443f38')));
       sideWallR.position.set(ROOM_SIDE_X, 310, centerZ);
       sideWallR.rotation.y = -Math.PI / 2;
       scene.add(sideWallR);
 
-      const floor = new CSS3DObject(cssPanel('floor', 4600, ROOM_DEPTH + 160,
+      const floorEl = cssPanel('floor', ROOM_SHELL_WIDTH, ROOM_SHELL_DEPTH,
         'background:' +
         'linear-gradient(90deg, rgba(0,0,0,.26) 2px, transparent 2px) 0 0 / 700px 700px,' +
         'linear-gradient(0deg, rgba(0,0,0,.24) 2px, transparent 2px) 0 0 / 700px 700px,' +
-        '#4a4d50;'));
+        '#4a4d50;');
+      floorPanels.push({ el: floorEl, roomIndex: i });
+      const floor = new CSS3DObject(floorEl);
       floor.position.set(0, -260, centerZ);
       floor.rotation.x = -Math.PI / 2;
       scene.add(floor);
 
-      const ceiling = new CSS3DObject(cssPanel('ceiling', 4600, ROOM_DEPTH + 160,
+      const ceiling = new CSS3DObject(cssPanel('ceiling', ROOM_SHELL_WIDTH, ROOM_SHELL_DEPTH,
         'background:' +
-        'repeating-linear-gradient(90deg,#525252 0 120px,#707070 120px 170px),' +
-        'repeating-linear-gradient(0deg, rgba(0,0,0,.38) 0 120px, rgba(0,0,0,0) 120px 170px),' +
-        '#595959;'));
+        'radial-gradient(ellipse at 50% 10%, rgba(255,231,178,.10), transparent 52%),' +
+        'repeating-linear-gradient(90deg, rgba(33,31,29,.95) 0 150px, rgba(57,54,50,.95) 150px 220px),' +
+        '#2f2c2a;'));
       ceiling.position.set(0, 920, centerZ);
       ceiling.rotation.x = Math.PI / 2;
       scene.add(ceiling);
 
       if (i === ROOM_COUNT - 1){
-        const backWall = new CSS3DObject(cssPanel('wall', ROOM_WIDTH, 2600, wallMaterial('#b4b4b4')));
+        const backWall = new CSS3DObject(cssPanel('wall', ROOM_SHELL_WIDTH, 2600, wallMaterial('#4b463f')));
         backWall.position.set(0, 310, backZ);
         scene.add(backWall);
       } else {
-        const segW = (ROOM_WIDTH - DOOR_GAP) / 2;
-        const leftDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#ababab')));
+        const segW = (ROOM_SHELL_WIDTH - DOOR_GAP) / 2;
+        const leftDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#4a453f')));
         leftDivider.position.set(-(DOOR_GAP / 2 + segW / 2), 310, backZ);
         scene.add(leftDivider);
 
-        const rightDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#ababab')));
+        const rightDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#4a453f')));
         rightDivider.position.set(DOOR_GAP / 2 + segW / 2, 310, backZ);
         scene.add(rightDivider);
       }
     }
+
+
 
     async function loadVisualizationFiles(){
       try {
@@ -298,107 +473,201 @@
       ];
     }
 
-    const visualizationFiles = await loadVisualizationFiles();
-
     const paintings = visualizationFiles.map((file, i) => ({
+      artwork: file,
       src: encodeURI(`/visualizations/${file}`),
       title: `Mueseum painting ${i + 1}: ${file}`
     }));
+
+    const ballotArtworkEl = document.getElementById('ballotArtwork');
+    const ballotVoteEl = document.getElementById('ballotVote');
+    const ballotVotesEl = document.getElementById('ballotVotes');
+    const ballotFormEl = document.getElementById('ballotForm');
+    const ballotNameEl = document.getElementById('ballotName');
+    const ballotCommentEl = document.getElementById('ballotComment');
+    const ballotCommentsEl = document.getElementById('ballotComments');
+    const ballotStatusEl = document.getElementById('ballotStatus');
+
+    let activeBallotArtwork = visualizationFiles[0] || '';
+
+    function setBallotStatus(message){
+      if (!ballotStatusEl) return;
+      ballotStatusEl.textContent = message || '';
+    }
+
+    function formatBallotDate(iso){
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderBallotEntry(entry){
+      if (!ballotVotesEl || !ballotCommentsEl) return;
+      const votes = Number(entry?.votes || 0);
+      const comments = Array.isArray(entry?.comments) ? entry.comments : [];
+
+      ballotVotesEl.textContent = `Votes: ${votes}`;
+      ballotCommentsEl.innerHTML = '';
+
+      if (!comments.length){
+        const li = document.createElement('li');
+        li.className = 'ballot-empty';
+        li.textContent = 'No comments yet. Be the first to leave one.';
+        ballotCommentsEl.appendChild(li);
+        return;
+      }
+
+      comments
+        .slice()
+        .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+        .forEach(comment => {
+          const li = document.createElement('li');
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const author = (comment.author || 'Anonymous').trim() || 'Anonymous';
+          const stamp = formatBallotDate(comment.createdAt);
+          meta.textContent = stamp ? `${author} · ${stamp}` : author;
+
+          const text = document.createElement('div');
+          text.className = 'text';
+          text.textContent = comment.text || '';
+
+          li.appendChild(meta);
+          li.appendChild(text);
+          ballotCommentsEl.appendChild(li);
+        });
+    }
+
+    async function loadBallotEntry(artwork){
+      if (!artwork) {
+        renderBallotEntry({ votes: 0, comments: [] });
+        return;
+      }
+
+      try {
+        const url = `/api/ballot?artwork=${encodeURIComponent(artwork)}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        renderBallotEntry(payload?.entry || { votes: 0, comments: [] });
+      } catch (err) {
+        console.warn('Failed to load ballot entry.', err);
+        setBallotStatus('Could not load votes/comments right now.');
+      }
+    }
+
+    async function submitBallotVote(){
+      if (!activeBallotArtwork) return;
+      setBallotStatus('Submitting vote…');
+      try {
+        const res = await fetch('/api/ballot/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ artwork: activeBallotArtwork })
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+        renderBallotEntry(payload?.entry || { votes: 0, comments: [] });
+        setBallotStatus('Vote recorded.');
+      } catch (err) {
+        console.warn('Failed to submit vote.', err);
+        setBallotStatus('Could not submit vote. Please try again.');
+      }
+    }
+
+    async function submitBallotComment(){
+      if (!activeBallotArtwork || !ballotCommentEl) return;
+      const text = ballotCommentEl.value.trim();
+      if (!text) {
+        setBallotStatus('Please enter a comment before posting.');
+        return;
+      }
+
+      setBallotStatus('Posting comment…');
+      try {
+        const res = await fetch('/api/ballot/comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artwork: activeBallotArtwork,
+            author: ballotNameEl?.value || '',
+            text
+          })
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+        renderBallotEntry(payload?.entry || { votes: 0, comments: [] });
+        ballotCommentEl.value = '';
+        setBallotStatus('Comment posted.');
+      } catch (err) {
+        console.warn('Failed to submit comment.', err);
+        setBallotStatus('Could not post comment. Please try again.');
+      }
+    }
+
+    function initBallot(){
+      if (!ballotArtworkEl) return;
+
+      const options = visualizationFiles.map((file, index) => {
+        const option = document.createElement('option');
+        option.value = file;
+        option.textContent = `${index + 1}. ${file}`;
+        return option;
+      });
+      ballotArtworkEl.replaceChildren(...options);
+
+      if (!activeBallotArtwork && visualizationFiles.length) {
+        activeBallotArtwork = visualizationFiles[0];
+      }
+      ballotArtworkEl.value = activeBallotArtwork;
+
+      ballotArtworkEl.addEventListener('change', () => {
+        activeBallotArtwork = ballotArtworkEl.value;
+        loadBallotEntry(activeBallotArtwork);
+      });
+
+      ballotVoteEl?.addEventListener('click', submitBallotVote);
+
+      ballotFormEl?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitBallotComment();
+      });
+
+      loadBallotEntry(activeBallotArtwork);
+    }
+
+    initBallot();
 
     const FRAME_W = 680;
     const FRAME_H = 430;
     const SURFACE_SPAN = ROOM_DEPTH - 840;
 
     const paintingSurfaces = roomMeta.flatMap(room => ([
-      { count:0, primary:'z', fixed:-2090, ry: Math.PI / 2,  span: SURFACE_SPAN, center: room.centerZ },
-      { count:0, primary:'z', fixed: 2090, ry:-Math.PI / 2,  span: SURFACE_SPAN, center: room.centerZ }
+      { primary:'z', fixed:-2090, ry: Math.PI / 2, center: room.centerZ },
+      { primary:'z', fixed: 2090, ry:-Math.PI / 2, center: room.centerZ }
     ]));
 
-    const basePerSurface = Math.floor(paintings.length / paintingSurfaces.length);
-    const remainder = paintings.length % paintingSurfaces.length;
-    paintingSurfaces.forEach((surface, i) => {
-      surface.count = basePerSurface + (i < remainder ? 1 : 0);
-    });
     const rowYs = [660, 150];
+    const labelRowYs = [410, 390]; // central gap between top and bottom rows
+    const colOffsets = [-SURFACE_SPAN * 0.30, SURFACE_SPAN * 0.30];
 
     const slots = [];
     paintingSurfaces.forEach(surface => {
-      const topCount = Math.ceil(surface.count / 2);
-      const bottomCount = surface.count - topCount;
-      [topCount, bottomCount].forEach((n, row) => {
-        if (!n) return;
-        const vals = n === 1
-          ? [surface.center]
-          : Array.from({length:n}, (_, i) => surface.center - surface.span / 2 + (surface.span * i) / (n - 1));
-        vals.forEach(v => {
-          if (surface.primary === 'x') slots.push({ x:v, y:rowYs[row], z:surface.fixed, ry:surface.ry });
-          else slots.push({ x:surface.fixed, y:rowYs[row], z:v, ry:surface.ry });
+      // 4 paintings per wall: 2 columns x 2 rows
+      rowYs.forEach((rowY, rowIdx) => {
+        colOffsets.forEach(offset => {
+          const v = surface.center + offset;
+          if (surface.primary === 'x') {
+            slots.push({ x:v, y:rowY, z:surface.fixed, ry:surface.ry, labelY:labelRowYs[rowIdx] });
+          } else {
+            slots.push({ x:surface.fixed, y:rowY, z:v, ry:surface.ry, labelY:labelRowYs[rowIdx] });
+          }
         });
       });
     });
 
-    const iframeEntries = [];
-    const preloadFrustum = new THREE.Frustum();
-    const preloadProjectionMatrix = new THREE.Matrix4();
-    const preloadWorldPos = new THREE.Vector3();
-    const preloadBoundsSphere = new THREE.Sphere(new THREE.Vector3(), 430);
-    const PRELOAD_DISTANCE_SQ = 7200 * 7200;
-    const PRELOAD_CHECK_MS = 100;
-    let nextPreloadCheck = 0;
-
-    function mountIframeOnce(entry){
-      if (entry.loaded) return;
-      const iframe = entry.iframe;
-      if (!iframe.dataset.src) return;
-      iframe.src = iframe.dataset.src;
-      iframe.dataset.active = '1';
-      entry.loaded = true;
-    }
-
-    function updateIframePreload(now){
-      if (now < nextPreloadCheck) return;
-      nextPreloadCheck = now + PRELOAD_CHECK_MS;
-
-      camera.updateMatrixWorld(true);
-      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-      preloadProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-      preloadFrustum.setFromProjectionMatrix(preloadProjectionMatrix);
-
-      for (let i = 0; i < iframeEntries.length; i++){
-        const entry = iframeEntries[i];
-        if (entry.loaded) continue;
-
-        entry.object.getWorldPosition(preloadWorldPos);
-        preloadBoundsSphere.center.copy(preloadWorldPos);
-
-        const inFrustum = preloadFrustum.intersectsSphere(preloadBoundsSphere);
-        const nearEnough = camera.position.distanceToSquared(preloadWorldPos) < PRELOAD_DISTANCE_SQ;
-
-        if (inFrustum && nearEnough) mountIframeOnce(entry);
-      }
-    }
-
-    paintings.forEach((painting, i) => {
-      const frameEl = cssPanel('frame', FRAME_W, FRAME_H);
-      const iframe = document.createElement('iframe');
-      iframe.dataset.src = painting.src;
-      iframe.dataset.active = '0';
-      iframe.title = painting.title || `Mueseum painting ${i + 1}`;
-      if (painting.allow) iframe.allow = painting.allow;
-      if (painting.referrerPolicy) iframe.referrerPolicy = painting.referrerPolicy;
-      if (painting.allowFullscreen) iframe.allowFullscreen = true;
-      frameEl.appendChild(iframe);
-
-      const frame = new CSS3DObject(frameEl);
-      const slot = slots[i] || slots[slots.length - 1];
-      frame.position.set(slot.x, slot.y, slot.z);
-      frame.rotation.y = slot.ry;
-      scene.add(frame);
-
-      iframeEntries.push({ el: frameEl, iframe, object: frame, loaded: false });
-    });
-
-    // FPS-style controls (WASD + mouse look + jump), with E interaction toggle
+    // ---------- Shared input state (used by both the gallery and the iframes) ----------
     camera.rotation.order = 'YXZ';
     const keys = {};
     const eyeHeight = 200;
@@ -407,9 +676,9 @@
     let yaw = 0;
     let pitch = -0.06;
     let locked = false;
-    let interactOn = false;
     let grounded = true;
     let bobT = 0;
+    let lookButton = -1; // mouse button currently held for look, -1 = none
 
     const MOUSE_SENS = 0.0022;
     const PITCH_MIN = -1.18;
@@ -425,95 +694,211 @@
     const MOVE_UP = new THREE.Vector3(0, 1, 0);
     const moveLocalTmp = new THREE.Vector3();
 
-    function updateControlsText(){
-      controlsText.textContent = interactOn
-        ? 'INTERACT MODE · click paintings/pages · press E to return to walk mode'
-        : 'WALK MODE · click to lock mouse · WASD move · Shift sprint · Space jump · press E to interact';
+    const MOVE_CODES = new Set([
+      'KeyW','KeyA','KeyS','KeyD',
+      'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+      'ShiftLeft','ShiftRight','Space'
+    ]);
+
+    function isTypingTarget(t){
+      return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''));
     }
 
-    function setInteraction(enabled){
-      interactOn = enabled;
-      document.body.classList.toggle('interact-on', enabled);
+    function onMoveKeyDown(e){
+      if (!MOVE_CODES.has(e.code) || isTypingTarget(e.target)) return;
+      keys[e.code] = true;
+      e.preventDefault();
+      if (e.code === 'Space' && !e.repeat && grounded){
+        vel.y = JUMP_V;
+        grounded = false;
+      }
+    }
 
-      if (enabled) {
-        if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+    function onMoveKeyUp(e){
+      if (MOVE_CODES.has(e.code)) keys[e.code] = false;
+    }
+
+    function clearKeys(){
+      for (const code of MOVE_CODES) keys[code] = false;
+    }
+
+    function requestLock(){
+      const p = renderer.domElement.requestPointerLock?.();
+      if (p && typeof p.catch === 'function') p.catch(() => { lookButton = -1; });
+    }
+
+    function startLook(button){
+      if (locked) return;
+      lookButton = button;
+      requestLock();
+    }
+
+    function endLook(button){
+      if (button !== lookButton) return;
+      lookButton = -1;
+      if (document.pointerLockElement) document.exitPointerLock();
+    }
+
+    // Wire an iframe so movement keys and right-click look keep working while it has focus.
+    // Works because the visualizations are same-origin; cross-origin pages are skipped silently.
+    function hookIframe(iframe){
+      iframe.addEventListener('load', () => {
+        let win, doc;
+        try {
+          win = iframe.contentWindow;
+          doc = win.document;
+        } catch { return; }
+        if (!win || !doc || win.__museumHooked) return;
+        win.__museumHooked = true;
+
+        win.addEventListener('keydown', onMoveKeyDown, true);
+        win.addEventListener('keyup', onMoveKeyUp, true);
+        doc.addEventListener('mousedown', e => {
+          if (e.button === 2){ e.preventDefault(); startLook(2); }
+        }, true);
+        doc.addEventListener('mouseup', e => endLook(e.button), true);
+        doc.addEventListener('contextmenu', e => e.preventDefault(), true);
+      });
+    }
+
+    // ---------- Paintings ----------
+    const iframeEntries = [];
+    const preloadFrustum = new THREE.Frustum();
+    const preloadProjectionMatrix = new THREE.Matrix4();
+    const preloadWorldPos = new THREE.Vector3();
+    const preloadBoundsSphere = new THREE.Sphere(new THREE.Vector3(), 430);
+    const PRELOAD_CHECK_MS = 100;
+    let nextPreloadCheck = 0;
+
+    function setIframeActive(entry, active){
+      if (entry.active === active) return;
+
+      const iframe = entry.iframe;
+      const src = iframe.dataset.src;
+
+      if (active) {
+        if (!src) return;
+        iframe.src = src;
+        iframe.dataset.active = '1';
       } else {
-        // Leaving iframe interaction: reclaim focus + pointer lock for walk controls.
-        const active = document.activeElement;
-        if (active && typeof active.blur === 'function') active.blur();
-        if (stage && stage.focus) stage.focus({ preventScroll: true });
+        iframe.src = 'about:blank';
+        iframe.dataset.active = '0';
+      }
 
-        if (!locked && renderer.domElement.requestPointerLock) {
-          try {
-            renderer.domElement.requestPointerLock();
-          } catch {}
+      entry.active = active;
+    }
+
+    function updateIframePreload(now){
+      if (now < nextPreloadCheck) return;
+      nextPreloadCheck = now + PRELOAD_CHECK_MS;
+
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+      preloadProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      preloadFrustum.setFromProjectionMatrix(preloadProjectionMatrix);
+
+      for (let i = 0; i < iframeEntries.length; i++){
+        const entry = iframeEntries[i];
+
+        entry.object.getWorldPosition(preloadWorldPos);
+        preloadBoundsSphere.center.copy(preloadWorldPos);
+
+        const inFrustum = preloadFrustum.intersectsSphere(preloadBoundsSphere);
+        setIframeActive(entry, inFrustum);
+      }
+    }
+
+    paintings.forEach((painting, i) => {
+      const frameEl = cssPanel('frame', FRAME_W, FRAME_H);
+      const iframe = document.createElement('iframe');
+      iframe.dataset.src = painting.src;
+      iframe.dataset.active = '0';
+      iframe.dataset.artwork = painting.artwork;
+      iframe.title = painting.title || `Mueseum painting ${i + 1}`;
+      if (painting.allow) iframe.allow = painting.allow;
+      if (painting.referrerPolicy) iframe.referrerPolicy = painting.referrerPolicy;
+      if (painting.allowFullscreen) iframe.allowFullscreen = true;
+      hookIframe(iframe);
+      iframe.addEventListener('pointerdown', () => {
+        if (!painting.artwork || !ballotArtworkEl) return;
+        if (ballotArtworkEl.value !== painting.artwork) {
+          ballotArtworkEl.value = painting.artwork;
+          activeBallotArtwork = painting.artwork;
+          loadBallotEntry(activeBallotArtwork);
         }
-      }
+      });
+      frameEl.appendChild(iframe);
 
-      updateControlsText();
-    }
+      const frame = new CSS3DObject(frameEl);
+      const slot = slots[i] || slots[slots.length - 1];
+      frame.position.set(slot.x, slot.y, slot.z);
+      frame.rotation.y = slot.ry;
+      scene.add(frame);
 
-    function setLocked(v){
-      locked = v;
-      document.body.classList.toggle('locked', locked);
-      if (!locked){
-        keys.KeyW = keys.KeyA = keys.KeyS = keys.KeyD = false;
-        keys.ArrowUp = keys.ArrowLeft = keys.ArrowDown = keys.ArrowRight = false;
-        keys.ShiftLeft = keys.ShiftRight = false;
-      }
-    }
+      const labelEl = cssPanel('painting-label', 330, 30);
+      const artworkName = decodeURI(painting.artwork || '');
+      const sourceName = artworkName
+        .replace(/\/index\.html$/i, '')
+        .replace(/\.[^.]+$/, '')
+        .split('/')
+        .filter(Boolean)
+        .join(' / ');
+      labelEl.textContent = `${i + 1}. ${sourceName || 'untitled'}`;
+      const labelObj = new CSS3DObject(labelEl);
+      labelObj.position.set(slot.x, slot.labelY ?? 400, slot.z);
+      labelObj.rotation.y = slot.ry;
+      scene.add(labelObj);
 
-    renderer.domElement.addEventListener('click', (e) => {
-      if (interactOn || locked) return;
-
-      // Don't grab pointer lock if the click landed on interactive content.
-      if (
-        e.target.closest?.('iframe') ||
-        e.target.closest?.('.frame') ||
-        e.target.closest?.('a, button, input')
-      ) {
-        return;
-      }
-
-      if (stage && stage.focus) stage.focus();
-      if (renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+      iframeEntries.push({ el: frameEl, iframe, object: frame, active: false });
     });
 
-    // Temporary diagnostic: verify what receives pointer events in interact mode.
-    document.addEventListener('pointerdown', (e) => {
-      if (!interactOn) return;
-      console.log(
-        'CLICK TARGET:',
-        e.target,
-        'elementFromPoint:',
-        document.elementFromPoint(e.clientX, e.clientY)
-      );
-    }, true);
+    // ---------- Gallery input ----------
+    // Mousedown on empty scenery (walls/floor are pointer-events:none, so it lands on the renderer).
+    // Iframe clicks never reach here, so left-click on a painting stays an interaction.
+    renderer.domElement.addEventListener('mousedown', e => {
+      if (e.button !== 0 && e.button !== 2) return;
+      if (e.target.closest?.('iframe, a, button, input, textarea, select, option')) return;
+      e.preventDefault();
+
+      // Left-drag on empty space also takes keyboard focus back from any painting.
+      if (e.button === 0){
+        const active = document.activeElement;
+        if (active && active.tagName === 'IFRAME') active.blur();
+        stage.focus({ preventScroll: true });
+      }
+      startLook(e.button);
+    });
+
+    // While locked, mouse events go to the locked element and bubble to document.
+    document.addEventListener('mouseup', e => endLook(e.button));
+    renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 
     document.addEventListener('pointerlockchange', () => {
-      setLocked(document.pointerLockElement === renderer.domElement);
+      locked = document.pointerLockElement === renderer.domElement;
+      document.body.classList.toggle('locked', locked);
+      // Button was released before the lock was granted: let go immediately.
+      if (locked && lookButton === -1) document.exitPointerLock();
+      // Lock ended some other way (e.g. Esc): forget the held button.
+      if (!locked) lookButton = -1;
     });
 
     document.addEventListener('mousemove', e => {
-      if (!locked || interactOn) return;
+      if (!locked) return;
       yaw -= e.movementX * MOUSE_SENS;
       pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - e.movementY * (MOUSE_SENS * 0.9)));
     });
 
-    addEventListener('keydown', e => {
-      keys[e.code] = true;
-      if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','Space','KeyE'].includes(e.code)) e.preventDefault();
+    addEventListener('keydown', onMoveKeyDown);
+    addEventListener('keyup', onMoveKeyUp);
 
-      if (e.code === 'KeyE') setInteraction(!interactOn);
-
-      if (e.code === 'Space' && grounded && locked && !interactOn){
-        vel.y = JUMP_V;
-        grounded = false;
-      }
+    // Drop held keys when the whole page loses focus (alt-tab), but not when focus
+    // just moves into one of our iframes.
+    addEventListener('blur', () => {
+      setTimeout(() => { if (!document.hasFocus()) clearKeys(); }, 0);
     });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) clearKeys(); });
 
-    addEventListener('keyup', e => { keys[e.code] = false; });
-
+    // ---------- Movement ----------
     function applyFriction(dt, amount){
       const speed = Math.hypot(vel.x, vel.z);
       if (speed <= 0.0001) return;
@@ -537,31 +922,30 @@
     }
 
     function updateWalk(dt){
-      const canMove = locked && !interactOn;
       let mx = 0;
       let mz = 0;
 
-      if (canMove){
-        if (keys.KeyA || keys.ArrowLeft) mx -= 1;
-        if (keys.KeyD || keys.ArrowRight) mx += 1;
-        if (keys.KeyW || keys.ArrowUp) mz += 1;
-        if (keys.KeyS || keys.ArrowDown) mz -= 1;
-      }
+      if (keys.KeyA || keys.ArrowLeft) mx -= 1;
+      if (keys.KeyD || keys.ArrowRight) mx += 1;
+      if (keys.KeyW || keys.ArrowUp) mz += 1;
+      if (keys.KeyS || keys.ArrowDown) mz -= 1;
 
+      const moving = mx !== 0 || mz !== 0;
       const len = Math.hypot(mx, mz);
       if (len > 1){
         mx /= len;
         mz /= len;
       }
 
-      const moveSpeed = (keys.ShiftLeft || keys.ShiftRight) ? SPRINT_SPEED : WALK_SPEED;
+      const sprinting = keys.ShiftLeft || keys.ShiftRight;
+      const moveSpeed = sprinting ? SPRINT_SPEED : WALK_SPEED;
       moveLocalTmp.set(mx, 0, -mz).applyAxisAngle(MOVE_UP, yaw);
       const wishX = moveLocalTmp.x * moveSpeed;
       const wishZ = moveLocalTmp.z * moveSpeed;
       const wishSpeed = Math.hypot(wishX, wishZ);
 
       if (grounded){
-        applyFriction(dt, canMove ? GROUND_FRICTION : GROUND_FRICTION * 2.2);
+        applyFriction(dt, moving ? GROUND_FRICTION : GROUND_FRICTION * 2.2);
         accelerate(wishX, wishZ, wishSpeed, GROUND_ACCEL, dt);
       } else {
         applyFriction(dt, AIR_DRAG);
@@ -586,10 +970,10 @@
       pos.z = Math.max(minZ, Math.min(maxZ, pos.z));
 
       const planar = Math.hypot(vel.x, vel.z);
-      if (grounded && planar > 40 && canMove) bobT += dt * ((keys.ShiftLeft || keys.ShiftRight) ? 15 : 10);
+      if (grounded && planar > 40 && moving) bobT += dt * (sprinting ? 15 : 10);
       const bob = grounded ? Math.sin(bobT) * Math.min(6, planar * 0.008) : 0;
 
-      const targetFov = (keys.ShiftLeft || keys.ShiftRight) && planar > 140 ? 55 : 50;
+      const targetFov = sprinting && planar > 140 ? 55 : 50;
       camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 8);
       camera.updateProjectionMatrix();
 
@@ -615,8 +999,6 @@
       requestAnimationFrame(frame);
     }
 
-    updateControlsText();
-    setLocked(false);
     camera.position.copy(pos);
     camera.rotation.set(pitch, yaw, 0);
     requestAnimationFrame(frame);

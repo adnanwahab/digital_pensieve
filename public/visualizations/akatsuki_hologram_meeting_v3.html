@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Akatsuki Astral Hologram Meeting</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070a;color:#eef4ff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  #app{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  .veil{position:fixed;inset:0;pointer-events:none;background:
+    radial-gradient(ellipse at 42% 43%,rgba(110,130,145,.07),transparent 34%),
+    radial-gradient(ellipse at center,transparent 37%,rgba(0,0,0,.33) 74%,rgba(0,0,0,.78) 100%);z-index:3}
+  .scan{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:.07;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.1) 4px,transparent 5px)}
+  .grain{position:fixed;inset:-30%;pointer-events:none;z-index:4;opacity:.07;animation:grain .19s steps(2) infinite;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.75'/%3E%3C/svg%3E")}
+  @keyframes grain{0%{transform:translate(0,0)}25%{transform:translate(2%,-1%)}50%{transform:translate(-1%,2%)}75%{transform:translate(1%,1%)}100%{transform:translate(-2%,-1%)}}
+  .hud{position:fixed;left:18px;top:18px;z-index:8;max-width:min(410px,calc(100vw - 36px));padding:13px 15px;border:1px solid rgba(205,225,255,.11);border-radius:15px;background:rgba(4,7,10,.48);backdrop-filter:blur(12px);box-shadow:0 16px 50px rgba(0,0,0,.25)}
+  .title{font-size:12px;text-transform:uppercase;letter-spacing:.18em;font-weight:750;color:rgba(234,245,255,.94)}
+  .sub{font-size:11px;line-height:1.5;margin-top:6px;color:rgba(225,236,246,.57)}
+  .status{display:inline-flex;align-items:center;gap:8px;margin-top:9px;font-size:10px;letter-spacing:.06em;color:rgba(226,242,255,.67)}
+  .status i{width:6px;height:6px;border-radius:50%;background:#a8e9ff;box-shadow:0 0 10px #a8e9ff;animation:blink 1.1s ease-in-out infinite alternate}
+  @keyframes blink{to{opacity:.3;transform:scale(.72)}}
+  .dialogue{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9;width:min(680px,calc(100vw - 32px));padding:13px 16px 14px;border-radius:15px;border:1px solid rgba(215,235,255,.12);background:linear-gradient(180deg,rgba(5,8,12,.66),rgba(4,7,11,.84));backdrop-filter:blur(13px);box-shadow:0 16px 50px rgba(0,0,0,.36)}
+  .speaker{font-size:10px;text-transform:uppercase;letter-spacing:.17em;font-weight:800;color:#bdeeff;text-shadow:0 0 16px rgba(133,231,255,.55)}
+  .line{margin-top:5px;font-size:14px;line-height:1.45;color:rgba(246,250,255,.88);min-height:20px}
+  .meter{margin-top:9px;height:2px;background:rgba(255,255,255,.07);overflow:hidden;border-radius:2px}
+  .meter span{display:block;height:100%;width:0;background:linear-gradient(90deg,rgba(132,228,255,.4),rgba(221,166,255,.8),rgba(255,255,255,.7));box-shadow:0 0 12px rgba(187,224,255,.4)}
+  .hint{position:fixed;right:14px;bottom:14px;z-index:8;font-size:10px;color:rgba(225,235,245,.38);background:rgba(3,5,8,.25);border:1px solid rgba(255,255,255,.06);padding:7px 9px;border-radius:9px}
+  @media(max-width:700px){.hud{top:10px;left:10px;padding:10px 12px}.sub{display:none}.dialogue{bottom:10px}.hint{display:none}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.180.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="hud">
+  <div class="title">Astral Projection // Akatsuki Meeting</div>
+  <div class="sub">Translucent rainbow projections flicker through a storm-dark night with shimmering square-cell patterns while the conversation loops continuously.</div>
+  <div class="status"><i></i><span>LIVE CONVERSATION</span></div>
+</div>
+<div class="dialogue" id="dialogue"><div class="speaker" id="speaker"></div><div class="line" id="line"></div><div class="meter"><span id="meter"></span></div></div>
+<div class="hint">Drag to orbit · Scroll to zoom · Click a projection to jump to them</div>
+<div class="veil"></div><div class="scan"></div><div class="grain"></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x05070a);
+scene.fog=new THREE.FogExp2(0x080b0f,.026);
+
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,180);
+camera.position.set(9.8,8.7,20.5);
+
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=.06; controls.enablePan=false;
+controls.target.set(-.8,4.0,0); controls.minDistance=12; controls.maxDistance=32;
+controls.minPolarAngle=.72; controls.maxPolarAngle=1.52;
+
+scene.add(new THREE.HemisphereLight(0x657789,0x040506,.7));
+const back=new THREE.DirectionalLight(0x8ad9ff,1.25); back.position.set(-7,10,-9); scene.add(back);
+const side=new THREE.DirectionalLight(0xb89cff,.7); side.position.set(8,7,4); scene.add(side);
+
+// dark ground / mist plane
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(85,85),new THREE.MeshStandardMaterial({color:0x080b0d,roughness:1,metalness:0}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-.72; scene.add(ground);
+
+// low rocks like the reference rather than a bright ceremonial table
+const rockMat=new THREE.MeshStandardMaterial({color:0x0c1013,roughness:.98,metalness:.02});
+for(let i=0;i<34;i++){
+  const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.55+Math.random()*1.25,0),rockMat);
+  const a=Math.random()*Math.PI*2, r=4.5+Math.random()*12;
+  rock.position.set(Math.cos(a)*r,-.55+Math.random()*.22,Math.sin(a)*r-1.0);
+  rock.scale.set(1.4+Math.random(),.38+Math.random()*.35,1+Math.random()*.7);
+  rock.rotation.set(Math.random(),Math.random()*Math.PI,Math.random()); scene.add(rock);
+}
+
+// distant star/noise field
+const starsGeo=new THREE.BufferGeometry();
+const starN=950, starPos=new Float32Array(starN*3);
+for(let i=0;i<starN;i++){
+  starPos[i*3]=(Math.random()-.5)*100; starPos[i*3+1]=5+Math.random()*34; starPos[i*3+2]=-18-Math.random()*50;
+}
+starsGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+scene.add(new THREE.Points(starsGeo,new THREE.PointsMaterial({size:.045,color:0x9fb0bc,transparent:true,opacity:.35,depthWrite:false})));
+
+function cloudTexture(){
+  const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
+  const g=x.createRadialGradient(128,128,5,128,128,128);
+  g.addColorStop(0,'rgba(210,220,225,.38)'); g.addColorStop(.28,'rgba(135,148,155,.21)'); g.addColorStop(.68,'rgba(52,60,65,.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g; x.fillRect(0,0,256,256); return new THREE.CanvasTexture(c);
+}
+const cloudTex=cloudTexture(), clouds=new THREE.Group(); scene.add(clouds);
+for(let i=0;i<75;i++){
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,color:i%4===0?0x7a838a:0x4c555a,transparent:true,opacity:.075+Math.random()*.08,depthWrite:false}));
+  s.position.set((Math.random()-.5)*55,3+Math.random()*18,-9-Math.random()*34);
+  const w=5+Math.random()*13; s.scale.set(w,w*(.28+Math.random()*.25),1); clouds.add(s);
+}
+
+const holoVert=`
+varying vec3 vW; varying vec3 vN; varying vec2 vUv;
+void main(){vUv=uv; vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; vN=normalize(mat3(modelMatrix)*normal); gl_Position=projectionMatrix*viewMatrix*w;}`;
+const holoFrag=`
+uniform float uTime; uniform float uPhase; uniform float uVoice; uniform float uHover;
+varying vec3 vW; varying vec3 vN; varying vec2 vUv;
+vec3 hsv(vec3 c){vec3 p=abs(fract(c.xxx+vec3(0.,2./3.,1./3.))*6.-3.);return c.z*mix(vec3(1.),clamp(p-1.,0.,1.),c.y);}
+float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+void main(){
+  vec3 V=normalize(cameraPosition-vW); float rim=pow(1.-abs(dot(normalize(vN),V)),1.65);
+  float y=vW.y;
+  float band=.5+.5*sin(y*8.5-uTime*3.0+uPhase);
+  float fine=.5+.5*sin(y*23.0+uTime*7.0);
+  float drift=noise(vW.xz*1.45+vec2(uTime*.1,-uTime*.07));
+  float hue=fract(.48 + .12*sin(vW.y*.55+uPhase) + .09*sin(vW.x*.9-vW.z*.55+uTime*.22));
+  vec3 rainbow=hsv(vec3(hue,.78,1.));
+  vec3 cyan=vec3(.22,.88,1.0), violet=vec3(.72,.38,1.0);
+  vec3 c=mix(cyan,violet,.32+.32*sin(uPhase+vW.y*.5)); c=mix(c,rainbow,.72);
+  float spark=pow(noise(vW.xy*18.0+vec2(uTime*3.6,-uTime*2.4)),12.0);
+
+  // Restored blocky astral-projection pattern from the earlier version.
+  // Each projection is broken into tiny iridescent square cells that shimmer independently.
+  float cellScale=6.6;
+  vec2 cellId=floor(vW.xy*cellScale + vec2(uPhase*1.7,0.));
+  vec2 cellUv=fract(vW.xy*cellScale + vec2(uPhase*1.7,0.));
+  float cellRnd=h21(cellId);
+  float cellPulse=.5+.5*sin(uTime*(1.25+cellRnd*2.1)+cellRnd*18.0+uPhase);
+  float activeCell=smoothstep(.57,.93,cellRnd*.72+cellPulse*.55);
+  float edgeDist=min(min(cellUv.x,1.-cellUv.x),min(cellUv.y,1.-cellUv.y));
+  float squareEdge=1.-smoothstep(.025,.105,edgeDist);
+  float squareFill=(.18+.82*activeCell)*(1.-squareEdge*.38);
+  float squareHue=fract(hue + cellRnd*.48 + .03*sin(uTime+cellRnd*8.));
+  vec3 squareColor=hsv(vec3(squareHue,.82,1.));
+
+  float body=.055 + rim*.18 + band*.025 + fine*.012 + drift*.018;
+  body += spark*(.24+.12*uVoice) + uVoice*rim*.10 + uHover*.06;
+  body += squareFill*.042 + squareEdge*.022;
+  c += rainbow*(rim*.65 + spark*1.25 + uVoice*.22);
+  c += squareColor*(squareFill*.34 + squareEdge*.22)*(0.75+uVoice*.25+uHover*.18);
+  gl_FragColor=vec4(c,clamp(body,0.,.56));
+}`;
+function holoMat(phase){return new THREE.ShaderMaterial({vertexShader:holoVert,fragmentShader:holoFrag,uniforms:{uTime:{value:0},uPhase:{value:phase},uVoice:{value:0},uHover:{value:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});}
+
+function cloakBody(mat){
+  const g=new THREE.Group();
+  const lower=new THREE.Mesh(new THREE.CylinderGeometry(.67,1.16,3.3,18,1,true),mat); lower.position.y=1.86; g.add(lower);
+  const shoulder=new THREE.Mesh(new THREE.SphereGeometry(1.02,20,12,0,Math.PI*2,0,Math.PI*.58),mat); shoulder.position.y=3.06; shoulder.scale.y=.48; g.add(shoulder);
+  // faint fold lines
+  for(const sx of [-.55,0,.55]){const line=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,2.5,5),mat); line.position.set(sx,1.75,.7); line.rotation.z=sx*.03; g.add(line)}
+  return g;
+}
+function makeProjection(name,variant,phase){
+  const root=new THREE.Group(); root.userData.name=name; root.userData.mat=holoMat(phase); const mat=root.userData.mat;
+  root.add(cloakBody(mat));
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.49,20,16),mat); head.position.y=4.04; root.add(head);
+  const collar=new THREE.Mesh(new THREE.CylinderGeometry(.56,.76,.58,16,1,true),mat); collar.position.y=3.58; root.add(collar);
+  if(variant==='spike') for(let i=0;i<8;i++){const a=i/8*Math.PI*2; const c=new THREE.Mesh(new THREE.ConeGeometry(.12,.62,5),mat); c.position.set(Math.cos(a)*.42,4.47,Math.sin(a)*.42); c.rotation.z=Math.cos(a)*.45; c.rotation.x=Math.sin(a)*.45; root.add(c)}
+  if(variant==='long'){const hair=new THREE.Mesh(new THREE.CylinderGeometry(.54,.64,1.3,14,1,true),mat); hair.position.y=3.92; root.add(hair)}
+  if(variant==='mask'){const d=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.08,32),mat); d.rotation.x=Math.PI/2; d.position.set(0,4.02,.48); root.add(d)}
+  if(variant==='side'){const bang=new THREE.Mesh(new THREE.BoxGeometry(.28,1.15,.22),mat); bang.position.set(.29,3.96,.47); bang.rotation.z=-.15; root.add(bang)}
+  // hands close together, echoing the source image silhouettes
+  for(const s of [-1,1]){const hand=new THREE.Mesh(new THREE.SphereGeometry(.15,10,8),mat); hand.position.set(s*.38,1.35,.82); root.add(hand)}
+  // voice rings around head, invisible until speaking
+  const rings=[];
+  for(let i=0;i<3;i++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.66+i*.16,.016,6,48),new THREE.MeshBasicMaterial({color:i===0?0x7ff3ff:0xdba6ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+    ring.position.set(0,4.05,.02); ring.rotation.x=Math.PI/2; root.add(ring); rings.push(ring);
+  }
+  root.userData.rings=rings;
+  return root;
+}
+
+const speakers=[
+  {name:'Pain',variant:'spike',pos:[-3.65,0,-.1],rot:.18,line:'The objective has not changed. Keep the discussion focused.'},
+  {name:'Itachi',variant:'long',pos:[-6.0,0,-1.0],rot:.32,line:'The room is listening even when no one speaks.'},
+  {name:'Konan',variant:'side',pos:[-1.05,0,-1.0],rot:-.08,line:'Then we should decide before the signal fades.'},
+  {name:'Tobi',variant:'mask',pos:[1.65,0,-2.45],rot:-.25,line:'Tobi has a suggestion. It is definitely a serious one.'}
+];
+const projections=[];
+speakers.forEach((d,i)=>{
+  const f=makeProjection(d.name,d.variant,i*1.63); f.position.set(...d.pos); f.rotation.y=d.rot; f.scale.setScalar(i===0?1.07:.94); f.userData.line=d.line; scene.add(f); projections.push(f);
+});
+
+// shimmering particles local to each projection
+const particleSets=[];
+for(const f of projections){
+  const n=190, arr=new Float32Array(n*3), base=new Float32Array(n*3), seed=[];
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,r=.42+Math.random()*.85,y=.25+Math.random()*4.5;
+    arr[i*3]=base[i*3]=Math.cos(a)*r; arr[i*3+1]=base[i*3+1]=y; arr[i*3+2]=base[i*3+2]=Math.sin(a)*r; seed.push(Math.random()*20);
+  }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(arr,3));
+  const mat=new THREE.PointsMaterial({size:.036,color:0xc8f4ff,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false});
+  const pts=new THREE.Points(geo,mat); f.add(pts); particleSets.push({pts,base,seed});
+}
+
+// solid foreground observer, viewed mostly from behind like the supplied frame
+const observer=new THREE.Group(); observer.position.set(6.3,-.1,3.4); observer.rotation.y=-2.42; scene.add(observer);
+const darkMat=new THREE.MeshStandardMaterial({color:0x101419,roughness:.92,metalness:.02});
+const cloak=cloakBody(darkMat); cloak.scale.set(1.1,1.15,1.1); observer.add(cloak);
+const headBase=new THREE.Mesh(new THREE.SphereGeometry(.58,24,18),new THREE.MeshStandardMaterial({color:0xb9bec0,roughness:.88})); headBase.position.y=4.18; observer.add(headBase);
+// cloth wraps
+for(let i=0;i<8;i++){
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.59-i*.014,.055,6,48),new THREE.MeshStandardMaterial({color:i%2?0xc9ccca:0xbfc2c1,roughness:.92}));
+  ring.position.y=4.05+(i-3.5)*.12; ring.rotation.x=Math.PI/2; ring.rotation.z=.08*Math.sin(i); observer.add(ring);
+}
+const band=new THREE.Mesh(new THREE.BoxGeometry(1.05,.24,.1),new THREE.MeshStandardMaterial({color:0x30343a,roughness:.85})); band.position.set(0,4.24,.53); band.rotation.z=-.02; observer.add(band);
+const tails=[];
+for(const s of [-1,1]){const t=new THREE.Mesh(new THREE.BoxGeometry(.16,2.65,.08),new THREE.MeshStandardMaterial({color:0x9fa4a5,roughness:.95})); t.position.set(s*.20,2.8,-.5); t.rotation.x=.06; observer.add(t); tails.push(t)}
+
+// floating mist close to the ground
+const mist=new THREE.Group(); scene.add(mist);
+for(let i=0;i<24;i++){
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,color:0x6b7479,transparent:true,opacity:.06+Math.random()*.05,depthWrite:false}));
+  s.position.set((Math.random()-.5)*22,.0+Math.random()*1.6,(Math.random()-.5)*16-1); const w=4+Math.random()*7; s.scale.set(w,w*.23,1); mist.add(s);
+}
+
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2(); let hover=null;
+const pickMeshes=[]; projections.forEach(f=>f.traverse(o=>{if(o.isMesh && o.material===f.userData.mat) {o.userData.owner=f;pickMeshes.push(o)}}));
+function mousePos(e){const r=renderer.domElement.getBoundingClientRect();mouse.x=(e.clientX-r.left)/r.width*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1}
+renderer.domElement.addEventListener('pointermove',e=>{
+  mousePos(e);ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(pickMeshes,false)[0];const next=hit?hit.object.userData.owner:null;
+  if(hover!==next){if(hover)hover.userData.mat.uniforms.uHover.value=0;hover=next;if(hover)hover.userData.mat.uniforms.uHover.value=1;renderer.domElement.style.cursor=hover?'pointer':'grab'}
+});
+renderer.domElement.addEventListener('click',()=>{if(hover){const i=projections.indexOf(hover); if(i>=0){activeIndex=i; lineStart=clock.getElapsedTime(); showLine(i)}}});
+
+const speakerEl=document.getElementById('speaker'), lineEl=document.getElementById('line'), meter=document.getElementById('meter');
+let activeIndex=0,lineStart=0; const lineDuration=4.2;
+function showLine(i){speakerEl.textContent=speakers[i].name;lineEl.textContent=speakers[i].line}
+showLine(0);
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate); const t=clock.getElapsedTime(); controls.update();
+  const elapsed=t-lineStart; if(elapsed>=lineDuration){activeIndex=(activeIndex+1)%projections.length;lineStart=t;showLine(activeIndex)}
+  meter.style.width=`${Math.min(100,(Math.max(0,t-lineStart)/lineDuration)*100)}%`;
+  projections.forEach((f,i)=>{
+    const speaking=i===activeIndex; f.userData.mat.uniforms.uTime.value=t; f.userData.mat.uniforms.uVoice.value=THREE.MathUtils.lerp(f.userData.mat.uniforms.uVoice.value,speaking?1:0,.13);
+    f.position.y=.05+Math.sin(t*.92+i*.7)*.07;
+    const targetScale=(i===0?1.07:.94)*(speaking?1.018:1); f.scale.lerp(new THREE.Vector3(targetScale,targetScale,targetScale),.07);
+    f.userData.rings.forEach((r,k)=>{const phase=(t*1.7+k*.33)%1; r.material.opacity=speaking?(1-phase)*(.17-k*.02):0; const s=1+phase*.55; r.scale.setScalar(s)});
+  });
+  particleSets.forEach((p,j)=>{
+    const a=p.pts.geometry.attributes.position.array; for(let i=0;i<p.seed.length;i++){
+      a[i*3]=p.base[i*3]+Math.sin(t*1.1+p.seed[i])*.035;
+      a[i*3+1]=p.base[i*3+1]+Math.sin(t*1.5+p.seed[i]*1.8)*.055;
+      a[i*3+2]=p.base[i*3+2]+Math.cos(t*.9+p.seed[i])*.035;
+    }
+    p.pts.geometry.attributes.position.needsUpdate=true;
+    p.pts.material.opacity=.28+.13*Math.sin(t*2.4+j)+(j===activeIndex?.11:0);
+  });
+  // gentle environmental motion
+  clouds.children.forEach((c,i)=>{c.position.x+=Math.sin(t*.08+i)*.0007});
+  mist.rotation.y=Math.sin(t*.035)*.04;
+  tails[0].rotation.z=.025*Math.sin(t*.7); tails[1].rotation.z=-.025*Math.sin(t*.7+.6);
+  renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>

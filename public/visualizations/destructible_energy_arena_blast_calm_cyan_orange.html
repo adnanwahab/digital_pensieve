@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Destructible Energy Arena</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#dfe8ef;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+  canvas{display:block}
+  #ui{
+    position:fixed;left:16px;top:16px;z-index:5;
+    padding:12px 13px 11px;border:1px solid rgba(255,255,255,.55);
+    border-radius:15px;background:rgba(242,247,250,.70);
+    backdrop-filter:blur(14px);box-shadow:0 10px 35px rgba(26,44,61,.14);
+    color:#25333d;font-size:12px;user-select:none
+  }
+  #ui strong{display:block;font-size:13px;margin-bottom:8px}
+  .row{display:flex;gap:6px;margin-bottom:7px}
+  button{
+    appearance:none;border:0;border-radius:9px;padding:8px 10px;
+    background:rgba(255,255,255,.9);color:#25333d;cursor:pointer;
+    box-shadow:0 3px 12px rgba(0,0,0,.09);font-weight:650
+  }
+  button:hover{transform:translateY(-1px)}
+  #hint{opacity:.68;line-height:1.45;max-width:270px}
+  #meter{height:3px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden;margin-top:9px}
+  #meter > i{display:block;width:0;height:100%;background:white;box-shadow:0 0 8px white}
+</style>
+</head>
+<body>
+<div id="ui">
+  <strong>Destructible Energy Arena</strong>
+  <div class="row" style="align-items:center">
+    <div style="padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.9);box-shadow:0 3px 12px rgba(0,0,0,.09);font-weight:650">
+      State: <span id="stateLabel">Cyan</span>
+    </div>
+    <div style="padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.65);box-shadow:0 3px 12px rgba(0,0,0,.06);opacity:.8">
+      Auto cycle
+    </div>
+  </div>
+  <div class="row">
+    <button id="blastBtn">BLAST</button>
+    <button id="resetBtn">Reset arena</button>
+  </div>
+  <div id="hint">
+    Auto cycle: <b>Blast → Calm → Cyan → Orange</b>.<br>
+    Click arena slabs to break them. Press <b>Space</b> for an extra radial blast.
+  </div>
+  <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+      <span style="opacity:.65">Brightness</span>
+      <input id="brightness" type="range" min="0.35" max="1.0" step="0.01" value="0.68" style="width:130px">
+    </div>
+    <div id="meter"><i id="meterFill"></i></div>
+</div>
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xaeb9c2);
+scene.fog = new THREE.Fog(0xaeb9c2, 48, 110);
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth/innerHeight, .1, 220);
+camera.position.set(26,18,31);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.68;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.target.set(0,2.7,0);
+controls.minDistance=14;
+controls.maxDistance=72;
+controls.maxPolarAngle=Math.PI*.49;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.38,.48,.52);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x5f6b73,1.25));
+const sun = new THREE.DirectionalLight(0xffffff,1.45);
+sun.position.set(-16,25,13);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-38; sun.shadow.camera.right=38;
+sun.shadow.camera.top=38; sun.shadow.camera.bottom=-38;
+scene.add(sun);
+
+const world = new THREE.Group();
+scene.add(world);
+
+const M=(color,rough=.65,metal=.03)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+function cube(sx,sy,sz,material,x=0,y=0,z=0,parent=world){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),material);
+  m.position.set(x,y,z); m.castShadow=m.receiveShadow=true; parent.add(m); return m;
+}
+
+// Ground / stadium base
+cube(42,.55,27,M(0xcf6d5f,.88),0,-.35,0);
+cube(45,.38,4,M(0x2d8c4c,.92),0,.0,-15.4);
+cube(45,.38,4,M(0x2d8c4c,.92),0,.0, 15.4);
+cube(4,.38,27,M(0x2d8c4c,.92),-23.2,.0,0);
+cube(4,.38,27,M(0x2d8c4c,.92), 23.2,.0,0);
+cube(36,.55,21,M(0xd9dce1,.9),0,.08,0);
+cube(29,.45,13.2,M(0xbec1c5,.96),0,.48,0);
+
+// Inner rail strips
+cube(31,.25,.55,M(0xeff2f4,.65,.12),0,.77,-7.2);
+cube(31,.25,.55,M(0xeff2f4,.65,.12),0,.77, 7.2);
+
+// Stadium wall bands
+const stadium = new THREE.Group();
+scene.add(stadium);
+function stadiumBand(y,h,color,zScale=.70){
+  const g=new THREE.CylinderGeometry(27,27,h,96,1,true);
+  g.scale(1,1,zScale);
+  const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({
+    color,roughness:.65,metalness:.04,side:THREE.DoubleSide
+  }));
+  mesh.position.y=y;
+  mesh.receiveShadow=true;
+  stadium.add(mesh);
+}
+stadiumBand(3.0,1.35,0x7f8a93);
+stadiumBand(5.15,1.1,0xe8edf1);
+stadiumBand(7.3,1.15,0x7280a0);
+stadiumBand(9.4,1.15,0xf2f5f7);
+stadiumBand(11.5,.9,0xcfd8df);
+
+// white seating/light strips
+for(let level=0;level<3;level++){
+  for(let i=0;i<88;i++){
+    const a=i/88*Math.PI*2, r=26.7;
+    const panel=cube(1.45,.28,.18,M(0xffffff,.45,.05),
+      Math.cos(a)*r,4.85+level*2.14,Math.sin(a)*r*.70,stadium);
+    panel.rotation.y=-a;
+  }
+}
+
+// Destructible center plates
+const destructibles=[];
+const dynamic=[];
+const plateMat=M(0xc7c9ca,.93,.02);
+
+function addDestructiblePlate(x,z,w,d,h=.22,rot=0){
+  const m=cube(w,h,d,plateMat.clone(),x,.79,z);
+  m.rotation.y=rot;
+  m.userData.destructible=true;
+  m.userData.dynamic=false;
+  m.userData.spawn={
+    pos:m.position.clone(), quat:m.quaternion.clone(),
+    scale:m.scale.clone()
+  };
+  m.userData.vel=new THREE.Vector3();
+  m.userData.ang=new THREE.Vector3();
+  destructibles.push(m);
+  return m;
+}
+
+// cracked mosaic
+for(let i=0;i<120;i++){
+  const a=Math.random()*Math.PI*2;
+  const r=1.3+Math.sqrt(Math.random())*11.2;
+  const x=Math.cos(a)*r;
+  const z=Math.sin(a)*r*.48;
+  const w=.55+Math.random()*1.7;
+  const d=.55+Math.random()*1.55;
+  const m=addDestructiblePlate(x,z,w,d,.14+Math.random()*.30,Math.random()*Math.PI);
+  m.rotation.x=(Math.random()-.5)*.08;
+  m.rotation.z=(Math.random()-.5)*.08;
+  m.userData.spawn.quat.copy(m.quaternion);
+}
+
+// a few larger broken panels / chunks
+for(let i=0;i<20;i++){
+  const a=Math.random()*Math.PI*2;
+  const r=8+Math.random()*7;
+  const m=addDestructiblePlate(
+    Math.cos(a)*r,
+    Math.sin(a)*r*.55,
+    1.4+Math.random()*2.6,
+    1.2+Math.random()*2.2,
+    .35+Math.random()*.45,
+    Math.random()*Math.PI
+  );
+  m.position.y=.9+Math.random()*.35;
+  m.userData.spawn.pos.copy(m.position);
+}
+
+// Decorative floating rubble (not clickable, always animated)
+const floaters=[];
+const geo=new THREE.BoxGeometry(1,1,1);
+for(let i=0;i<280;i++){
+  const s=.10+Math.pow(Math.random(),2)*1.3;
+  const m=new THREE.Mesh(geo,M(0xd9dddb,.77,.02));
+  const a=Math.random()*Math.PI*2;
+  const r=5+Math.pow(Math.random(),.55)*23;
+  const y=2.0+Math.random()*16.0;
+  m.position.set(Math.cos(a)*r,y,Math.sin(a)*r*.72);
+  m.scale.set(
+    s*(.75+Math.random()*.8),
+    s*(.70+Math.random()*.8),
+    s*(.70+Math.random()*.8)
+  );
+  m.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+  m.castShadow=true;
+  m.userData.base=m.position.clone();
+  m.userData.phase=Math.random()*Math.PI*2;
+  m.userData.speed=.45+Math.random()*1.1;
+  floaters.push(m); scene.add(m);
+}
+
+// Energy core
+const energy=new THREE.Group();
+energy.position.y=3.2;
+scene.add(energy);
+
+const coreMat=new THREE.MeshBasicMaterial({color:0x42ddff,transparent:true,opacity:.52,depthWrite:false});
+const core=new THREE.Mesh(new THREE.IcosahedronGeometry(1.85,5),coreMat);
+energy.add(core);
+
+const haloMat=new THREE.MeshBasicMaterial({
+  color:0x55e6ff,transparent:true,opacity:.045,wireframe:true,
+  blending:THREE.AdditiveBlending,depthWrite:false
+});
+const halo=new THREE.Mesh(new THREE.SphereGeometry(3.05,48,48),haloMat);
+energy.add(halo);
+
+const ringMeshes=[];
+for(let i=0;i<7;i++){
+  const m=new THREE.Mesh(
+    new THREE.TorusGeometry(3.4+i*.34,.055+.014*i,10,128),
+    new THREE.MeshBasicMaterial({
+      color:0x7beeff,transparent:true,opacity:.24,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
+  );
+  m.rotation.set(Math.PI/2+(Math.random()-.5)*.32,Math.random()*Math.PI,Math.random()*Math.PI);
+  energy.add(m); ringMeshes.push(m);
+}
+
+const streaks=[];
+for(let i=0;i<18;i++){
+  const len=5+Math.random()*12;
+  const m=new THREE.Mesh(
+    new THREE.BoxGeometry(len,.075,.055),
+    new THREE.MeshBasicMaterial({
+      color:0x92f3ff,transparent:true,opacity:.20,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
+  );
+  m.position.set((Math.random()-.5)*11,(Math.random()-.5)*4,(Math.random()-.5)*8);
+  m.rotation.set((Math.random()-.5)*.12,(Math.random()-.5)*.5,(Math.random()-.5)*.16);
+  energy.add(m); streaks.push(m);
+}
+
+const energyLight=new THREE.PointLight(0x62e8ff,230,26,2.0);
+energy.add(energyLight);
+
+// shockwaves
+const shockwaves=[];
+function spawnShockwave(color){
+  const mesh=new THREE.Mesh(
+    new THREE.TorusGeometry(1.4,.12,10,96),
+    new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.9,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
+  );
+  mesh.position.copy(energy.position);
+  mesh.rotation.x=Math.PI/2;
+  mesh.userData.life=0;
+  scene.add(mesh);
+  shockwaves.push(mesh);
+}
+
+// Smooth mode state
+const cyanC=new THREE.Color(0x32d8ff);
+const orangeC=new THREE.Color(0xff9a20);
+const calmC=new THREE.Color(0xe9f7ff);
+
+const state={
+  heat:0, activity:1, intensity:1,
+  targetHeat:0, targetActivity:1, targetIntensity:1,
+  mode:'cyan'
+};
+
+const autoCycle = [
+  { mode:'cyan',   duration:1.4, blast:true,  label:'Blast' },
+  { mode:'calm',   duration:6.2, blast:false, label:'Calm' },
+  { mode:'cyan',   duration:6.8, blast:false, label:'Cyan' },
+  { mode:'orange', duration:7.2, blast:false, label:'Orange' }
+];
+let cycleIndex = 0;
+let cycleTime = 0;
+let transitionPulseCooldown = 0;
+
+function updateStateLabel(){
+  const step = autoCycle[cycleIndex];
+  document.getElementById('stateLabel').textContent = step.label || (state.mode.charAt(0).toUpperCase() + state.mode.slice(1));
+}
+
+function advanceCycle(){
+  cycleIndex = (cycleIndex + 1) % autoCycle.length;
+  setMode(autoCycle[cycleIndex].mode);
+  updateStateLabel();
+  if(autoCycle[cycleIndex].blast){
+    transitionPulseCooldown = 0.45;
+  }
+}
+
+function setMode(mode){
+  state.mode=mode;
+  if(mode==='cyan'){
+    state.targetHeat=0;
+    state.targetActivity=1;
+    state.targetIntensity=1;
+  }else if(mode==='orange'){
+    state.targetHeat=1;
+    state.targetActivity=1.18;
+    state.targetIntensity=1.12;
+  }else{
+    state.targetHeat=.18;
+    state.targetActivity=.12;
+    state.targetIntensity=.16;
+  }
+}
+
+
+function easeDamp(current,target,lambda,dt){
+  return THREE.MathUtils.lerp(current,target,1-Math.exp(-lambda*dt));
+}
+
+// Destruction simulation
+const gravity=new THREE.Vector3(0,-11.5,0);
+const tmp=new THREE.Vector3();
+const tmp2=new THREE.Vector3();
+
+function activatePiece(m, origin, strength=7){
+  if(!m?.userData?.destructible) return;
+  if(!m.userData.dynamic){
+    m.userData.dynamic=true;
+    dynamic.push(m);
+  }
+  const dir=tmp.copy(m.position).sub(origin);
+  dir.y=Math.max(.25,dir.y+.55);
+  const dist=Math.max(.8,dir.length());
+  dir.normalize();
+
+  const impulse=strength/(1+dist*.12);
+  m.userData.vel.addScaledVector(dir,impulse);
+  m.userData.vel.y += 2.0+Math.random()*3.3;
+  m.userData.ang.add(new THREE.Vector3(
+    (Math.random()-.5)*7,
+    (Math.random()-.5)*7,
+    (Math.random()-.5)*7
+  ));
+}
+
+function radialBlast(strength=17, radius=14){
+  const origin=energy.position.clone();
+  destructibles.forEach(m=>{
+    const d=m.position.distanceTo(origin);
+    if(d<radius) activatePiece(m,origin,strength*(1-d/radius)+3);
+  });
+  const c=new THREE.Color().lerpColors(cyanC,orangeC,state.heat);
+  spawnShockwave(c);
+  state.targetActivity=Math.max(state.targetActivity,1.25);
+  flash=1;
+}
+
+document.getElementById('blastBtn').addEventListener('click',()=>radialBlast());
+document.getElementById('resetBtn').addEventListener('click',resetArena);
+const brightnessSlider=document.getElementById('brightness');
+let exposureBase=parseFloat(brightnessSlider.value);
+brightnessSlider.addEventListener('input',()=>{
+  exposureBase=parseFloat(brightnessSlider.value);
+});
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){
+    e.preventDefault();
+    radialBlast();
+  }
+});
+
+function resetArena(){
+  dynamic.length=0;
+  destructibles.forEach(m=>{
+    const s=m.userData.spawn;
+    m.userData.dynamic=false;
+    m.position.copy(s.pos);
+    m.quaternion.copy(s.quat);
+    m.scale.copy(s.scale);
+    m.userData.vel.set(0,0,0);
+    m.userData.ang.set(0,0,0);
+    m.visible=true;
+  });
+}
+
+// Click-to-break raycast
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+let down={x:0,y:0};
+
+renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY}});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>5) return;
+  pointer.x=(e.clientX/innerWidth)*2-1;
+  pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(destructibles,false);
+  if(!hits.length) return;
+  const hit=hits[0];
+  activatePiece(hit.object,hit.point.clone().addScaledVector(hit.face?.normal||new THREE.Vector3(0,1,0),-1),11);
+  spawnShockwave(new THREE.Color().lerpColors(cyanC,orangeC,state.heat));
+});
+
+// Animation
+const clock=new THREE.Clock();
+let flash=0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(.033,clock.getDelta());
+  const t=clock.elapsedTime;
+  controls.update();
+
+  state.heat=easeDamp(state.heat,state.targetHeat,2.2,dt);
+  state.activity=easeDamp(state.activity,state.targetActivity,2.0,dt);
+  state.intensity=easeDamp(state.intensity,state.targetIntensity,2.1,dt);
+
+  cycleTime += dt;
+  transitionPulseCooldown = Math.max(0, transitionPulseCooldown - dt);
+  const currentCycle = autoCycle[cycleIndex];
+  if(cycleTime >= currentCycle.duration){
+    cycleTime = 0;
+    advanceCycle();
+  }
+
+  // automatic pulse for blast stage
+  if(transitionPulseCooldown > 0.2 && transitionPulseCooldown < 0.24){
+    radialBlast(14, 14);
+  }
+
+  // Blend cyan/orange with a pale calm result
+  const activeColor=new THREE.Color().lerpColors(cyanC,orangeC,state.heat);
+  const calmBlend=1-Math.min(1,state.activity);
+  const energyColor=activeColor.clone().lerp(calmC,calmBlend*.72);
+
+  core.material.color.copy(energyColor);
+  halo.material.color.copy(energyColor);
+  energyLight.color.copy(energyColor);
+  ringMeshes.forEach(r=>r.material.color.copy(energyColor));
+  streaks.forEach(s=>s.material.color.copy(energyColor));
+
+  // Transitional visual intensity instead of snapping
+  bloom.strength=easeDamp(bloom.strength,.16+state.intensity*.34,2.6,dt);
+  bloom.radius=easeDamp(bloom.radius,.34+state.activity*.10,2.4,dt);
+  energyLight.intensity=easeDamp(energyLight.intensity,35+state.intensity*230,2.8,dt);
+  renderer.toneMappingExposure=easeDamp(renderer.toneMappingExposure,exposureBase+state.intensity*.05,2.4,dt);
+
+  const pulse=1+Math.sin(t*5.4)*.07*state.activity;
+  core.scale.setScalar(pulse);
+  core.rotation.y+=dt*(.20+.55*state.activity);
+  core.rotation.x+=dt*(.08+.22*state.activity);
+  halo.rotation.y-=dt*(.06+.20*state.activity);
+
+  ringMeshes.forEach((r,i)=>{
+    r.rotation.z += dt*(.05+.18*(i+1)*state.activity);
+    const s=1+Math.sin(t*1.8+i*.9)*.06*state.activity;
+    r.scale.setScalar(s);
+    r.material.opacity=.06+.20*state.intensity;
+  });
+
+  streaks.forEach((s,i)=>{
+    s.material.opacity=.025+(.07+.14*(Math.sin(t*4+i)*.5+.5))*state.intensity;
+    s.rotation.z += dt*.025*(i%2?1:-1)*state.activity;
+  });
+
+  // Tween between two motion "personalities":
+  // cyan = buoyant radial breathing; orange = swirling vortex.
+  floaters.forEach(m=>{
+    const u=m.userData;
+    const b=u.base;
+
+    const cyanX=b.x + Math.cos(t*.45+u.phase)*(.15+.24*state.activity);
+    const cyanZ=b.z + Math.sin(t*.38+u.phase)*(.15+.24*state.activity);
+    const cyanY=b.y + Math.sin(t*u.speed+u.phase)*(.20+.75*state.activity);
+
+    const ang=Math.atan2(b.z/.72,b.x) + t*(.045+.055*u.speed);
+    const rr=Math.hypot(b.x,b.z/.72);
+    const orangeX=Math.cos(ang)*rr;
+    const orangeZ=Math.sin(ang)*rr*.72;
+    const orangeY=b.y + Math.sin(t*u.speed*1.25+u.phase)*(.28+1.05*state.activity);
+
+    const modeX=THREE.MathUtils.lerp(cyanX,orangeX,state.heat);
+    const modeY=THREE.MathUtils.lerp(cyanY,orangeY,state.heat);
+    const modeZ=THREE.MathUtils.lerp(cyanZ,orangeZ,state.heat);
+
+    const calm=.08+.92*Math.min(1,state.activity);
+    m.position.x=THREE.MathUtils.lerp(b.x,modeX,calm);
+    m.position.y=THREE.MathUtils.lerp(b.y,modeY,calm);
+    m.position.z=THREE.MathUtils.lerp(b.z,modeZ,calm);
+
+    m.rotation.x+=dt*.13*u.speed*state.activity;
+    m.rotation.y+=dt*.17*u.speed*state.activity;
+  });
+
+  // Lightweight rigid-body-ish destruction
+  for(let i=dynamic.length-1;i>=0;i--){
+    const m=dynamic[i];
+    const v=m.userData.vel, a=m.userData.ang;
+    v.addScaledVector(gravity,dt);
+    v.multiplyScalar(Math.pow(.997,dt*60));
+    m.position.addScaledVector(v,dt);
+
+    m.rotation.x+=a.x*dt;
+    m.rotation.y+=a.y*dt;
+    m.rotation.z+=a.z*dt;
+    a.multiplyScalar(Math.pow(.985,dt*60));
+
+    // Ground collision
+    if(m.position.y<.35){
+      m.position.y=.35;
+      if(Math.abs(v.y)>.7){
+        v.y*=-.34;
+        v.x*=.72; v.z*=.72;
+      }else{
+        v.y=0; v.x*=.94; v.z*=.94;
+      }
+    }
+    if(m.position.length()>90 || m.position.y<-20){
+      m.visible=false;
+      dynamic.splice(i,1);
+    }
+  }
+
+  // Expand/fade shockwaves
+  for(let i=shockwaves.length-1;i>=0;i--){
+    const s=shockwaves[i];
+    s.userData.life+=dt;
+    const p=s.userData.life/.85;
+    s.scale.setScalar(1+p*7.5);
+    s.material.opacity=Math.max(0,(1-p)*.42);
+    if(p>=1){
+      scene.remove(s); s.geometry.dispose(); s.material.dispose();
+      shockwaves.splice(i,1);
+    }
+  }
+
+  flash=Math.max(0,flash-dt*2.3);
+  document.getElementById('meterFill').style.width=(flash*100)+'%';
+
+  composer.render();
+}
+setMode(autoCycle[0].mode);
+updateStateLabel();
+transitionPulseCooldown = autoCycle[0].blast ? 0.45 : 0;
+animate();
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  composer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>8 Billion People Voting Together — Latency Visualization</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root{
+      --bg:#07111f;
+      --panel:#0b1728;
+      --panel-2:#0d1b30;
+      --line:#1f4364;
+      --grid:#18304a;
+      --text:#f4f7fb;
+      --muted:#aab7c7;
+      --cyan:#3dd5ff;
+      --blue:#4f7cff;
+      --green:#52e6a5;
+      --yellow:#ffc857;
+      --orange:#ff8c42;
+      --pink:#ff61d8;
+      --purple:#a678ff;
+      --danger:#ff6b8a;
+      --shadow:rgba(0,0,0,.32);
+    }
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(73,110,255,.08), transparent 38%),
+        var(--bg);
+      color:var(--text);
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body{padding:18px}
+    .app{max-width:1600px;margin:0 auto}
+    .hero{
+      text-align:center;
+      margin:2px 0 18px;
+    }
+    .hero h1{
+      margin:0;
+      font-size:clamp(28px,3.2vw,52px);
+      letter-spacing:-.03em;
+    }
+    .hero p{
+      margin:7px 0 0;
+      color:var(--muted);
+      font-size:clamp(14px,1.5vw,20px);
+    }
+    .note{
+      display:inline-flex;
+      margin-top:10px;
+      padding:6px 10px;
+      border:1px solid #244762;
+      border-radius:999px;
+      color:#b9c6d8;
+      font-size:12px;
+      background:rgba(13,27,48,.75);
+    }
+    .panel{
+      position:relative;
+      border:1px solid #21496c;
+      border-radius:12px;
+      background:
+        linear-gradient(180deg, rgba(18,40,67,.35), rgba(6,18,33,.25)),
+        var(--panel);
+      box-shadow:0 12px 30px var(--shadow);
+      overflow:hidden;
+    }
+    .panel::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:linear-gradient(120deg,rgba(255,255,255,.025),transparent 30%);
+    }
+    .panel-pad{padding:18px}
+    .panel h2,.panel h3{margin:0}
+    .panel h2{font-size:22px}
+    .panel h3{font-size:18px}
+    .sub{color:var(--muted);margin-top:3px;font-size:14px}
+    .top{
+      display:grid;
+      grid-template-columns:280px minmax(0,1fr) 180px;
+      min-height:360px;
+    }
+    .metrics{
+      padding:22px;
+      border-right:1px solid rgba(35,73,108,.55);
+    }
+    .metric{margin-top:30px}
+    .metric .label{color:#dbe2eb;font-size:15px}
+    .metric .value{
+      margin-top:5px;
+      font-size:32px;
+      font-weight:750;
+      letter-spacing:-.03em;
+    }
+    .metric.primary .value{color:var(--green)}
+    .mapWrap{
+      position:relative;
+      min-height:360px;
+    }
+    .legend{
+      padding:26px 18px 20px;
+      border-left:1px solid rgba(35,73,108,.55);
+    }
+    .legendbar{
+      width:22px;height:170px;border-radius:4px;
+      background:linear-gradient(to top,var(--green),var(--cyan),var(--blue),var(--purple),var(--pink));
+      margin:18px 10px 0 0;
+      float:left;
+    }
+    .legendlabels{
+      display:flex;flex-direction:column;justify-content:space-between;height:170px;
+      margin-top:18px;color:#dfe8f1;font-size:12px;
+    }
+    .legendExtras{clear:both;padding-top:20px;color:#cbd5df;font-size:12px;line-height:1.8}
+    .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#fff;margin-right:8px}
+    .arcSample{display:inline-block;width:26px;border-top:1px solid #8aa7ff;margin-right:8px;vertical-align:middle}
+    .grid3{
+      display:grid;
+      grid-template-columns:1fr 1.2fr .78fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    .bottom{
+      margin-top:12px;
+    }
+    .bottomTitle{
+      font-size:22px;font-weight:750;margin:8px 2px 10px;
+    }
+    .grid5{
+      display:grid;
+      grid-template-columns:1.1fr 1fr .95fr .9fr .95fr;
+      gap:12px;
+    }
+    .small{min-height:250px}
+    .chart{width:100%;height:250px}
+    .chart.tall{height:360px}
+    .chart.short{height:210px}
+    svg{display:block;width:100%;height:100%}
+    .axis text{fill:#b8c4d3;font-size:11px}
+    .axis path,.axis line{stroke:#42617e}
+    .grid line{stroke:var(--grid);stroke-opacity:.85}
+    .grid path{stroke:none}
+    .tooltip{
+      position:fixed;
+      z-index:50;
+      pointer-events:none;
+      padding:8px 10px;
+      border-radius:8px;
+      background:#0c1524;
+      color:#fff;
+      border:1px solid #325578;
+      box-shadow:0 8px 25px rgba(0,0,0,.35);
+      font-size:12px;
+      opacity:0;
+      transform:translate(-50%,-115%);
+      white-space:nowrap;
+    }
+    .statusList,.resultList{padding:16px 18px 18px;display:grid;gap:12px}
+    .statusRow,.resultRow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .statusLeft{display:flex;align-items:center;gap:9px}
+    .statusDot{
+      width:12px;height:12px;border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 12px rgba(82,230,165,.5);
+    }
+    .healthy{color:var(--green)}
+    .timeline{padding:12px 18px 18px}
+    .timelineItem{
+      display:grid;
+      grid-template-columns:24px 54px 1fr;
+      gap:8px;
+      align-items:center;
+      min-height:30px;
+      position:relative;
+    }
+    .timelineItem:not(:last-child)::after{
+      content:"";position:absolute;left:11px;top:22px;bottom:-8px;width:2px;background:#2d5ca0
+    }
+    .timelineDot{
+      width:14px;height:14px;border:3px solid var(--cyan);border-radius:50%;
+      background:var(--panel);
+      z-index:2;
+    }
+    .timelineTime{color:#c7d4e0;font-size:12px}
+    .timelineText{color:#dce4ed;font-size:12px}
+    .check{color:var(--green);font-weight:800}
+    .rowlabel{fill:#d8e1eb;font-size:11px}
+    .smallLabel{fill:#aab7c7;font-size:10px}
+    .bigCenter{fill:#fff;font-size:24px;font-weight:750}
+    .centerSub{fill:#aab7c7;font-size:10px}
+    .pulse{
+      animation:pulse 1.8s ease-in-out infinite;
+      transform-box:fill-box;transform-origin:center;
+    }
+    @keyframes pulse{0%,100%{opacity:.45;transform:scale(.92)}50%{opacity:1;transform:scale(1.14)}}
+    @media (max-width:1100px){
+      .top{grid-template-columns:220px minmax(0,1fr)}
+      .legend{display:none}
+      .grid3{grid-template-columns:1fr}
+      .grid5{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width:700px){
+      body{padding:10px}
+      .top{grid-template-columns:1fr}
+      .metrics{border-right:0;border-bottom:1px solid rgba(35,73,108,.55)}
+      .metricsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+      .metric{margin-top:14px}
+      .metric .value{font-size:23px}
+      .mapWrap{min-height:300px}
+      .grid5{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>8 Billion People Voting Together</h1>
+    <p>Latency visualization and supporting views for a global, real-time vote</p>
+    <div class="note">Illustrative simulation data — replace with real telemetry</div>
+  </header>
+
+  <section class="panel top">
+    <div class="metrics">
+      <h2>Global Voting Latency</h2>
+      <div class="sub">Vote submission → global confirmation</div>
+      <div class="metricsGrid">
+        <div class="metric primary">
+          <div class="label">Global median</div>
+          <div class="value">180 ms</div>
+        </div>
+        <div class="metric">
+          <div class="label">95th percentile</div>
+          <div class="value">420 ms</div>
+        </div>
+        <div class="metric">
+          <div class="label">99th percentile</div>
+          <div class="value">890 ms</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mapWrap">
+      <div id="map" class="chart tall"></div>
+    </div>
+
+    <div class="legend">
+      <div>Latency (ms)</div>
+      <div class="legendbar"></div>
+      <div class="legendlabels">
+        <span>1000+</span><span>500</span><span>200</span><span>100</span><span>50</span><span>10</span>
+      </div>
+      <div class="legendExtras">
+        <div><span class="dot"></span>Voting node</div>
+        <div><span class="arcSample"></span>Replicated vote</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <div class="panel panel-pad">
+      <h3>Latency Distribution</h3>
+      <div class="sub">How long it takes for a vote to be globally confirmed</div>
+      <div id="distribution" class="chart"></div>
+    </div>
+
+    <div class="panel panel-pad">
+      <h3>Latency Over Time</h3>
+      <div class="sub">Real-time latency as the global vote ramps up</div>
+      <div id="latencyTime" class="chart"></div>
+    </div>
+
+    <div class="panel panel-pad">
+      <h3>Latency by Region</h3>
+      <div class="sub">Illustrative median confirmation latency</div>
+      <div id="regionBars" class="chart"></div>
+    </div>
+  </section>
+
+  <section class="bottom">
+    <div class="bottomTitle">Other Helpful Visualizations to Support a Global Vote</div>
+
+    <div class="grid5">
+      <div class="panel small panel-pad">
+        <h3>1. Real-Time Vote Ingestion</h3>
+        <div class="sub">Votes processed per second</div>
+        <div id="ingestion" class="chart short"></div>
+      </div>
+
+      <div class="panel small panel-pad">
+        <h3>2. Global Participation</h3>
+        <div class="sub">Share of eligible participants who have voted</div>
+        <div id="participation" class="chart short"></div>
+      </div>
+
+      <div class="panel small">
+        <div class="panel-pad" style="padding-bottom:4px">
+          <h3>3. System Health</h3>
+          <div class="sub">Voting infrastructure status</div>
+        </div>
+        <div class="statusList">
+          <div class="statusRow"><div class="statusLeft"><span class="statusDot"></span>API Gateways</div><span class="healthy">Healthy</span></div>
+          <div class="statusRow"><div class="statusLeft"><span class="statusDot"></span>Consensus Network</div><span class="healthy">Healthy</span></div>
+          <div class="statusRow"><div class="statusLeft"><span class="statusDot"></span>Data Replication</div><span class="healthy">Healthy</span></div>
+          <div class="statusRow"><div class="statusLeft"><span class="statusDot"></span>Fraud Detection</div><span class="healthy">Healthy</span></div>
+        </div>
+      </div>
+
+      <div class="panel small">
+        <div class="panel-pad" style="padding-bottom:4px">
+          <h3>4. Replication Timeline</h3>
+          <div class="sub">How a single vote propagates globally</div>
+        </div>
+        <div class="timeline">
+          <div class="timelineItem"><span class="timelineDot"></span><span class="timelineTime">0 ms</span><span class="timelineText">Vote submitted</span></div>
+          <div class="timelineItem"><span class="timelineDot"></span><span class="timelineTime">35 ms</span><span class="timelineText">Regional node receives</span></div>
+          <div class="timelineItem"><span class="timelineDot"></span><span class="timelineTime">120 ms</span><span class="timelineText">Replicated to 3 continents</span></div>
+          <div class="timelineItem"><span class="timelineDot"></span><span class="timelineTime">180 ms</span><span class="timelineText">Globally confirmed</span></div>
+          <div class="timelineItem"><span class="timelineDot"></span><span class="timelineTime">210 ms</span><span class="timelineText">Visible in results</span></div>
+        </div>
+      </div>
+
+      <div class="panel small">
+        <div class="panel-pad" style="padding-bottom:4px">
+          <h3>5. Final Results Consistency</h3>
+          <div class="sub">All regions converge on one result</div>
+        </div>
+        <div class="resultList">
+          <div class="resultRow"><span>North America</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>South America</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>Europe</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>Africa</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>Middle East</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>South Asia</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>East Asia</span><span class="check">✓ Match</span></div>
+          <div class="resultRow"><span>Oceania</span><span class="check">✓ Match</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+const C = {
+  bg:"#07111f", grid:"#18304a", text:"#f4f7fb", muted:"#aab7c7",
+  cyan:"#3dd5ff", blue:"#4f7cff", green:"#52e6a5",
+  yellow:"#ffc857", orange:"#ff8c42", pink:"#ff61d8", purple:"#a678ff"
+};
+
+const tooltip = d3.select("#tooltip");
+function showTip(event, html){
+  tooltip.html(html)
+    .style("left", event.clientX + "px")
+    .style("top", event.clientY + "px")
+    .style("opacity", 1);
+}
+function hideTip(){ tooltip.style("opacity",0); }
+
+function setup(id, margin={top:16,right:16,bottom:28,left:42}) {
+  const el = document.querySelector(id);
+  const rect = el.getBoundingClientRect();
+  const w = Math.max(10, rect.width);
+  const h = Math.max(10, rect.height);
+  const svg = d3.select(el).append("svg").attr("viewBox",`0 0 ${w} ${h}`);
+  return {svg,w,h,iw:w-margin.left-margin.right,ih:h-margin.top-margin.bottom,margin};
+}
+
+function addGrid(g, scale, width, ticks=5){
+  g.attr("class","grid")
+   .call(d3.axisLeft(scale).ticks(ticks).tickSize(-width).tickFormat(""))
+   .selectAll("line").attr("stroke",C.grid);
+}
+
+function drawMap(){
+  const {svg,w,h} = setup("#map",{top:14,right:16,bottom:16,left:16});
+  const g = svg.append("g");
+  const projection = d3.geoNaturalEarth1().scale(w/6.5).translate([w/2,h/2+5]);
+
+  // abstract continent silhouettes, no external data dependency
+  const blobs = [
+    [[-165,60],[-145,72],[-110,72],[-80,50],[-95,20],[-120,15],[-150,35]], // N America
+    [[-80,10],[-55,12],[-35,-8],[-48,-55],[-70,-35]], // S America
+    [[-10,35],[10,58],[40,72],[80,68],[120,55],[145,35],[130,10],[95,5],[70,25],[35,35]], // Eurasia
+    [[-15,33],[25,38],[50,10],[35,-35],[8,-35],[-5,5]], // Africa
+    [[112,-12],[155,-10],[155,-45],[120,-40]], // Australia
+    [[-45,60],[-20,82],[-60,84],[-75,70]] // Greenland-ish
+  ];
+
+  const line = d3.line()
+    .curve(d3.curveBasisClosed)
+    .x(d=>projection(d)[0]).y(d=>projection(d)[1]);
+
+  g.selectAll(".continent")
+    .data(blobs)
+    .enter().append("path")
+    .attr("class","continent")
+    .attr("d",line)
+    .attr("fill","#1b355d")
+    .attr("stroke","#2a4e79")
+    .attr("stroke-width",1)
+    .attr("opacity",.85);
+
+  const regions = [
+    {name:"North America", lon:-100, lat:39, latency:120, color:C.green},
+    {name:"South America", lon:-57, lat:-15, latency:190, color:"#76d7ff"},
+    {name:"Europe", lon:12, lat:50, latency:160, color:C.cyan},
+    {name:"Africa", lon:24, lat:6, latency:320, color:C.yellow},
+    {name:"Middle East", lon:46, lat:27, latency:260, color:C.orange},
+    {name:"South Asia", lon:78, lat:22, latency:280, color:C.pink},
+    {name:"East Asia", lon:116, lat:36, latency:210, color:C.purple},
+    {name:"Oceania", lon:136, lat:-25, latency:150, color:C.blue}
+  ];
+
+  // micro-voters clustered around regions
+  const voters = [];
+  regions.forEach((r,ri)=>{
+    for(let i=0;i<55;i++){
+      const lon = r.lon + (Math.random()-.5)*(ri===0?50:36);
+      const lat = r.lat + (Math.random()-.5)*25;
+      voters.push({...r,lon,lat,r:1.4+Math.random()*1.2});
+    }
+  });
+
+  g.selectAll(".voter")
+    .data(voters)
+    .enter().append("circle")
+    .attr("class","voter")
+    .attr("cx",d=>projection([d.lon,d.lat])[0])
+    .attr("cy",d=>projection([d.lon,d.lat])[1])
+    .attr("r",d=>d.r)
+    .attr("fill",d=>d.color)
+    .attr("opacity",.75);
+
+  const hub = regions[2]; // Europe as illustrative neutral hub
+  const paths = [];
+  regions.forEach((r,ri)=>{
+    if(ri===2) return;
+    for(let i=0;i<6;i++) paths.push({from:r,to:hub,color:r.color,delay:i*180+ri*90});
+  });
+
+  const arc = d3.line().curve(d3.curveBundle.beta(.65))
+    .x(d=>projection(d)[0]).y(d=>projection(d)[1]);
+
+  function arcPoints(a,b,bend=18){
+    const midLon=(a.lon+b.lon)/2;
+    const midLat=(a.lat+b.lat)/2 + bend;
+    return [[a.lon,a.lat],[midLon,midLat],[b.lon,b.lat]];
+  }
+
+  const arcSel = g.selectAll(".arc")
+    .data(paths)
+    .enter().append("path")
+    .attr("class","arc")
+    .attr("d",d=>arc(arcPoints(d.from,d.to, 12+Math.random()*18)))
+    .attr("fill","none")
+    .attr("stroke",d=>d.color)
+    .attr("stroke-width",.7)
+    .attr("stroke-opacity",.3);
+
+  // animated packets
+  paths.forEach((p,idx)=>{
+    const pathNode = arcSel.nodes()[idx];
+    const packet = g.append("circle")
+      .attr("r",2.2)
+      .attr("fill",p.color)
+      .attr("filter",null)
+      .attr("opacity",.95);
+
+    const length = pathNode.getTotalLength();
+    (function loop(){
+      packet
+        .attr("cx",pathNode.getPointAtLength(0).x)
+        .attr("cy",pathNode.getPointAtLength(0).y)
+        .transition().delay(p.delay).duration(1700 + Math.random()*1200).ease(d3.easeCubicInOut)
+        .attrTween("cx",()=>t=>pathNode.getPointAtLength(t*length).x)
+        .attrTween("cy",()=>t=>pathNode.getPointAtLength(t*length).y)
+        .on("end",loop);
+    })();
+  });
+
+  const hubs = g.selectAll(".hub")
+    .data(regions)
+    .enter().append("g")
+    .attr("transform",d=>`translate(${projection([d.lon,d.lat])[0]},${projection([d.lon,d.lat])[1]})`);
+
+  hubs.append("circle")
+    .attr("r",13)
+    .attr("fill",d=>d.color)
+    .attr("opacity",.12)
+    .attr("class","pulse");
+
+  hubs.append("circle")
+    .attr("r",7)
+    .attr("fill",d=>d.color)
+    .attr("stroke","#fff")
+    .attr("stroke-opacity",.35)
+    .attr("stroke-width",1)
+    .on("mousemove",(e,d)=>showTip(e,`<b>${d.name}</b><br>${d.latency} ms median`))
+    .on("mouseleave",hideTip);
+}
+
+function drawDistribution(){
+  const {svg,w,h,iw,ih,margin} = setup("#distribution");
+  const g=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
+  const data=d3.range(1,1200,8).map(x=>{
+    const lx=Math.log(x);
+    const mu=Math.log(180), sigma=.8;
+    return {x,y:Math.exp(-Math.pow(lx-mu,2)/(2*sigma*sigma))};
+  });
+  const x=d3.scaleLog().domain([1,1200]).range([0,iw]);
+  const y=d3.scaleLinear().domain([0,1]).range([ih,0]);
+  addGrid(g.append("g"),y,iw,4);
+  g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`)
+   .call(d3.axisBottom(x).tickValues([1,10,100,1000]).tickFormat(d=>d>=1000?"1k":d));
+  const area=d3.area().x(d=>x(d.x)).y0(ih).y1(d=>y(d.y)).curve(d3.curveBasis);
+  g.append("path").datum(data).attr("d",area)
+   .attr("fill",C.purple).attr("fill-opacity",.34)
+   .attr("stroke",C.purple).attr("stroke-width",2);
+  g.append("line").attr("x1",x(180)).attr("x2",x(180)).attr("y1",0).attr("y2",ih)
+   .attr("stroke",C.purple).attr("stroke-dasharray","5,4");
+  g.append("text").attr("x",x(180)+7).attr("y",18).attr("fill","#fff").attr("font-size",11)
+   .text("Median 180 ms");
+}
+
+function drawLatencyTime(){
+  const {svg,iw,ih,margin}=setup("#latencyTime");
+  const g=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
+  const data=d3.range(31).map(m=>{
+    const spike1=Math.exp(-Math.pow((m-9)/.7,2))*950;
+    const spike2=Math.exp(-Math.pow((m-21)/.6,2))*700;
+    const noise=(Math.sin(m*2.2)+1)*25;
+    return {
+      m,
+      median:130+noise+spike1*.12+spike2*.10,
+      p95:260+noise*1.6+spike1*.35+spike2*.27,
+      p99:350+noise*2.2+spike1+spike2
+    };
+  });
+  const x=d3.scaleLinear().domain([0,30]).range([0,iw]);
+  const y=d3.scaleLinear().domain([0,1500]).range([ih,0]);
+  addGrid(g.append("g"),y,iw,4);
+  g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`)
+   .call(d3.axisBottom(x).ticks(6).tickFormat(d=>`00:${String(d).padStart(2,"0")}`));
+  g.append("g").attr("class","axis").call(d3.axisLeft(y).ticks(4).tickFormat(d=>d===0?"0":`${d} ms`));
+  const line=d3.line().x(d=>x(d.m)).curve(d3.curveMonotoneX);
+  [
+    ["p99",C.pink,2.2],["p95",C.purple,2],["median",C.cyan,2]
+  ].forEach(([key,color,sw])=>{
+    g.append("path").datum(data).attr("d",line.y(d=>y(d[key])))
+     .attr("fill","none").attr("stroke",color).attr("stroke-width",sw);
+  });
+}
+
+function drawRegionBars(){
+  const {svg,iw,ih,margin}=setup("#regionBars",{top:10,right:12,bottom:20,left:96});
+  const g=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
+  const data=[
+    ["North America",120,C.green],["South America",190,"#76d7ff"],["Europe",160,C.cyan],
+    ["Africa",320,C.yellow],["Middle East",260,C.orange],["South Asia",280,C.pink],
+    ["East Asia",210,C.purple],["Oceania",150,C.blue]
+  ].map(([name,v,color])=>({name,v,color}));
+  const x=d3.scaleLinear().domain([0,360]).range([0,iw]);
+  const y=d3.scaleBand().domain(data.map(d=>d.name)).range([0,ih]).padding(.3);
+  g.selectAll("text.label").data(data).enter().append("text")
+    .attr("class","rowlabel").attr("x",-8).attr("y",d=>y(d.name)+y.bandwidth()/2+4)
+    .attr("text-anchor","end").text(d=>d.name);
+  g.selectAll("rect.bg").data(data).enter().append("rect")
+    .attr("x",0).attr("y",d=>y(d.name)).attr("width",iw).attr("height",y.bandwidth())
+    .attr("rx",2).attr("fill","#13263f");
+  g.selectAll("rect.bar").data(data).enter().append("rect")
+    .attr("x",0).attr("y",d=>y(d.name)).attr("height",y.bandwidth()).attr("rx",2)
+    .attr("fill",d=>d.color)
+    .attr("width",0)
+    .transition().duration(900).attr("width",d=>x(d.v));
+  g.selectAll("text.val").data(data).enter().append("text")
+    .attr("x",d=>Math.min(iw-2,x(d.v)+7)).attr("y",d=>y(d.name)+y.bandwidth()/2+4)
+    .attr("fill","#eaf1f8").attr("font-size",11).text(d=>`${d.v} ms`);
+}
+
+function drawIngestion(){
+  const {svg,iw,ih,margin}=setup("#ingestion",{top:10,right:8,bottom:24,left:34});
+  const g=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
+  const data=d3.range(60).map(i=>({
+    i,
+    v: 3 + 17*Math.exp(-Math.pow((i-31)/14,2)) + 8*Math.exp(-Math.pow((i-31)/5,2)) + Math.random()*2
+  }));
+  const x=d3.scaleBand().domain(data.map(d=>d.i)).range([0,iw]).padding(.15);
+  const y=d3.scaleLinear().domain([0,30]).range([ih,0]);
+  addGrid(g.append("g"),y,iw,3);
+  g.append("g").attr("class","axis").call(d3.axisLeft(y).ticks(3).tickFormat(d=>`${d}M`));
+  g.selectAll("rect").data(data).enter().append("rect")
+    .attr("x",d=>x(d.i)).attr("width",x.bandwidth()).attr("y",ih).attr("height",0)
+    .attr("fill",C.green)
+    .transition().delay((d,i)=>i*8).duration(500)
+    .attr("y",d=>y(d.v)).attr("height",d=>ih-y(d.v));
+}
+
+function drawParticipation(){
+  const {svg,w,h}=setup("#participation",{top:0,right:0,bottom:0,left:0});
+  const cx=w*.34, cy=h*.52, r=Math.min(w,h)*.31;
+  const pct=.623;
+  const arc=d3.arc().innerRadius(r*.67).outerRadius(r);
+  const g=svg.append("g").attr("transform",`translate(${cx},${cy})`);
+  g.append("path").attr("d",arc({startAngle:0,endAngle:Math.PI*2})).attr("fill","#24334d");
+  g.append("path").attr("d",arc({startAngle:0,endAngle:Math.PI*2*pct}))
+    .attr("fill",C.purple);
+  g.append("text").attr("class","bigCenter").attr("text-anchor","middle").attr("y",-2).text("62.3%");
+  g.append("text").attr("class","centerSub").attr("text-anchor","middle").attr("y",16).text("participation");
+  const labels=[
+    ["North America","68%",C.green],["South America","61%","#76d7ff"],
+    ["Europe","65%",C.cyan],["Africa","52%",C.yellow],
+    ["South Asia","58%",C.pink],["East Asia","67%",C.purple],["Oceania","63%",C.blue]
+  ];
+  const lg=svg.append("g").attr("transform",`translate(${w*.60},${h*.18})`);
+  labels.forEach((d,i)=>{
+    lg.append("circle").attr("cx",0).attr("cy",i*18).attr("r",4).attr("fill",d[2]);
+    lg.append("text").attr("x",10).attr("y",i*18+4).attr("fill","#dbe5ef").attr("font-size",10).text(`${d[0]} ${d[1]}`);
+  });
+}
+
+drawMap();
+drawDistribution();
+drawLatencyTime();
+drawRegionBars();
+drawIngestion();
+drawParticipation();
+
+window.addEventListener("resize",()=>location.reload());
+</script>
+</body>
+</html>
