@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The World River</title>
+
+  <style>
+    :root{
+      --text:#eef8ff;
+      --muted:#9eb7c8;
+      --cyan:#63e7ff;
+      --violet:#a987ff;
+      --mint:#70ffd7;
+      --gold:#ffe58a;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 50% 42%,#0a172b 0%,#040914 42%,#010207 78%,#000 100%);
+      color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    canvas{display:block}
+    #app{position:fixed;inset:0}
+
+    .hud{
+      position:fixed;
+      inset:0;
+      z-index:20;
+      pointer-events:none;
+    }
+
+    .top-left{
+      position:absolute;
+      left:24px;
+      top:22px;
+      width:min(455px,calc(100vw - 48px));
+    }
+
+    .eyebrow{
+      margin-bottom:8px;
+      font-size:10px;
+      letter-spacing:.27em;
+      text-transform:uppercase;
+      color:rgba(160,220,255,.7);
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(30px,4.2vw,52px);
+      line-height:.94;
+      font-weight:650;
+      letter-spacing:-.045em;
+      text-shadow:0 0 30px rgba(90,220,255,.2);
+    }
+
+    .sub{
+      margin-top:12px;
+      max-width:405px;
+      font-size:12px;
+      line-height:1.57;
+      color:rgba(217,237,250,.67);
+    }
+
+    .status-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:15px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-height:29px;
+      padding:7px 11px;
+      border:1px solid rgba(130,210,255,.14);
+      border-radius:999px;
+      background:rgba(6,14,27,.34);
+      backdrop-filter:blur(13px);
+      font-size:10px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(232,246,255,.87);
+    }
+
+    .live-dot{
+      width:6px;height:6px;border-radius:50%;
+      background:#70ffd9;
+      box-shadow:0 0 9px #70ffd9,0 0 18px rgba(112,255,217,.55);
+      animation:blink 1.2s ease-in-out infinite;
+    }
+
+    @keyframes blink{
+      50%{opacity:.3;transform:scale(.7)}
+    }
+
+    .right{
+      position:absolute;
+      right:24px;
+      top:22px;
+      width:250px;
+      text-align:right;
+    }
+
+    .counter{
+      font-size:clamp(24px,4vw,46px);
+      line-height:1;
+      font-weight:620;
+      letter-spacing:-.04em;
+      font-variant-numeric:tabular-nums;
+      text-shadow:0 0 28px rgba(95,220,255,.18);
+    }
+
+    .counter-label{
+      margin-top:7px;
+      font-size:9px;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+      color:rgba(180,211,230,.52);
+    }
+
+    .layers{
+      position:absolute;
+      right:24px;
+      top:112px;
+      width:238px;
+      display:grid;
+      gap:7px;
+    }
+
+    .layer{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:9px;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:11px;
+      background:rgba(5,12,23,.3);
+      backdrop-filter:blur(10px);
+    }
+
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      box-shadow:0 0 12px currentColor;
+    }
+
+    .layer-name{
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      color:rgba(235,246,255,.75);
+    }
+
+    .layer-value{
+      font-size:10px;
+      font-variant-numeric:tabular-nums;
+      color:rgba(242,249,255,.9);
+    }
+
+    .bottom{
+      position:absolute;
+      left:24px;
+      right:24px;
+      bottom:20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:20px;
+    }
+
+    .phase-card{
+      width:min(500px,77vw);
+      padding:12px 13px;
+      border:1px solid rgba(130,210,255,.12);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(9,18,32,.38),rgba(3,8,16,.25));
+      backdrop-filter:blur(13px);
+    }
+
+    .phase-label{
+      font-size:9px;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+      color:rgba(180,214,236,.46);
+    }
+
+    #phase{
+      margin-top:5px;
+      font-size:13px;
+      color:rgba(235,248,255,.92);
+    }
+
+    .bar{
+      margin-top:10px;
+      height:2px;
+      overflow:hidden;
+      border-radius:2px;
+      background:rgba(255,255,255,.06);
+    }
+
+    .bar>div{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#5ee2ff,#9d82ff,#6affd2,#ffe393);
+      box-shadow:0 0 15px rgba(100,220,255,.6);
+    }
+
+    .help{
+      text-align:right;
+      font-size:10px;
+      line-height:1.72;
+      letter-spacing:.04em;
+      color:rgba(190,214,230,.42);
+    }
+
+    .ocean-label{
+      position:absolute;
+      left:50%;
+      bottom:80px;
+      transform:translateX(-50%);
+      text-align:center;
+      opacity:.65;
+      text-shadow:0 0 35px rgba(110,240,255,.35);
+    }
+
+    .ocean-label small{
+      display:block;
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.24em;
+      color:rgba(207,231,245,.55);
+    }
+
+    .ocean-label strong{
+      display:block;
+      margin-top:3px;
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.04em;
+    }
+
+    .vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(circle at center,transparent 34%,rgba(0,0,0,.1) 69%,rgba(0,0,0,.5) 100%);
+      mix-blend-mode:multiply;
+    }
+
+    @media(max-width:720px){
+      .top-left{left:18px;top:18px}
+      .right{right:18px;top:auto;bottom:104px}
+      .layers{display:none}
+      .bottom{left:18px;right:18px;bottom:14px}
+      .help{display:none}
+      .ocean-label{display:none}
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports":{
+      "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div class="top-left">
+    <div class="eyebrow">Collective preference hydrology</div>
+    <h1>The World River</h1>
+    <div class="sub">
+      Individual votes begin as microscopic streams of light. Streams merge into city tributaries,
+      city tributaries merge into national rivers, and every river eventually enters one luminous
+      ocean representing humanity's collective preference.
+    </div>
+    <div class="status-row">
+      <div class="pill"><span class="live-dot"></span><span>global flow active</span></div>
+      <div class="pill" id="flowStatus">24 city tributaries</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="counter" id="counter">0</div>
+    <div class="counter-label">illustrative votes represented</div>
+  </div>
+
+  <div class="layers">
+    <div class="layer">
+      <div class="dot" style="background:#63e7ff;color:#63e7ff"></div>
+      <div class="layer-name">People</div>
+      <div class="layer-value">microstreams</div>
+    </div>
+    <div class="layer">
+      <div class="dot" style="background:#a987ff;color:#a987ff"></div>
+      <div class="layer-name">Cities</div>
+      <div class="layer-value">tributaries</div>
+    </div>
+    <div class="layer">
+      <div class="dot" style="background:#70ffd7;color:#70ffd7"></div>
+      <div class="layer-name">Nations</div>
+      <div class="layer-value">rivers</div>
+    </div>
+    <div class="layer">
+      <div class="dot" style="background:#ffe58a;color:#ffe58a"></div>
+      <div class="layer-name">Humanity</div>
+      <div class="layer-value">ocean</div>
+    </div>
+  </div>
+
+  <div class="ocean-label">
+    <small>collective preference</small>
+    <strong>THE HUMANITY OCEAN</strong>
+  </div>
+
+  <div class="bottom">
+    <div class="phase-card">
+      <div class="phase-label">Current phase</div>
+      <div id="phase">Microscopic streams begin carrying individual votes</div>
+      <div class="bar"><div id="phaseBar"></div></div>
+    </div>
+
+    <div class="help">
+      drag · orbit<br>
+      scroll · zoom<br>
+      click ocean · collective pulse<br>
+      R · restart flow
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+
+// -----------------------------------------------------------------------------
+// DOM
+// -----------------------------------------------------------------------------
+const app = document.querySelector('#app');
+const phaseEl = document.querySelector('#phase');
+const phaseBar = document.querySelector('#phaseBar');
+const counterEl = document.querySelector('#counter');
+const flowStatus = document.querySelector('#flowStatus');
+const fmt = d3.format(',');
+
+// -----------------------------------------------------------------------------
+// Scene
+// -----------------------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x010208,0.025);
+
+const camera = new THREE.PerspectiveCamera(
+  46,
+  innerWidth/innerHeight,
+  .1,
+  240
+);
+camera.position.set(0,11.5,18.5);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias:true,
+  alpha:true,
+  powerPreference:'high-performance'
+});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = .055;
+controls.enablePan = false;
+controls.minDistance = 10;
+controls.maxDistance = 30;
+controls.maxPolarAngle = Math.PI*.48;
+controls.target.set(0,-1.2,0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = .055;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(innerWidth,innerHeight),
+  1.55,
+  .85,
+  .12
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// -----------------------------------------------------------------------------
+// Lighting / background
+// -----------------------------------------------------------------------------
+scene.add(new THREE.HemisphereLight(0x82b8ff,0x061018,1.15));
+
+const key = new THREE.DirectionalLight(0xaad2ff,2.2);
+key.position.set(4,12,6);
+scene.add(key);
+
+function makeStars(count,minR,maxR,size,opacity){
+  const geo = new THREE.BufferGeometry();
+  const p = new Float32Array(count*3);
+
+  for(let i=0;i<count;i++){
+    const r=minR+Math.random()*(maxR-minR);
+    const z=Math.random()*2-1;
+    const a=Math.random()*Math.PI*2;
+    const s=Math.sqrt(1-z*z);
+
+    p[i*3]=Math.cos(a)*s*r;
+    p[i*3+1]=z*r;
+    p[i*3+2]=Math.sin(a)*s*r;
+  }
+
+  geo.setAttribute('position',new THREE.BufferAttribute(p,3));
+
+  return new THREE.Points(
+    geo,
+    new THREE.PointsMaterial({
+      color:0xc9ebff,
+      size,
+      transparent:true,
+      opacity,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+}
+
+scene.add(makeStars(4200,35,120,.08,.6));
+
+// -----------------------------------------------------------------------------
+// World data
+// -----------------------------------------------------------------------------
+const countries = [
+  {name:'North', x:-7.0, color:0x63e7ff},
+  {name:'West',  x:-4.2, color:0x7ba9ff},
+  {name:'Central',x:-1.4,color:0xa987ff},
+  {name:'East',   x: 1.4,color:0x8e9cff},
+  {name:'South',  x: 4.2,color:0x70ffd7},
+  {name:'Coastal',x: 7.0,color:0xffd98a}
+];
+
+const cities = [];
+countries.forEach((country,ci)=>{
+  for(let j=0;j<4;j++){
+    const spread=(j-1.5)*1.35;
+    cities.push({
+      countryIndex:ci,
+      country,
+      name:`${country.name} City ${j+1}`,
+      x:country.x+spread*.32,
+      z:6.8+Math.abs(spread)*.36 + ci*.08,
+      weight:.7+Math.random()*1.5
+    });
+  }
+});
+
+// D3 hierarchy is used for aggregation scale
+const hierarchyData = {
+  name:'Humanity',
+  children:countries.map((c,ci)=>({
+    name:c.name,
+    children:cities.filter(d=>d.countryIndex===ci).map(city=>({
+      name:city.name,
+      value:city.weight
+    }))
+  }))
+};
+
+const root = d3.hierarchy(hierarchyData).sum(d=>d.value||0);
+const nationScale = d3.scaleSqrt()
+  .domain(d3.extent(root.children,d=>d.value))
+  .range([.10,.22]);
+
+// -----------------------------------------------------------------------------
+// Ocean
+// -----------------------------------------------------------------------------
+const oceanGroup = new THREE.Group();
+scene.add(oceanGroup);
+
+const ocean = new THREE.Mesh(
+  new THREE.CircleGeometry(6.2,128),
+  new THREE.ShaderMaterial({
+    transparent:true,
+    depthWrite:false,
+    side:THREE.DoubleSide,
+    blending:THREE.AdditiveBlending,
+    uniforms:{
+      uTime:{value:0},
+      uPulse:{value:0}
+    },
+    vertexShader:`
+      varying vec2 vUv;
+      varying vec3 vPos;
+      void main(){
+        vUv=uv;
+        vPos=position;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+      }
+    `,
+    fragmentShader:`
+      precision highp float;
+      uniform float uTime;
+      uniform float uPulse;
+      varying vec2 vUv;
+      varying vec3 vPos;
+
+      void main(){
+        vec2 p=vUv-.5;
+        float r=length(p)*2.0;
+
+        float ripple=
+          sin(r*28.0-uTime*2.2)*.5+
+          sin(r*47.0-uTime*3.0)*.25;
+
+        float center=1.0-smoothstep(0.0,1.0,r);
+        float edge=1.0-smoothstep(.65,1.0,r);
+
+        vec3 c1=vec3(.13,.85,1.0);
+        vec3 c2=vec3(.55,.42,1.0);
+        vec3 c3=vec3(.30,1.0,.72);
+
+        float mixv=.5+.5*sin(uTime*.22+r*8.0);
+        vec3 col=mix(c1,c2,mixv);
+        col=mix(col,c3,.25+.2*sin(uTime*.31));
+
+        float alpha=(.10+center*.28+ripple*.025)*edge;
+        alpha += uPulse*(1.0-r)*.28;
+
+        gl_FragColor=vec4(col,alpha);
+      }
+    `
+  })
+);
+ocean.rotation.x=-Math.PI/2;
+ocean.position.set(0,-3.35,-6.4);
+oceanGroup.add(ocean);
+
+const oceanRing = new THREE.Mesh(
+  new THREE.RingGeometry(5.65,6.3,128),
+  new THREE.MeshBasicMaterial({
+    color:0x78eaff,
+    transparent:true,
+    opacity:.08,
+    side:THREE.DoubleSide,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  })
+);
+oceanRing.rotation.x=-Math.PI/2;
+oceanRing.position.copy(ocean.position);
+oceanGroup.add(oceanRing);
+
+// -----------------------------------------------------------------------------
+// River curves
+// -----------------------------------------------------------------------------
+const microCurves=[];
+const cityCurves=[];
+const nationCurves=[];
+const allRoutes=[];
+
+function curveLine(curve,color,opacity=.2){
+  const geo=new THREE.BufferGeometry().setFromPoints(curve.getPoints(96));
+  const mat=new THREE.LineBasicMaterial({
+    color,
+    transparent:true,
+    opacity,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const line=new THREE.Line(geo,mat);
+  scene.add(line);
+  return {line,geo,mat};
+}
+
+function tube(curve,radius,color,opacity=.18){
+  const geo=new THREE.TubeGeometry(curve,96,radius,8,false);
+  const mat=new THREE.MeshBasicMaterial({
+    color,
+    transparent:true,
+    opacity,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const mesh=new THREE.Mesh(geo,mat);
+  scene.add(mesh);
+  return {mesh,geo,mat};
+}
+
+const countryNodes = countries.map((c,ci)=>new THREE.Vector3(
+  c.x*.78,
+  -1.0 + Math.sin(ci)*.12,
+  .7 + ci*.12
+));
+
+const oceanNode = new THREE.Vector3(0,-3.1,-5.4);
+
+cities.forEach((city,i)=>{
+  const ci=city.countryIndex;
+  const countryNode=countryNodes[ci];
+
+  // city node
+  city.node=new THREE.Vector3(
+    city.x,
+    1.7 + Math.sin(i*.7)*.15,
+    city.z
+  );
+
+  // microscopic tributaries feeding each city
+  for(let j=0;j<5;j++){
+    const sx=city.x+(j-2)*.55 + (Math.random()-.5)*.28;
+    const sz=city.z+2.8+Math.random()*1.4;
+    const start=new THREE.Vector3(sx,3.4+Math.random()*.7,sz);
+    const mid=new THREE.Vector3(
+      (sx+city.node.x)*.5+(Math.random()-.5)*.45,
+      2.4+Math.random()*.5,
+      (sz+city.node.z)*.5
+    );
+
+    const c=new THREE.CatmullRomCurve3([start,mid,city.node]);
+    microCurves.push({
+      curve:c,
+      cityIndex:i,
+      color:new THREE.Color(city.country.color)
+    });
+    curveLine(c,city.country.color,.055);
+  }
+
+  // city -> nation river
+  const cityMid=new THREE.Vector3(
+    THREE.MathUtils.lerp(city.node.x,countryNode.x,.48)+(Math.random()-.5)*.55,
+    .6+Math.random()*.4,
+    THREE.MathUtils.lerp(city.node.z,countryNode.z,.48)
+  );
+
+  const cc=new THREE.CatmullRomCurve3([city.node,cityMid,countryNode]);
+  cityCurves.push({
+    curve:cc,
+    cityIndex:i,
+    countryIndex:ci,
+    color:new THREE.Color(city.country.color)
+  });
+  tube(cc,.055+city.weight*.018,city.country.color,.08);
+
+  // full route for particles
+  for(let m=0;m<5;m++){
+    const micro=microCurves[microCurves.length-1-m];
+    if(micro && micro.cityIndex===i){
+      allRoutes.push({
+        cityIndex:i,
+        countryIndex:ci,
+        segments:[micro.curve,cc],
+        color:new THREE.Color(city.country.color)
+      });
+    }
+  }
+});
+
+// nation -> ocean
+countries.forEach((country,ci)=>{
+  const start=countryNodes[ci];
+  const mid=new THREE.Vector3(
+    country.x*.36,
+    -2.0+Math.sin(ci*.9)*.18,
+    -2.1-ci*.08
+  );
+  const c=new THREE.CatmullRomCurve3([start,mid,oceanNode]);
+
+  nationCurves.push({
+    curve:c,
+    countryIndex:ci,
+    color:new THREE.Color(country.color)
+  });
+
+  const childValue=root.children[ci].value;
+  tube(c,nationScale(childValue),country.color,.13);
+
+  allRoutes
+    .filter(r=>r.countryIndex===ci)
+    .forEach(r=>r.segments.push(c));
+});
+
+// -----------------------------------------------------------------------------
+// Nodes
+// -----------------------------------------------------------------------------
+const nodeGroup=new THREE.Group();
+scene.add(nodeGroup);
+
+cities.forEach((city,i)=>{
+  const orb=new THREE.Mesh(
+    new THREE.SphereGeometry(.075,14,14),
+    new THREE.MeshBasicMaterial({
+      color:city.country.color,
+      transparent:true,
+      opacity:.85,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
+    })
+  );
+  orb.position.copy(city.node);
+  orb.userData.index=i;
+  nodeGroup.add(orb);
+  city.orb=orb;
+});
+
+countries.forEach((country,ci)=>{
+  const orb=new THREE.Mesh(
+    new THREE.SphereGeometry(.17,18,18),
+    new THREE.MeshBasicMaterial({
+      color:country.color,
+      transparent:true,
+      opacity:.95,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
+    })
+  );
+  orb.position.copy(countryNodes[ci]);
+  nodeGroup.add(orb);
+  country.orb=orb;
+});
+
+// -----------------------------------------------------------------------------
+// Flow particles
+// -----------------------------------------------------------------------------
+const PARTICLES=18000;
+const pGeo=new THREE.BufferGeometry();
+const pPos=new Float32Array(PARTICLES*3);
+const pColor=new Float32Array(PARTICLES*3);
+
+pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+pGeo.setAttribute('color',new THREE.BufferAttribute(pColor,3));
+
+const pMat=new THREE.PointsMaterial({
+  size:.075,
+  transparent:true,
+  opacity:.9,
+  vertexColors:true,
+  blending:THREE.AdditiveBlending,
+  depthWrite:false,
+  sizeAttenuation:true
+});
+
+const flowPoints=new THREE.Points(pGeo,pMat);
+scene.add(flowPoints);
+
+const states=[];
+for(let i=0;i<PARTICLES;i++){
+  const routeIndex=Math.floor(Math.random()*allRoutes.length);
+  const route=allRoutes[routeIndex];
+
+  states.push({
+    routeIndex,
+    progress:Math.random(),
+    speed:.035+Math.random()*.07,
+    jitter:Math.random()*Math.PI*2,
+    lane:(Math.random()-.5)*.12
+  });
+
+  const c=route.color.clone().lerp(new THREE.Color(0xffffff),Math.random()*.18);
+  pColor[i*3]=c.r;
+  pColor[i*3+1]=c.g;
+  pColor[i*3+2]=c.b;
+}
+
+pGeo.attributes.color.needsUpdate=true;
+
+function pointAlongRoute(route,t){
+  // allocate more of the normalized travel to later/larger rivers
+  let segIndex,localT;
+
+  if(t<.28){
+    segIndex=0;
+    localT=t/.28;
+  }else if(t<.62){
+    segIndex=1;
+    localT=(t-.28)/.34;
+  }else{
+    segIndex=2;
+    localT=(t-.62)/.38;
+  }
+
+  return route.segments[segIndex].getPointAt(
+    THREE.MathUtils.clamp(localT,0,1)
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Ocean impact particles / spray
+// -----------------------------------------------------------------------------
+const sprayCount=1200;
+const sprayGeo=new THREE.BufferGeometry();
+const sprayPos=new Float32Array(sprayCount*3);
+
+for(let i=0;i<sprayCount;i++){
+  sprayPos[i*3]=oceanNode.x+(Math.random()-.5)*2.2;
+  sprayPos[i*3+1]=oceanNode.y+.1+Math.random()*1.1;
+  sprayPos[i*3+2]=oceanNode.z+(Math.random()-.5)*1.4;
+}
+
+sprayGeo.setAttribute('position',new THREE.BufferAttribute(sprayPos,3));
+
+const spray=new THREE.Points(
+  sprayGeo,
+  new THREE.PointsMaterial({
+    color:0xdafcff,
+    size:.055,
+    transparent:true,
+    opacity:.38,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  })
+);
+scene.add(spray);
+
+// -----------------------------------------------------------------------------
+// Simulation
+// -----------------------------------------------------------------------------
+const TOTAL=8_000_000_000;
+let startTime=performance.now()/1000;
+let represented=0;
+let oceanPulse=0;
+
+function reset(){
+  startTime=performance.now()/1000;
+  represented=0;
+}
+
+addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()==='r') reset();
+});
+
+// click ocean = collective pulse
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  const rect=renderer.domElement.getBoundingClientRect();
+  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+
+  raycaster.setFromCamera(mouse,camera);
+  const hit=raycaster.intersectObject(ocean,false)[0];
+
+  if(hit)oceanPulse=1;
+});
+
+// -----------------------------------------------------------------------------
+// Animate
+// -----------------------------------------------------------------------------
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt=clock.getDelta();
+  const now=performance.now()/1000;
+  const elapsed=now-startTime;
+
+  controls.update();
+
+  // river phase
+  const progress=THREE.MathUtils.clamp(elapsed/20,0,1);
+
+  if(progress<.24){
+    phaseEl.textContent='Microscopic streams begin carrying individual votes';
+    phaseBar.style.width=`${progress/.24*100}%`;
+  }else if(progress<.56){
+    const p=(progress-.24)/.32;
+    phaseEl.textContent='Individual streams merge into glowing city tributaries';
+    phaseBar.style.width=`${p*100}%`;
+  }else if(progress<.82){
+    const p=(progress-.56)/.26;
+    phaseEl.textContent='Cities merge into enormous national rivers';
+    phaseBar.style.width=`${p*100}%`;
+  }else{
+    const p=(progress-.82)/.18;
+    phaseEl.textContent='Every river pours into the collective ocean of humanity';
+    phaseBar.style.width=`${p*100}%`;
+  }
+
+  // illustrative counter
+  const flowRate=d3.scaleLinear()
+    .domain([0,20])
+    .range([8_000_000,95_000_000])
+    .clamp(true)(elapsed);
+
+  represented=Math.min(TOTAL,represented+flowRate*dt);
+  counterEl.textContent=fmt(Math.floor(represented));
+
+  // update particle flow
+  const arr=pGeo.attributes.position.array;
+
+  for(let i=0;i<PARTICLES;i++){
+    const s=states[i];
+    const route=allRoutes[s.routeIndex];
+
+    const speedBoost=.55+progress*1.05;
+    s.progress += s.speed*dt*speedBoost;
+
+    if(s.progress>1){
+      s.progress-=1;
+
+      // allow particle to re-enter another microscopic tributary
+      if(Math.random()<.18){
+        s.routeIndex=Math.floor(Math.random()*allRoutes.length);
+      }
+    }
+
+    const r=allRoutes[s.routeIndex];
+    const p=pointAlongRoute(r,s.progress);
+
+    const wiggle=Math.sin(now*2.4+s.jitter+s.progress*16)*s.lane;
+
+    arr[i*3]=p.x+wiggle;
+    arr[i*3+1]=p.y+Math.cos(now*2+s.jitter)*s.lane*.35;
+    arr[i*3+2]=p.z+Math.sin(now*1.7+s.jitter)*s.lane*.7;
+  }
+
+  pGeo.attributes.position.needsUpdate=true;
+
+  // nodes pulse as flows accumulate
+  cities.forEach((city,i)=>{
+    const pulse=.85+.3*Math.sin(now*2.4+i*.45);
+    city.orb.scale.setScalar(pulse*(.75+progress*.45));
+    city.orb.material.opacity=.5+progress*.4;
+  });
+
+  countries.forEach((country,i)=>{
+    const pulse=.9+.22*Math.sin(now*1.8+i);
+    country.orb.scale.setScalar(pulse*(.8+progress*.65));
+    country.orb.material.opacity=.55+progress*.4;
+  });
+
+  // gradually increase river visibility
+  cityCurves.forEach((r,i)=>{
+    r.line?.material && (r.line.material.opacity=.04+progress*.09);
+  });
+
+  // ocean
+  oceanPulse*=Math.pow(.02,dt);
+  ocean.material.uniforms.uTime.value=now;
+  ocean.material.uniforms.uPulse.value=oceanPulse+Math.max(0,(progress-.76)/.24)*.45;
+
+  ocean.scale.setScalar(
+    1+Math.sin(now*.55)*.008+Math.max(0,progress-.78)*.045+oceanPulse*.035
+  );
+
+  oceanRing.material.opacity=.05+progress*.12+oceanPulse*.15;
+  oceanRing.rotation.z += dt*.055;
+
+  // spray
+  spray.rotation.y += dt*.09;
+  spray.material.opacity=.18+progress*.32;
+
+  // bloom
+  bloom.strength=1.2+progress*.55+oceanPulse*.65;
+
+  flowStatus.textContent=
+    progress<.55
+      ? '24 city tributaries'
+      : progress<.82
+        ? '6 national rivers'
+        : '1 humanity ocean';
+
+  composer.render();
+}
+
+animate();
+
+// -----------------------------------------------------------------------------
+// Resize
+// -----------------------------------------------------------------------------
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  composer.setSize(innerWidth,innerHeight);
+  bloom.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

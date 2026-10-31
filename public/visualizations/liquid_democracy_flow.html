@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Liquid Democracy Flow</title>
+
+  <style>
+    :root{
+      --text:#eef8ff;
+      --muted:#9cb5c8;
+      --cyan:#63e7ff;
+      --violet:#a887ff;
+      --mint:#70ffd7;
+      --gold:#ffe38a;
+      --rose:#ff8fca;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 50% 45%,#0a172c 0%,#040914 42%,#010207 78%,#000 100%);
+      color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    canvas{display:block}
+    #app{position:fixed;inset:0}
+
+    .hud{
+      position:fixed;
+      inset:0;
+      z-index:20;
+      pointer-events:none;
+    }
+
+    .top-left{
+      position:absolute;
+      left:24px;
+      top:22px;
+      width:min(470px,calc(100vw - 48px));
+    }
+
+    .eyebrow{
+      margin-bottom:8px;
+      font-size:10px;
+      letter-spacing:.27em;
+      text-transform:uppercase;
+      color:rgba(160,220,255,.7);
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(30px,4.2vw,52px);
+      line-height:.94;
+      font-weight:650;
+      letter-spacing:-.045em;
+      text-shadow:0 0 30px rgba(90,220,255,.2);
+    }
+
+    .sub{
+      margin-top:12px;
+      max-width:415px;
+      font-size:12px;
+      line-height:1.58;
+      color:rgba(217,237,250,.67);
+    }
+
+    .status-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:15px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-height:29px;
+      padding:7px 11px;
+      border:1px solid rgba(130,210,255,.14);
+      border-radius:999px;
+      background:rgba(6,14,27,.34);
+      backdrop-filter:blur(13px);
+      font-size:10px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(232,246,255,.87);
+    }
+
+    .live-dot{
+      width:6px;height:6px;border-radius:50%;
+      background:#70ffd9;
+      box-shadow:0 0 9px #70ffd9,0 0 18px rgba(112,255,217,.55);
+      animation:blink 1.2s ease-in-out infinite;
+    }
+
+    @keyframes blink{
+      50%{opacity:.3;transform:scale(.7)}
+    }
+
+    .right{
+      position:absolute;
+      right:24px;
+      top:22px;
+      width:250px;
+      text-align:right;
+    }
+
+    .counter{
+      font-size:clamp(24px,4vw,46px);
+      line-height:1;
+      font-weight:620;
+      letter-spacing:-.04em;
+      font-variant-numeric:tabular-nums;
+      text-shadow:0 0 28px rgba(95,220,255,.18);
+    }
+
+    .counter-label{
+      margin-top:7px;
+      font-size:9px;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+      color:rgba(180,211,230,.52);
+    }
+
+    .influence-panel{
+      position:absolute;
+      right:24px;
+      top:112px;
+      width:245px;
+      display:grid;
+      gap:7px;
+    }
+
+    .influence{
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.07);
+      border-radius:11px;
+      background:rgba(5,12,23,.3);
+      backdrop-filter:blur(10px);
+    }
+
+    .influence-top{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:8px;
+      align-items:center;
+    }
+
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      box-shadow:0 0 12px currentColor;
+    }
+
+    .name{
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      color:rgba(235,246,255,.76);
+    }
+
+    .value{
+      font-size:10px;
+      font-variant-numeric:tabular-nums;
+      color:rgba(242,249,255,.92);
+    }
+
+    .influence-bar{
+      margin-top:7px;
+      height:2px;
+      overflow:hidden;
+      border-radius:2px;
+      background:rgba(255,255,255,.06);
+    }
+
+    .influence-bar>div{
+      height:100%;
+      width:0%;
+      box-shadow:0 0 12px currentColor;
+      transition:width .14s linear;
+    }
+
+    .bottom{
+      position:absolute;
+      left:24px;
+      right:24px;
+      bottom:20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:20px;
+    }
+
+    .phase-card{
+      width:min(520px,78vw);
+      padding:12px 13px;
+      border:1px solid rgba(130,210,255,.12);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(9,18,32,.38),rgba(3,8,16,.25));
+      backdrop-filter:blur(13px);
+    }
+
+    .phase-label{
+      font-size:9px;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+      color:rgba(180,214,236,.46);
+    }
+
+    #phase{
+      margin-top:5px;
+      font-size:13px;
+      color:rgba(235,248,255,.92);
+    }
+
+    .bar{
+      margin-top:10px;
+      height:2px;
+      overflow:hidden;
+      border-radius:2px;
+      background:rgba(255,255,255,.06);
+    }
+
+    .bar>div{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#5ee2ff,#9d82ff,#6affd2,#ffe393,#ff8fca);
+      box-shadow:0 0 15px rgba(100,220,255,.6);
+    }
+
+    .help{
+      text-align:right;
+      font-size:10px;
+      line-height:1.75;
+      letter-spacing:.04em;
+      color:rgba(190,214,230,.42);
+    }
+
+    .decision-label{
+      position:absolute;
+      left:50%;
+      top:52%;
+      transform:translate(-50%,-50%);
+      text-align:center;
+      opacity:.55;
+      text-shadow:0 0 35px rgba(110,240,255,.32);
+    }
+
+    .decision-label small{
+      display:block;
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.24em;
+      color:rgba(205,230,245,.52);
+    }
+
+    .decision-label strong{
+      display:block;
+      margin-top:4px;
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.06em;
+    }
+
+    .vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(circle at center,transparent 34%,rgba(0,0,0,.1) 69%,rgba(0,0,0,.5) 100%);
+      mix-blend-mode:multiply;
+    }
+
+    @media(max-width:720px){
+      .top-left{left:18px;top:18px}
+      .right{right:18px;top:auto;bottom:104px}
+      .influence-panel{display:none}
+      .bottom{left:18px;right:18px;bottom:14px}
+      .help{display:none}
+      .decision-label{display:none}
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports":{
+      "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div class="top-left">
+    <div class="eyebrow">Delegated collective decision network</div>
+    <h1>Liquid Democracy Flow</h1>
+    <div class="sub">
+      Each person is a particle. Direct voters travel straight toward the decision core, while
+      delegated votes bend through temporary representatives. As influence concentrates, delegates
+      become luminous vortices and the structure of political influence becomes visible.
+    </div>
+
+    <div class="status-row">
+      <div class="pill"><span class="live-dot"></span><span>delegation network active</span></div>
+      <div class="pill" id="modePill">mixed direct + delegated flow</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="counter" id="counter">0</div>
+    <div class="counter-label">illustrative votes represented</div>
+  </div>
+
+  <div class="influence-panel">
+    <div class="influence">
+      <div class="influence-top">
+        <div class="dot" style="background:#dffcff;color:#dffcff"></div>
+        <div class="name">Direct</div>
+        <div class="value" id="vDirect">37%</div>
+      </div>
+      <div class="influence-bar"><div id="bDirect" style="background:#dffcff;color:#dffcff"></div></div>
+    </div>
+
+    <div class="influence">
+      <div class="influence-top">
+        <div class="dot" style="background:#63e7ff;color:#63e7ff"></div>
+        <div class="name">Delegate A</div>
+        <div class="value" id="v0">24%</div>
+      </div>
+      <div class="influence-bar"><div id="b0" style="background:#63e7ff;color:#63e7ff"></div></div>
+    </div>
+
+    <div class="influence">
+      <div class="influence-top">
+        <div class="dot" style="background:#a887ff;color:#a887ff"></div>
+        <div class="name">Delegate B</div>
+        <div class="value" id="v1">17%</div>
+      </div>
+      <div class="influence-bar"><div id="b1" style="background:#a887ff;color:#a887ff"></div></div>
+    </div>
+
+    <div class="influence">
+      <div class="influence-top">
+        <div class="dot" style="background:#70ffd7;color:#70ffd7"></div>
+        <div class="name">Delegate C</div>
+        <div class="value" id="v2">13%</div>
+      </div>
+      <div class="influence-bar"><div id="b2" style="background:#70ffd7;color:#70ffd7"></div></div>
+    </div>
+
+    <div class="influence">
+      <div class="influence-top">
+        <div class="dot" style="background:#ffe38a;color:#ffe38a"></div>
+        <div class="name">Delegate D</div>
+        <div class="value" id="v3">9%</div>
+      </div>
+      <div class="influence-bar"><div id="b3" style="background:#ffe38a;color:#ffe38a"></div></div>
+    </div>
+  </div>
+
+  <div class="decision-label">
+    <small>collective outcome</small>
+    <strong>DECISION CORE</strong>
+  </div>
+
+  <div class="bottom">
+    <div class="phase-card">
+      <div class="phase-label">Current phase</div>
+      <div id="phase">Individuals move independently before delegation begins</div>
+      <div class="bar"><div id="phaseBar"></div></div>
+    </div>
+
+    <div class="help">
+      drag · orbit<br>
+      scroll · zoom<br>
+      click a delegate · temporary influence surge<br>
+      click center · decision pulse<br>
+      1 · balanced flow<br>
+      2 · concentrate Delegate A<br>
+      3 · direct-vote surge<br>
+      R · restart
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+
+// -----------------------------------------------------------------------------
+// DOM
+// -----------------------------------------------------------------------------
+const app = document.querySelector('#app');
+const phaseEl = document.querySelector('#phase');
+const phaseBar = document.querySelector('#phaseBar');
+const counterEl = document.querySelector('#counter');
+const modePill = document.querySelector('#modePill');
+
+const valueEls = [
+  document.querySelector('#vDirect'),
+  document.querySelector('#v0'),
+  document.querySelector('#v1'),
+  document.querySelector('#v2'),
+  document.querySelector('#v3')
+];
+
+const barEls = [
+  document.querySelector('#bDirect'),
+  document.querySelector('#b0'),
+  document.querySelector('#b1'),
+  document.querySelector('#b2'),
+  document.querySelector('#b3')
+];
+
+const fmt = d3.format(',');
+
+// -----------------------------------------------------------------------------
+// Scene
+// -----------------------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x010208,.023);
+
+const camera = new THREE.PerspectiveCamera(
+  45,
+  innerWidth/innerHeight,
+  .1,
+  240
+);
+camera.position.set(0,1.2,13.6);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias:true,
+  alpha:true,
+  powerPreference:'high-performance'
+});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.16;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = .055;
+controls.enablePan = false;
+controls.minDistance = 7;
+controls.maxDistance = 25;
+controls.autoRotate = true;
+controls.autoRotateSpeed = .07;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(innerWidth,innerHeight),
+  1.55,
+  .84,
+  .12
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+scene.add(new THREE.AmbientLight(0x1f3850,.72));
+
+// -----------------------------------------------------------------------------
+// Background
+// -----------------------------------------------------------------------------
+function makeStars(count,minR,maxR,size,opacity){
+  const geo=new THREE.BufferGeometry();
+  const p=new Float32Array(count*3);
+
+  for(let i=0;i<count;i++){
+    const r=minR+Math.random()*(maxR-minR);
+    const z=Math.random()*2-1;
+    const a=Math.random()*Math.PI*2;
+    const s=Math.sqrt(1-z*z);
+
+    p[i*3]=Math.cos(a)*s*r;
+    p[i*3+1]=z*r;
+    p[i*3+2]=Math.sin(a)*s*r;
+  }
+
+  geo.setAttribute('position',new THREE.BufferAttribute(p,3));
+
+  return new THREE.Points(
+    geo,
+    new THREE.PointsMaterial({
+      color:0xc9ecff,
+      size,
+      transparent:true,
+      opacity,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+}
+
+scene.add(makeStars(4800,34,125,.08,.62));
+
+// -----------------------------------------------------------------------------
+// Decision core
+// -----------------------------------------------------------------------------
+const coreGroup=new THREE.Group();
+scene.add(coreGroup);
+
+const core=new THREE.Mesh(
+  new THREE.SphereGeometry(.34,48,48),
+  new THREE.MeshBasicMaterial({
+    color:0xe7ffff,
+    transparent:true,
+    opacity:.82,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending
+  })
+);
+coreGroup.add(core);
+
+const coreShell=new THREE.Mesh(
+  new THREE.SphereGeometry(.72,48,48),
+  new THREE.MeshBasicMaterial({
+    color:0x65e7ff,
+    transparent:true,
+    opacity:.075,
+    wireframe:true,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending
+  })
+);
+coreGroup.add(coreShell);
+
+const coreHalo=new THREE.Mesh(
+  new THREE.RingGeometry(.86,.92,96),
+  new THREE.MeshBasicMaterial({
+    color:0x70ffd7,
+    transparent:true,
+    opacity:.14,
+    side:THREE.DoubleSide,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending
+  })
+);
+coreHalo.lookAt(camera.position);
+coreGroup.add(coreHalo);
+
+// -----------------------------------------------------------------------------
+// Delegate vortices
+// -----------------------------------------------------------------------------
+const delegatePositions=[
+  new THREE.Vector3(-4.2, 2.1, .35),
+  new THREE.Vector3( 4.25,1.8,-.25),
+  new THREE.Vector3(-3.6,-2.8,-.2),
+  new THREE.Vector3( 3.5,-2.9, .4)
+];
+
+const delegateColors=[
+  new THREE.Color(0x63e7ff),
+  new THREE.Color(0xa887ff),
+  new THREE.Color(0x70ffd7),
+  new THREE.Color(0xffe38a)
+];
+
+const baseShares=[.37,.24,.17,.13,.09]; // direct + delegates
+const influenceScale=d3.scaleSqrt().domain([.06,.4]).range([.7,1.75]).clamp(true);
+
+const delegates=[];
+const delegateHitMeshes=[];
+
+for(let i=0;i<4;i++){
+  const g=new THREE.Group();
+  g.position.copy(delegatePositions[i]);
+  scene.add(g);
+
+  const center=new THREE.Mesh(
+    new THREE.SphereGeometry(.14,28,28),
+    new THREE.MeshBasicMaterial({
+      color:delegateColors[i],
+      transparent:true,
+      opacity:.92,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+  center.userData.delegateIndex=i;
+  g.add(center);
+  delegateHitMeshes.push(center);
+
+  const rings=[];
+  for(let r=0;r<3;r++){
+    const torus=new THREE.Mesh(
+      new THREE.TorusGeometry(.40+r*.14,.018,8,84),
+      new THREE.MeshBasicMaterial({
+        color:delegateColors[i],
+        transparent:true,
+        opacity:.19-r*.04,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending
+      })
+    );
+    torus.rotation.x=(r-1)*.7;
+    torus.rotation.y=r*.9;
+    g.add(torus);
+    rings.push(torus);
+  }
+
+  const glow=new THREE.Mesh(
+    new THREE.SphereGeometry(.72,30,30),
+    new THREE.MeshBasicMaterial({
+      color:delegateColors[i],
+      transparent:true,
+      opacity:.035,
+      wireframe:true,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+  g.add(glow);
+
+  delegates.push({
+    group:g,
+    center,
+    rings,
+    glow,
+    influence:baseShares[i+1]
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Representative influence paths
+// -----------------------------------------------------------------------------
+function makePath(points,color,opacity=.06){
+  const curve=new THREE.CatmullRomCurve3(points);
+  const geo=new THREE.BufferGeometry().setFromPoints(curve.getPoints(90));
+  const mat=new THREE.LineBasicMaterial({
+    color,
+    transparent:true,
+    opacity,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending
+  });
+  const line=new THREE.Line(geo,mat);
+  scene.add(line);
+  return line;
+}
+
+// delegate -> decision guide currents
+for(let i=0;i<4;i++){
+  const d=delegatePositions[i];
+  const tangent=new THREE.Vector3(-d.y,d.x,.5).normalize().multiplyScalar(1.0);
+  makePath([
+    d.clone(),
+    d.clone().multiplyScalar(.58).add(tangent),
+    new THREE.Vector3(0,0,0)
+  ],delegateColors[i],.09);
+}
+
+// social-origin guide curves
+for(let i=0;i<28;i++){
+  const a=Math.random()*Math.PI*2;
+  const rr=5.8+Math.random()*1.1;
+  const start=new THREE.Vector3(
+    Math.cos(a)*rr,
+    Math.sin(a)*rr*.72,
+    (Math.random()-.5)*3.8
+  );
+
+  if(Math.random()<baseShares[0]){
+    const tan=new THREE.Vector3(-start.y,start.x,.4).normalize().multiplyScalar(.5+(Math.random()*1.1));
+    makePath([
+      start,
+      start.clone().multiplyScalar(.5).add(tan),
+      new THREE.Vector3(0,0,0)
+    ],0xc9f7ff,.025);
+  }else{
+    const idx=Math.floor(Math.random()*4);
+    const d=delegatePositions[idx];
+    const tan=new THREE.Vector3(-start.y,start.x,.4).normalize().multiplyScalar(.6+Math.random());
+    makePath([
+      start,
+      start.clone().lerp(d,.55).add(tan),
+      d
+    ],delegateColors[idx],.03);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// People / vote particles
+// -----------------------------------------------------------------------------
+const COUNT=130000;
+const FIELD_R=6.4;
+
+const geo=new THREE.BufferGeometry();
+const base=new Float32Array(COUNT*3);
+const delegateAttr=new Float32Array(COUNT);
+const seed=new Float32Array(COUNT);
+const bend=new Float32Array(COUNT);
+const speedAttr=new Float32Array(COUNT);
+
+for(let i=0;i<COUNT;i++){
+  const u=Math.random();
+  const v=Math.random();
+  const theta=u*Math.PI*2;
+  const z=2*v-1;
+  const shell=Math.sqrt(1-z*z);
+  const r=FIELD_R*(.42+Math.pow(Math.random(),.58)*.58);
+
+  base[i*3]=Math.cos(theta)*shell*r;
+  base[i*3+1]=z*r*.75;
+  base[i*3+2]=Math.sin(theta)*shell*r*.68;
+
+  const rv=Math.random();
+  let d=-1;
+
+  if(rv>=baseShares[0]){
+    let x=(rv-baseShares[0])/(1-baseShares[0]);
+    const delTotal=baseShares[1]+baseShares[2]+baseShares[3]+baseShares[4];
+    x*=delTotal;
+
+    let acc=0;
+    for(let k=0;k<4;k++){
+      acc+=baseShares[k+1];
+      if(x<=acc){
+        d=k;
+        break;
+      }
+    }
+    if(d<0)d=3;
+  }
+
+  delegateAttr[i]=d;
+  seed[i]=Math.random();
+  bend[i]=(Math.random()-.5)*2;
+  speedAttr[i]=.65+Math.random()*.8;
+}
+
+geo.setAttribute('position',new THREE.BufferAttribute(base,3));
+geo.setAttribute('aBase',new THREE.BufferAttribute(base,3));
+geo.setAttribute('aDelegate',new THREE.BufferAttribute(delegateAttr,1));
+geo.setAttribute('aSeed',new THREE.BufferAttribute(seed,1));
+geo.setAttribute('aBend',new THREE.BufferAttribute(bend,1));
+geo.setAttribute('aSpeed',new THREE.BufferAttribute(speedAttr,1));
+
+const uniforms={
+  uTime:{value:0},
+  uFlow:{value:0},
+  uCorePull:{value:0},
+  uBoostIndex:{value:-99},
+  uBoostAmount:{value:0},
+  uDirectBoost:{value:0},
+  uPointSize:{value:2.15},
+  uD0:{value:delegatePositions[0]},
+  uD1:{value:delegatePositions[1]},
+  uD2:{value:delegatePositions[2]},
+  uD3:{value:delegatePositions[3]},
+  uC0:{value:delegateColors[0]},
+  uC1:{value:delegateColors[1]},
+  uC2:{value:delegateColors[2]},
+  uC3:{value:delegateColors[3]}
+};
+
+const mat=new THREE.ShaderMaterial({
+  uniforms,
+  transparent:true,
+  depthWrite:false,
+  blending:THREE.AdditiveBlending,
+  vertexShader:`
+    precision highp float;
+
+    uniform float uTime;
+    uniform float uFlow;
+    uniform float uCorePull;
+    uniform float uBoostIndex;
+    uniform float uBoostAmount;
+    uniform float uDirectBoost;
+    uniform float uPointSize;
+
+    uniform vec3 uD0;
+    uniform vec3 uD1;
+    uniform vec3 uD2;
+    uniform vec3 uD3;
+
+    attribute vec3 aBase;
+    attribute float aDelegate;
+    attribute float aSeed;
+    attribute float aBend;
+    attribute float aSpeed;
+
+    varying float vDelegate;
+    varying float vEnergy;
+    varying float vDirect;
+
+    vec3 delegatePos(float d){
+      if(d<.5)return uD0;
+      if(d<1.5)return uD1;
+      if(d<2.5)return uD2;
+      return uD3;
+    }
+
+    vec3 bezier(vec3 a,vec3 b,vec3 c,float t){
+      float u=1.0-t;
+      return u*u*a + 2.0*u*t*b + t*t*c;
+    }
+
+    void main(){
+      vDelegate=aDelegate;
+      vDirect=aDelegate<-.5?1.0:0.0;
+
+      vec3 p=aBase;
+
+      vec3 n=normalize(aBase+vec3(.001));
+      vec3 drift=vec3(
+        sin(uTime*(.35+aSeed)+aSeed*29.0),
+        cos(uTime*(.31+aSeed*.8)+aSeed*17.0),
+        sin(uTime*(.28+aSeed*.6)+aSeed*23.0)
+      )*(.09+.11*aSeed);
+
+      p+=drift;
+
+      float isBoosted =
+        (aDelegate>-.5 && abs(aDelegate-uBoostIndex)<.25)
+        ? uBoostAmount
+        : 0.0;
+
+      float directBoost =
+        aDelegate<-.5
+        ? uDirectBoost
+        : 0.0;
+
+      float speed=aSpeed*(.10+.14*uFlow+.08*isBoosted+.08*directBoost);
+      float t=fract(aSeed + uTime*speed);
+
+      vec3 route=p;
+
+      if(aDelegate<-.5){
+        // direct voter: one clear arc into the decision
+        vec3 tangent=normalize(cross(normalize(aBase),vec3(.0,1.0,.001)));
+        vec3 ctrl=aBase*.50 + tangent*aBend*.85;
+        route=bezier(aBase,ctrl,vec3(0.0),t);
+      }else{
+        vec3 d=delegatePos(aDelegate);
+
+        if(t<.56){
+          float q=t/.56;
+          vec3 tangent=normalize(cross(normalize(d-aBase),vec3(.0,1.0,.001)));
+          vec3 ctrl=mix(aBase,d,.52)+tangent*aBend*(.65+isBoosted*.55);
+          route=bezier(aBase,ctrl,d,q);
+
+          // visible vortex capture around the delegate
+          float capture=smoothstep(.55,1.0,q);
+          float ang=(1.0-q)*12.0 + aSeed*6.2831853 + uTime*(1.2+isBoosted*1.8);
+          vec3 radial=normalize(cross(normalize(d+vec3(.001)),vec3(.0,0.0,1.0)));
+          vec3 radial2=normalize(cross(normalize(d+vec3(.001)),radial));
+          route += (
+            radial*cos(ang)+radial2*sin(ang)
+          )*capture*(.14+isBoosted*.42);
+        }else{
+          float q=(t-.56)/.44;
+          vec3 tangent=normalize(cross(normalize(-d),vec3(.0,1.0,.001)));
+          vec3 ctrl=d*.50 + tangent*aBend*.42;
+          route=bezier(d,ctrl,vec3(0.0),q);
+        }
+      }
+
+      float flowEase=uFlow*uFlow*(3.0-2.0*uFlow);
+      p=mix(p,route,flowEase);
+
+      // final-stage collective tightening into the decision
+      p=mix(p,p*(1.0-uCorePull*.12),uCorePull*.55);
+
+      vec4 mv=modelViewMatrix*vec4(p,1.0);
+      gl_Position=projectionMatrix*mv;
+
+      float energy=.25+uFlow*.75+isBoosted*1.35+directBoost*.65+uCorePull*.55;
+      vEnergy=energy;
+
+      gl_PointSize=uPointSize*(1.0+energy*.42)*(300.0/max(1.0,-mv.z));
+      gl_PointSize=clamp(gl_PointSize,1.0,8.0);
+    }
+  `,
+  fragmentShader:`
+    precision highp float;
+
+    uniform vec3 uC0;
+    uniform vec3 uC1;
+    uniform vec3 uC2;
+    uniform vec3 uC3;
+
+    varying float vDelegate;
+    varying float vEnergy;
+    varying float vDirect;
+
+    vec3 delegateColor(float d){
+      if(d<.5)return uC0;
+      if(d<1.5)return uC1;
+      if(d<2.5)return uC2;
+      return uC3;
+    }
+
+    void main(){
+      vec2 uv=gl_PointCoord-.5;
+      float d=length(uv);
+      if(d>.5)discard;
+
+      vec3 c=vDirect>.5
+        ? vec3(.86,1.0,1.0)
+        : delegateColor(vDelegate);
+
+      float core=smoothstep(.5,0.0,d);
+      float halo=exp(-d*7.0);
+
+      c=mix(c,vec3(1.0),clamp((vEnergy-1.0)*.18,0.0,.35));
+
+      float alpha=(core*.83+halo*.54)*(.42+vEnergy*.23);
+      gl_FragColor=vec4(c,alpha);
+    }
+  `
+});
+
+const people=new THREE.Points(geo,mat);
+scene.add(people);
+
+// -----------------------------------------------------------------------------
+// Decision shock rings
+// -----------------------------------------------------------------------------
+const shockRings=[];
+
+for(let i=0;i<3;i++){
+  const ring=new THREE.Mesh(
+    new THREE.RingGeometry(.7,.73,96),
+    new THREE.MeshBasicMaterial({
+      color:[0x65e7ff,0x70ffd7,0xe6ffff][i],
+      transparent:true,
+      opacity:0,
+      side:THREE.DoubleSide,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+  ring.lookAt(camera.position);
+  scene.add(ring);
+  shockRings.push(ring);
+}
+
+// -----------------------------------------------------------------------------
+// Interaction / modes
+// -----------------------------------------------------------------------------
+let boostIndex=-99;
+let boostAmount=0;
+let directBoost=0;
+let boostStarted=-999;
+let directStarted=-999;
+let corePulseStarted=-999;
+let mode='balanced';
+
+function setMode(next){
+  mode=next;
+
+  if(next==='balanced'){
+    boostIndex=-99;
+    boostAmount=0;
+    directBoost=0;
+    modePill.textContent='mixed direct + delegated flow';
+  }
+
+  if(next==='delegate'){
+    boostIndex=0;
+    boostAmount=1;
+    boostStarted=performance.now()/1000;
+    directBoost=0;
+    modePill.textContent='Delegate A influence concentration';
+  }
+
+  if(next==='direct'){
+    boostIndex=-99;
+    boostAmount=0;
+    directBoost=1;
+    directStarted=performance.now()/1000;
+    modePill.textContent='direct-vote surge';
+  }
+}
+
+function pulseCore(){
+  corePulseStarted=performance.now()/1000;
+}
+
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  const rect=renderer.domElement.getBoundingClientRect();
+  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+
+  raycaster.setFromCamera(mouse,camera);
+
+  const delegateHit=raycaster.intersectObjects(delegateHitMeshes,false)[0];
+  if(delegateHit){
+    boostIndex=delegateHit.object.userData.delegateIndex;
+    boostAmount=1;
+    boostStarted=performance.now()/1000;
+    mode='interactive';
+    modePill.textContent=`temporary Delegate ${String.fromCharCode(65+boostIndex)} vortex`;
+    return;
+  }
+
+  const coreHit=raycaster.intersectObject(core,false)[0];
+  if(coreHit)pulseCore();
+});
+
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='1')setMode('balanced');
+  if(k==='2')setMode('delegate');
+  if(k==='3')setMode('direct');
+  if(k==='r'){
+    startTime=performance.now()/1000;
+    represented=0;
+    setMode('balanced');
+  }
+});
+
+// -----------------------------------------------------------------------------
+// Simulation
+// -----------------------------------------------------------------------------
+const TOTAL=8_000_000_000;
+let startTime=performance.now()/1000;
+let represented=0;
+
+function updateInfluenceUI(now){
+  let weights=[...baseShares];
+
+  // temporary delegate influence
+  if(boostIndex>=0 && boostAmount>0){
+    weights[boostIndex+1]+=boostAmount*.18;
+  }
+
+  if(directBoost>0){
+    weights[0]+=directBoost*.24;
+  }
+
+  const sum=d3.sum(weights);
+  weights=weights.map(v=>v/sum);
+
+  valueEls.forEach((el,i)=>{
+    el.textContent=`${Math.round(weights[i]*100)}%`;
+    barEls[i].style.width=`${weights[i]*100}%`;
+  });
+
+  delegates.forEach((d,i)=>{
+    d.influence=weights[i+1];
+  });
+
+  return weights;
+}
+
+// -----------------------------------------------------------------------------
+// Animate
+// -----------------------------------------------------------------------------
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt=clock.getDelta();
+  const now=performance.now()/1000;
+  const elapsed=now-startTime;
+
+  controls.update();
+
+  // temporary influence fades naturally
+  if(boostAmount>0 && now-boostStarted>1.0){
+    boostAmount*=Math.pow(.42,dt);
+    if(boostAmount<.015){
+      boostAmount=0;
+      if(mode==='interactive')modePill.textContent='mixed direct + delegated flow';
+    }
+  }
+
+  if(directBoost>0 && now-directStarted>1.0){
+    directBoost*=Math.pow(.48,dt);
+    if(directBoost<.015){
+      directBoost=0;
+      if(mode==='direct')modePill.textContent='mixed direct + delegated flow';
+    }
+  }
+
+  mat.uniforms.uTime.value=now;
+  mat.uniforms.uBoostIndex.value=boostIndex;
+  mat.uniforms.uBoostAmount.value=boostAmount;
+  mat.uniforms.uDirectBoost.value=directBoost;
+
+  // 22-second cycle
+  const t=(elapsed%22)/22;
+  let flow=0;
+  let corePull=0;
+
+  if(t<.20){
+    flow=d3.easeCubicInOut(t/.20)*.10;
+    phaseEl.textContent='Individuals move independently before delegation begins';
+    phaseBar.style.width=`${t/.20*100}%`;
+  }else if(t<.52){
+    const p=(t-.20)/.32;
+    flow=.10+d3.easeCubicInOut(p)*.62;
+    phaseEl.textContent='Delegated votes bend into representatives while direct votes pass straight through';
+    phaseBar.style.width=`${p*100}%`;
+  }else if(t<.76){
+    const p=(t-.52)/.24;
+    flow=.72+d3.easeCubicOut(p)*.28;
+    phaseEl.textContent='Influential delegates become visible vortices of political influence';
+    phaseBar.style.width=`${p*100}%`;
+  }else{
+    const p=(t-.76)/.24;
+    flow=1;
+    corePull=d3.easeCubicInOut(p);
+    phaseEl.textContent='Delegated and direct currents resolve together inside the decision core';
+    phaseBar.style.width=`${p*100}%`;
+
+    if(p>.72 && corePulseStarted<now-3.0){
+      corePulseStarted=now;
+    }
+  }
+
+  mat.uniforms.uFlow.value=flow;
+  mat.uniforms.uCorePull.value=corePull;
+
+  // illustrative vote counter
+  const rate=d3.scaleLinear()
+    .domain([0,18])
+    .range([7_000_000,105_000_000])
+    .clamp(true)(elapsed);
+
+  represented=Math.min(TOTAL,represented+rate*dt);
+  counterEl.textContent=fmt(Math.floor(represented));
+
+  const weights=updateInfluenceUI(now);
+
+  // animate delegates as influence vortices
+  delegates.forEach((d,i)=>{
+    const boost=(i===boostIndex?boostAmount:0);
+    const scale=influenceScale(d.influence)*(1+boost*.42);
+
+    d.group.scale.lerp(
+      new THREE.Vector3(scale,scale,scale),
+      .045
+    );
+
+    d.center.scale.setScalar(.88+.18*Math.sin(now*2.4+i)+boost*.2);
+    d.glow.material.opacity=.025+d.influence*.17+boost*.12;
+
+    d.rings.forEach((r,ri)=>{
+      const dir=(ri%2===0?1:-1);
+      r.rotation.z += dt*dir*(.55+ri*.2+boost*1.4);
+      r.rotation.x += dt*.10*dir;
+      r.material.opacity=.10+d.influence*.32+boost*.16-ri*.02;
+    });
+  });
+
+  // core heartbeat
+  const coreAge=now-corePulseStarted;
+  let pulse=0;
+  if(coreAge>=0 && coreAge<2.4){
+    const p=coreAge/2.4;
+    pulse=Math.sin(Math.PI*p)*(1-p*.3);
+  }
+
+  core.scale.setScalar(.9+.12*Math.sin(now*2.2)+pulse*.7);
+  coreShell.scale.setScalar(1+.05*Math.sin(now*1.1)+pulse*.45);
+  core.material.opacity=.72+pulse*.28;
+  coreShell.material.opacity=.06+pulse*.16+corePull*.08;
+  coreHalo.rotation.z += dt*.16;
+  coreHalo.lookAt(camera.position);
+  coreHalo.material.opacity=.09+corePull*.16+pulse*.18;
+
+  shockRings.forEach((ring,i)=>{
+    const local=(coreAge-i*.15)/1.65;
+    if(local>0 && local<1){
+      const e=d3.easeCubicOut(local);
+      ring.scale.setScalar(1+e*(7+i*2));
+      ring.material.opacity=Math.sin(Math.PI*local)*(.13-i*.025);
+    }else{
+      ring.material.opacity=0;
+    }
+    ring.lookAt(camera.position);
+  });
+
+  bloom.strength=1.30+flow*.35+boostAmount*.55+directBoost*.25+pulse*.65+corePull*.25;
+  renderer.toneMappingExposure=1.14+pulse*.12;
+
+  people.rotation.y += dt*.006;
+
+  composer.render();
+}
+
+setMode('balanced');
+animate();
+
+// -----------------------------------------------------------------------------
+// Resize
+// -----------------------------------------------------------------------------
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  composer.setSize(innerWidth,innerHeight);
+  bloom.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

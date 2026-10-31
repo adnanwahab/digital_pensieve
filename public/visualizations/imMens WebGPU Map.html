@@ -1,0 +1,656 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>imMens WebGPU Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed binned density map; linked-histogram rail on the right (stacks below on phones). Single dark look, after the paper's Figure 4b. */
+:root {
+  --ink: #1b1c1e;
+  --panel: #232427;
+  --line: #36383c;
+  --fg: #ece6d6;
+  --muted: #9b968a;
+  --gold: #f2c46b;
+  --ember: #ee6a3a;
+  --f-ui: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--fg); font-family: var(--f-ui); font-size: 15px; line-height: 1.4; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 330px; height: 100%; }
+#map { position: relative; overflow: hidden; min-height: 0; touch-action: none; background: #2a2b2d; }
+#gpu, #deckc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#deckc { z-index: 1; }
+#map.region, #map.region #deckc { cursor: crosshair !important; }
+
+.chip { position: absolute; z-index: 2; background: color-mix(in srgb, var(--ink) 82%, transparent); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font-size: 13px; color: var(--fg); pointer-events: none; }
+.legend { left: calc(12px + env(safe-area-inset-left, 0px)); bottom: 12px; display: grid; gap: 4px; }
+.legend .bar { width: 160px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #9e853f, #fae08f 40%, #fc9e4a 80%, #ed4d2e); }
+.legend .ends { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { right: calc(12px + env(safe-area-inset-right, 0px)); bottom: 12px; color: var(--muted); }
+.hint kbd { font-family: var(--f-data); font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--fg); }
+#overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 70%, transparent); font-family: var(--f-data); font-size: 13px; color: var(--fg); text-align: center; padding-inline: 24px; }
+
+.rail { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 18px 22px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 2px 0 0; font-size: 26px; font-weight: 600; line-height: 1.1; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--gold); }
+.count { display: grid; gap: 2px; }
+.count .big { font-family: var(--f-data); font-size: 24px; font-weight: 500; color: var(--gold); font-variant-numeric: tabular-nums; }
+.count .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.hists { display: grid; gap: 14px; }
+.hist header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.hist .name { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hist .range { font-family: var(--f-data); font-size: 12px; color: var(--fg); }
+.hist canvas { width: 100%; height: 92px; display: block; cursor: ew-resize; touch-action: none; }
+
+.controls { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.row { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; }
+.row label { color: var(--muted); }
+select, input[type=range] { width: 100%; accent-color: var(--gold); }
+select { background: var(--ink); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; font-family: var(--f-data); font-size: 12px; }
+.val { font-family: var(--f-data); font-size: 12px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font-family: var(--f-ui); font-size: 14px; font-weight: 500; color: var(--fg); background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button[aria-pressed="true"] { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+
+.timing { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 14px; }
+.timing .line { display: flex; justify-content: space-between; gap: 10px; }
+.timing .line span:last-child { font-family: var(--f-data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.gpu-ms { color: var(--gold); }
+.cpu-ms { color: var(--ember); }
+.note { font-size: 13px; color: var(--muted); max-width: 65ch; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.note p { margin: 0; }
+
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 64vh auto; height: auto; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .hint { display: none; }
+}
+</style>
+
+<div class="app">
+  <div id="map">
+    <canvas id="gpu"></canvas>
+    <canvas id="deckc"></canvas>
+    <div class="chip legend"><span>Check-ins per bin</span><div class="bar"></div><div class="ends"><span>1</span><span id="maxbin">–</span></div></div>
+    <div class="chip hint">Drag to pan · scroll to zoom · <kbd>Shift</kbd>-drag to brush a region</div>
+    <div id="overlay">Starting WebGPU…</div>
+  </div>
+
+  <aside class="rail">
+    <div>
+      <div class="eyebrow">Liu, Jiang &amp; Heer · EuroVis 2013</div>
+      <h1>imMens, rebuilt on <em>WebGPU compute</em></h1>
+    </div>
+
+    <div class="count">
+      <span class="big" id="selCount">–</span>
+      <span class="sub" id="selSub">check-ins match the brushes</span>
+    </div>
+
+    <div class="hists" id="hists"></div>
+
+    <div class="controls">
+      <div class="row"><label for="rows">Rows</label>
+        <select id="rows">
+          <option value="1000000">1,000,000</option>
+          <option value="4491143" selected>4,491,143 (Brightkite size)</option>
+          <option value="10000000">10,000,000</option>
+        </select></div>
+      <div class="row"><label for="bin">Bin size</label>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:center"><input id="bin" type="range" min="1" max="12" step="1" value="3"><span class="val" id="binVal">3 px</span></div></div>
+      <label class="check"><input type="checkbox" id="labels" checked> City labels (deck.gl layers)</label>
+      <div class="buttons">
+        <button id="regionBtn" aria-pressed="false">Brush region</button>
+        <button id="resetBtn">Clear all brushes</button>
+      </div>
+    </div>
+
+    <div class="timing">
+      <div class="line"><span>GPU query + render, per frame</span><span class="gpu-ms" id="gpuMs">–</span></div>
+      <div class="line"><span>Bins on screen</span><span id="binsInfo">–</span></div>
+      <div class="line"><span>Same query in plain JS</span><span class="cpu-ms" id="cpuMs">–</span></div>
+      <div class="buttons"><button id="cpuBtn">Time the CPU query</button></div>
+    </div>
+
+    <div class="note">
+      <p>Each frame, one compute shader walks every check-in, bins it into screen-space tiles with atomic adds, and builds the three linked histograms in workgroup memory. A fragment shader then colors each pixel from its bin, the same two passes as the paper's Figure 8. deck.gl owns the camera and draws the label and brush layers on top.</p>
+      <p>Click a histogram bar to isolate it, drag across bars to brush a range, click again to clear. The data is synthetic, modeled on the paper's Brightkite check-ins (heavy in Denver and the Bay Area, seasonal in Florida and the north), because the real SNAP file can't load inside this page.</p>
+    </div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const mapEl = $("#map"), gpuCanvas = $("#gpu"), overlay = $("#overlay");
+const fmt = (n) => n.toLocaleString("en-US");
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+// ---------- Cities: [name, lat, lng, population in thousands, label?] ----------
+const CITIES = [
+  ["New York",40.71,-74.01,8300,1],["Los Angeles",34.05,-118.24,3900,1],["Chicago",41.88,-87.63,2700,1],["Houston",29.76,-95.37,2300,1],
+  ["Phoenix",33.45,-112.07,1600,1],["Philadelphia",39.95,-75.17,1580,0],["San Antonio",29.42,-98.49,1450,1],["San Diego",32.72,-117.16,1390,0],
+  ["Dallas",32.78,-96.80,1800,1],["San Jose",37.34,-121.89,1000,0],["Austin",30.27,-97.74,960,1],["Jacksonville",30.33,-81.66,950,0],
+  ["Fort Worth",32.76,-97.33,900,0],["Columbus",39.96,-83.00,900,0],["Charlotte",35.23,-80.84,870,0],["San Francisco",37.77,-122.42,1900,1],
+  ["Indianapolis",39.77,-86.16,880,0],["Seattle",47.61,-122.33,1100,1],["Denver",39.74,-104.99,2600,1],["Washington",38.91,-77.04,1100,1],
+  ["Boston",42.36,-71.06,1000,1],["Nashville",36.16,-86.78,690,0],["Detroit",42.33,-83.05,700,1],["Oklahoma City",35.47,-97.52,650,0],
+  ["Portland",45.52,-122.68,700,1],["Las Vegas",36.17,-115.14,800,1],["Memphis",35.15,-90.05,650,0],["Louisville",38.25,-85.76,620,0],
+  ["Baltimore",39.29,-76.61,600,0],["Milwaukee",43.04,-87.91,590,0],["Albuquerque",35.08,-106.65,560,1],["Tucson",32.22,-110.97,540,0],
+  ["Fresno",36.74,-119.79,530,0],["Sacramento",38.58,-121.49,500,0],["Kansas City",39.10,-94.58,600,1],["Atlanta",33.75,-84.39,1500,1],
+  ["Miami",25.76,-80.19,1500,1],["Raleigh",35.78,-78.64,470,0],["Omaha",41.26,-95.93,470,0],["Minneapolis",44.98,-93.27,1100,1],
+  ["Tulsa",36.15,-95.99,400,0],["Cleveland",41.50,-81.69,380,0],["Tampa",27.95,-82.46,500,0],["New Orleans",29.95,-90.07,390,1],
+  ["Wichita",37.69,-97.34,390,0],["Pittsburgh",40.44,-79.99,300,0],["St. Louis",38.63,-90.20,900,1],["Cincinnati",39.10,-84.51,300,0],
+  ["Orlando",28.54,-81.38,450,0],["Salt Lake City",40.76,-111.89,500,1],["Boise",43.62,-116.20,230,0],["Spokane",47.66,-117.43,220,0],
+  ["Billings",45.78,-108.50,110,0],["Fargo",46.88,-96.79,120,0],["Sioux Falls",43.55,-96.73,180,0],["Des Moines",41.59,-93.62,210,0],
+  ["Little Rock",34.75,-92.29,200,0],["Birmingham",33.52,-86.80,210,0],["Jackson",32.30,-90.18,160,0],["El Paso",31.76,-106.49,680,0],
+  ["Buffalo",42.89,-78.88,260,0],["Richmond",37.54,-77.44,230,0],["Charleston",32.78,-79.93,150,0],["Savannah",32.08,-81.09,150,0],
+  ["Madison",43.07,-89.40,250,0],["Colorado Springs",38.83,-104.82,450,0],["Boulder",40.01,-105.27,600,0],["Fort Collins",40.59,-105.08,170,0],
+  ["Reno",39.53,-119.81,250,0],["Albany",42.65,-73.75,100,0],["Hartford",41.76,-72.68,120,0],["Providence",41.82,-71.41,180,0],
+  ["Portland ME",43.66,-70.26,70,0],["Burlington",44.48,-73.21,45,0],["Cheyenne",41.14,-104.82,60,0],["Rapid City",44.08,-103.23,70,0],
+  ["Amarillo",35.22,-101.83,200,0],["Lubbock",33.58,-101.86,250,0],["Corpus Christi",27.80,-97.40,320,0],["Shreveport",32.53,-93.75,190,0],
+  ["Toronto",43.65,-79.38,2700,1],["Montreal",45.50,-73.57,1700,1],["Vancouver",49.28,-123.12,630,1],["Calgary",51.05,-114.07,1200,0],
+  ["Winnipeg",49.90,-97.14,700,0],["Monterrey",25.69,-100.32,1100,0],["Guadalajara",20.66,-103.35,1400,0],["Mexico City",19.43,-99.13,2000,0],
+  ["Havana",23.11,-82.37,300,0],["Honolulu",21.31,-157.86,350,0]
+];
+const LABELED = CITIES.filter((c) => c[4]);
+
+// ---------- Web Mercator, deck.gl's 512-unit world ----------
+const lngToX = (lng) => 512 * (lng + 180) / 360;
+const latToY = (lat) => 512 * (Math.PI + Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))) / (2 * Math.PI);
+
+// ---------- Synthetic Brightkite-like check-ins ----------
+const DAYS_IN = [31,28,31,30,31,30,31,31,30,31,30,31];
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function generate(N) {
+  const rnd = mulberry32(2013);
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(6.283185307179586 * rnd());
+
+  // Roads: each city to its 3 nearest neighbours
+  const roads = [], seen = new Set();
+  CITIES.forEach((a, i) => {
+    const near = CITIES.map((b, j) => [j, Math.hypot(a[1] - b[1], (a[2] - b[2]) * Math.cos(a[1] * Math.PI / 180))])
+      .filter((d) => d[0] !== i && d[1] < 11).sort((p, q) => p[1] - q[1]).slice(0, 3);
+    for (const [j, len] of near) {
+      const key = i < j ? i + "-" + j : j + "-" + i;
+      if (seen.has(key)) continue; seen.add(key);
+      const b = CITIES[j];
+      roads.push({ a, b, w: len * Math.pow(a[3] * b[3], 0.25) });
+    }
+  });
+  // Small towns strung along and near roads
+  const towns = [];
+  const roadW = roads.reduce((s, r) => s + r.w, 0);
+  for (let k = 0; k < 2600; k++) {
+    let x = rnd() * roadW, r = roads[0];
+    for (const rr of roads) { x -= rr.w; if (x <= 0) { r = rr; break; } }
+    const t = rnd();
+    towns.push({ lat: r.a[1] + (r.b[1] - r.a[1]) * t + gauss() * 0.9, lng: r.a[2] + (r.b[2] - r.a[2]) * t + gauss() * 1.1, w: -Math.log(rnd() || 1e-9) });
+  }
+
+  const sources = [];
+  const cityW = CITIES.reduce((s, c) => s + Math.pow(c[3], 0.85), 0);
+  for (const c of CITIES) sources.push({ k: 0, lat: c[1], lng: c[2], s: 0.05 + 0.0032 * Math.sqrt(c[3]), share: 0.62 * Math.pow(c[3], 0.85) / cityW });
+  for (const r of roads) sources.push({ k: 1, r, share: 0.17 * r.w / roadW });
+  const townW = towns.reduce((s, t) => s + t.w, 0);
+  for (const t of towns) sources.push({ k: 0, lat: t.lat, lng: t.lng, s: 0.035, share: 0.21 * t.w / townW });
+
+  const pos = new Float32Array(N * 2), attr = new Uint32Array(N);
+  let i = 0;
+  const push = (lat, lng) => {
+    if (i >= N) return;
+    lat = Math.max(-80, Math.min(80, lat));
+    // month: seasonal by latitude (south peaks in Jan, north in Jul)
+    const phase = lat < 31 ? 0.5 : lat > 43 ? 6.5 : -1;
+    let m;
+    for (;;) { m = (rnd() * 12) | 0; if (phase < 0) break; const w = 1 + 0.75 * Math.cos((m - phase + 0.5) * Math.PI / 6); if (rnd() * 1.75 < w) break; }
+    const d = (rnd() * DAYS_IN[m]) | 0;
+    let h = rnd() < 0.62 ? 19 + gauss() * 2.8 : 12.5 + gauss() * 2.2;
+    h = ((Math.round(h) % 24) + 24) % 24;
+    pos[i * 2] = lngToX(lng); pos[i * 2 + 1] = latToY(lat);
+    attr[i] = m | (d << 4) | (h << 9);
+    i++;
+  };
+  for (const s of sources) {
+    const cnt = Math.round(N * s.share);
+    if (s.k === 0) {
+      for (let c = 0; c < cnt; c++) { const sig = rnd() < 0.25 ? s.s * 3.2 : s.s; push(s.lat + gauss() * sig, s.lng + gauss() * sig * 1.25); }
+    } else {
+      const { a, b } = s.r;
+      for (let c = 0; c < cnt; c++) { const t = rnd(); push(a[1] + (b[1] - a[1]) * t + gauss() * 0.035, a[2] + (b[2] - a[2]) * t + gauss() * 0.045); }
+    }
+  }
+  while (i < N) { const c = CITIES[(rnd() * CITIES.length) | 0]; push(c[1] + gauss() * 0.1, c[2] + gauss() * 0.12); }
+  return { pos, attr, N };
+}
+
+// ---------- WGSL ----------
+const STRUCT = /* wgsl */`
+struct U {
+  center: vec2f, scale: f32, binSize: f32,
+  viewSize: vec2f, gridW: u32, gridH: u32,
+  monthR: vec2u, dayR: vec2u,
+  hourR: vec2u, n: u32, hasBrush: u32,
+  brushMin: vec2f, brushMax: vec2f,
+};`;
+const NSTATS = 70; // 0-11 month, 12-42 day, 43-66 hour, 67 selected, 68 max bin, 69 selected in view
+const COMPUTE = STRUCT + /* wgsl */`
+@group(0) @binding(0) var<uniform> u: U;
+@group(0) @binding(1) var<storage, read> pos: array<vec2f>;
+@group(0) @binding(2) var<storage, read> attr: array<u32>;
+@group(0) @binding(3) var<storage, read_write> grid: array<atomic<u32>>;
+@group(0) @binding(4) var<storage, read_write> stats: array<atomic<u32>>;
+var<workgroup> lh: array<atomic<u32>, 70>;
+
+fn inR(v: u32, r: vec2u) -> bool { return v >= r.x && v <= r.y; }
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3u, @builtin(local_invocation_index) li: u32) {
+  if (li < 70u) { atomicStore(&lh[li], 0u); }
+  workgroupBarrier();
+  let i = gid.x;
+  if (i < u.n) {
+    let a = attr[i];
+    let m = a & 15u;
+    let d = (a >> 4u) & 31u;
+    let h = (a >> 9u) & 31u;
+    let p = pos[i];
+    let okM = inR(m, u.monthR);
+    let okD = inR(d, u.dayR);
+    let okH = inR(h, u.hourR);
+    var okS = true;
+    if (u.hasBrush == 1u) { okS = all(p >= u.brushMin) && all(p <= u.brushMax); }
+    // Cross-filter: each histogram ignores its own brush
+    if (okD && okH && okS) { atomicAdd(&lh[m], 1u); }
+    if (okM && okH && okS) { atomicAdd(&lh[12u + d], 1u); }
+    if (okM && okD && okS) { atomicAdd(&lh[43u + h], 1u); }
+    if (okM && okD && okH) {
+      if (okS) { atomicAdd(&lh[67], 1u); }
+      // The map ignores the region brush so the selection stays in context
+      let s = vec2f((p.x - u.center.x) * u.scale + u.viewSize.x * 0.5,
+                    u.viewSize.y * 0.5 - (p.y - u.center.y) * u.scale);
+      if (s.x >= 0.0 && s.y >= 0.0 && s.x < u.viewSize.x && s.y < u.viewSize.y) {
+        let b = min(vec2u(s / u.binSize), vec2u(u.gridW - 1u, u.gridH - 1u));
+        let c = atomicAdd(&grid[b.y * u.gridW + b.x], 1u) + 1u;
+        atomicMax(&lh[68], c);
+        if (okS) { atomicAdd(&lh[69], 1u); }
+      }
+    }
+  }
+  workgroupBarrier();
+  if (li < 70u) {
+    let v = atomicLoad(&lh[li]);
+    if (v > 0u) {
+      if (li == 68u) { atomicMax(&stats[68], v); } else { atomicAdd(&stats[li], v); }
+    }
+  }
+}`;
+const RENDER = STRUCT + /* wgsl */`
+@group(0) @binding(0) var<uniform> u: U;
+@group(0) @binding(1) var<storage, read> grid: array<u32>;
+@group(0) @binding(2) var<storage, read> stats: array<u32>;
+
+@vertex fn vs(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4f {
+  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(p[vi], 0.0, 1.0);
+}
+fn ramp(t: f32) -> vec3f {
+  let c0 = vec3f(0.62, 0.52, 0.25);
+  let c1 = vec3f(0.98, 0.88, 0.56);
+  let c2 = vec3f(0.99, 0.62, 0.29);
+  let c3 = vec3f(0.93, 0.30, 0.18);
+  if (t < 0.4) { return mix(c0, c1, t / 0.4); }
+  if (t < 0.8) { return mix(c1, c2, (t - 0.4) / 0.4); }
+  return mix(c2, c3, (t - 0.8) / 0.2);
+}
+@fragment fn fs(@builtin(position) fp: vec4f) -> @location(0) vec4f {
+  let bg = vec3f(0.165, 0.169, 0.176);
+  let bin = vec2u(fp.xy / u.binSize);
+  if (bin.x >= u.gridW || bin.y >= u.gridH) { return vec4f(bg, 1.0); }
+  let c = grid[bin.y * u.gridW + bin.x];
+  if (c == 0u) { return vec4f(bg, 1.0); }
+  let mx = max(stats[68], 2u);
+  let t = clamp(log(1.0 + f32(c)) / log(1.0 + f32(mx)), 0.0, 1.0);
+  var col = ramp(t);
+  let f = fract(fp.xy / u.binSize) * u.binSize;
+  if (u.binSize >= 4.0 && (f.x > u.binSize - 1.0 || f.y > u.binSize - 1.0)) { col = mix(bg, col, 0.5); }
+  return vec4f(col, 1.0);
+}`;
+
+// ---------- State ----------
+const DIMS = [
+  { key: "month", name: "Month", n: 12, off: 0, tick: (i) => "JFMAMJJASOND"[i], every: 1,
+    fmt: (r) => { const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return r[0] === r[1] ? M[r[0]] : M[r[0]] + " – " + M[r[1]]; } },
+  { key: "day", name: "Day of month", n: 31, off: 12, tick: (i) => String(i + 1), every: 5, tickAt: [0, 9, 19, 30],
+    fmt: (r) => r[0] === r[1] ? "Day " + (r[0] + 1) : (r[0] + 1) + " – " + (r[1] + 1) },
+  { key: "hour", name: "Hour of day", n: 24, off: 43, tick: (i) => String(i).padStart(2, "0"), tickAt: [0, 6, 12, 18, 23],
+    fmt: (r) => String(r[0]).padStart(2, "0") + ":00 – " + String(r[1]).padStart(2, "0") + ":59" },
+];
+const filters = { month: [0, 11], day: [0, 30], hour: [0, 23] };
+let brush = null;                 // {w,s,e,n} in lng/lat
+let regionMode = false, showLabels = true;
+let binCss = 3;
+let vs = null, deckgl = null;
+let device, ctx, format, cpipe, rpipe, cbg, rbg;
+let data = null, posBuf, attrBuf, gridBuf, gridCap = 0, statsBuf, ubuf;
+const ubytes = new ArrayBuffer(80), UF = new Float32Array(ubytes), UU = new Uint32Array(ubytes);
+let gridW = 1, gridH = 1, rafId = 0, frameNo = 0, lastStatsFrame = -1, statsWanted = false;
+const staging = [];
+const times = [];
+let lastStats = null;
+
+// ---------- Histograms ----------
+const histEls = {};
+const css = getComputedStyle(document.documentElement);
+const C = { gold: css.getPropertyValue("--gold").trim(), line: css.getPropertyValue("--line").trim(), muted: css.getPropertyValue("--muted").trim(), fg: css.getPropertyValue("--fg").trim() };
+function buildHists() {
+  const host = $("#hists");
+  for (const d of DIMS) {
+    const wrap = document.createElement("div");
+    wrap.className = "hist";
+    wrap.innerHTML = `<header><span class="name">${d.name}</span><span class="range"></span></header><canvas tabindex="0" aria-label="${d.name} histogram"></canvas>`;
+    host.appendChild(wrap);
+    const cv = wrap.querySelector("canvas");
+    histEls[d.key] = { cv, range: wrap.querySelector(".range"), dim: d };
+    const PADL = 0;
+    const binAt = (e) => { const r = cv.getBoundingClientRect(); return Math.max(0, Math.min(d.n - 1, Math.floor((e.clientX - r.left - PADL) / (r.width / d.n)))); };
+    let drag = null;
+    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); drag = { start: binAt(e), moved: false }; });
+    cv.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const b = binAt(e);
+      if (b !== drag.start) drag.moved = true;
+      if (drag.moved) { filters[d.key] = [Math.min(b, drag.start), Math.max(b, drag.start)]; changed(); }
+    });
+    cv.addEventListener("pointerup", () => {
+      if (drag && !drag.moved) {
+        const f = filters[d.key], full = f[0] === 0 && f[1] === d.n - 1;
+        filters[d.key] = full ? [drag.start, drag.start] : [0, d.n - 1];
+        changed();
+      }
+      drag = null;
+    });
+    cv.addEventListener("keydown", (e) => {
+      const f = filters[d.key];
+      if (e.key === "Escape") { filters[d.key] = [0, d.n - 1]; changed(); }
+      if (e.key === "ArrowRight" && f[1] < d.n - 1) { filters[d.key] = [f[0] + 1, f[1] + 1]; changed(); e.preventDefault(); }
+      if (e.key === "ArrowLeft" && f[0] > 0) { filters[d.key] = [f[0] - 1, f[1] - 1]; changed(); e.preventDefault(); }
+    });
+  }
+}
+function drawHist(key, stats) {
+  const { cv, range, dim } = histEls[key];
+  const f = filters[key];
+  const full = f[0] === 0 && f[1] === dim.n - 1;
+  range.textContent = full ? "All" : dim.fmt(f);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * DPR)) { cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); }
+  const g = cv.getContext("2d");
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const plotH = h - 16, bw = w / dim.n;
+  let mx = 1;
+  if (stats) for (let i = 0; i < dim.n; i++) mx = Math.max(mx, stats[dim.off + i]);
+  if (!full) { g.fillStyle = "rgba(242,196,107,0.08)"; g.fillRect(f[0] * bw, 0, (f[1] - f[0] + 1) * bw, plotH); }
+  g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(0, plotH + 0.5); g.lineTo(w, plotH + 0.5); g.stroke();
+  for (let i = 0; i < dim.n; i++) {
+    const v = stats ? stats[dim.off + i] : 0;
+    const bh = Math.max(v > 0 ? 1 : 0, (v / mx) * (plotH - 4));
+    g.fillStyle = i >= f[0] && i <= f[1] ? C.gold : C.line;
+    g.fillRect(i * bw + (bw > 6 ? 1 : 0.5), plotH - bh, Math.max(1, bw - (bw > 6 ? 2 : 1)), bh);
+  }
+  g.fillStyle = C.muted; g.font = `10px ${getComputedStyle(document.body).getPropertyValue("--f-data") || "monospace"}`;
+  g.textAlign = "center"; g.textBaseline = "alphabetic";
+  const ticks = dim.tickAt || [...Array(dim.n).keys()];
+  for (const i of ticks) g.fillText(dim.tick(i), Math.min(w - 8, Math.max(8, (i + 0.5) * bw)), h - 3);
+}
+function drawAllHists() { for (const d of DIMS) drawHist(d.key, lastStats); }
+
+// ---------- deck.gl ----------
+function viewport() { return new deck.WebMercatorViewport({ ...vs, width: mapEl.clientWidth, height: mapEl.clientHeight }); }
+function layers() {
+  const L = [];
+  if (showLabels) {
+    L.push(new deck.ScatterplotLayer({ id: "cities", data: LABELED, getPosition: (d) => [d[2], d[1]], radiusUnits: "pixels", getRadius: 3.5,
+      stroked: true, filled: false, lineWidthUnits: "pixels", getLineWidth: 1.2, getLineColor: [236, 230, 214, 190] }));
+    L.push(new deck.TextLayer({ id: "labels", data: LABELED, getPosition: (d) => [d[2], d[1]], getText: (d) => d[0],
+      getSize: 12, getColor: [236, 230, 214, 235], getTextAnchor: "start", getAlignmentBaseline: "center", getPixelOffset: [8, 0],
+      fontFamily: '"Barlow Semi Condensed", "Arial Narrow", sans-serif', fontWeight: 600,
+      fontSettings: { sdf: true }, outlineWidth: 3, outlineColor: [27, 28, 30, 255] }));
+  }
+  if (brush) {
+    L.push(new deck.PolygonLayer({ id: "brush", data: [brush], getPolygon: (b) => [[b.w, b.s], [b.e, b.s], [b.e, b.n], [b.w, b.n]],
+      filled: true, stroked: true, getFillColor: [242, 196, 107, 26], getLineColor: [242, 196, 107, 235], lineWidthUnits: "pixels", getLineWidth: 1.5 }));
+  }
+  return L;
+}
+function initDeck() {
+  const w = mapEl.clientWidth, h = mapEl.clientHeight;
+  const fit = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[-125, 24.5], [-66.5, 49.5]], { padding: Math.min(30, w / 12) });
+  vs = { longitude: fit.longitude, latitude: fit.latitude, zoom: fit.zoom, pitch: 0, bearing: 0, minZoom: 1.5, maxZoom: 11 };
+  deckgl = new deck.Deck({
+    canvas: "deckc",
+    views: new deck.MapView({ repeat: false }),
+    viewState: vs,
+    controller: { dragRotate: false, touchRotate: false, keyboard: true },
+    onViewStateChange: ({ viewState }) => {
+      vs = { ...viewState, pitch: 0, bearing: 0 };
+      deckgl.setProps({ viewState: vs });
+      requestFrame();
+      return vs;
+    },
+    layers: layers(),
+    getCursor: ({ isDragging }) => regionMode ? "crosshair" : isDragging ? "grabbing" : "grab",
+  });
+}
+
+// Region brush: Shift-drag (or the toggle) on the map
+mapEl.addEventListener("pointerdown", (e) => {
+  if (!(e.shiftKey || regionMode) || e.button !== 0 || !vs) return;
+  e.stopPropagation(); e.preventDefault();
+  const r = mapEl.getBoundingClientRect(), x0 = e.clientX - r.left, y0 = e.clientY - r.top, vp = viewport();
+  brush = null; let px = 0;
+  const move = (ev) => {
+    const x = Math.max(0, Math.min(r.width, ev.clientX - r.left)), y = Math.max(0, Math.min(r.height, ev.clientY - r.top));
+    px = Math.abs(x - x0) + Math.abs(y - y0);
+    const a = vp.unproject([Math.min(x0, x), Math.min(y0, y)]), b = vp.unproject([Math.max(x0, x), Math.max(y0, y)]);
+    brush = { w: a[0], n: a[1], e: b[0], s: b[1] };
+    changed();
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move, true); window.removeEventListener("pointerup", up, true);
+    if (px < 6) brush = null;
+    changed();
+  };
+  window.addEventListener("pointermove", move, true); window.addEventListener("pointerup", up, true);
+}, true);
+
+function changed() {
+  if (deckgl) deckgl.setProps({ layers: layers() });
+  drawAllHists();
+  requestFrame();
+}
+
+// ---------- WebGPU ----------
+async function initGPU() {
+  if (!navigator.gpu) throw new Error("This browser doesn't expose WebGPU. Try a current Chrome, Edge or Safari, or Firefox with WebGPU enabled.");
+  const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+  if (!adapter) throw new Error("No WebGPU adapter is available on this device.");
+  device = await adapter.requestDevice({ requiredLimits: {
+    maxStorageBufferBindingSize: Math.min(adapter.limits.maxStorageBufferBindingSize, 256 * 1024 * 1024),
+    maxBufferSize: Math.min(adapter.limits.maxBufferSize, 256 * 1024 * 1024) } });
+  device.addEventListener("uncapturederror", (e) => { console.error(e.error); showOverlay("GPU error: " + e.error.message); });
+  ctx = gpuCanvas.getContext("webgpu");
+  format = navigator.gpu.getPreferredCanvasFormat();
+  ctx.configure({ device, format, alphaMode: "opaque" });
+
+  const cm = device.createShaderModule({ code: COMPUTE }), rm = device.createShaderModule({ code: RENDER });
+  for (const m of [cm, rm]) {
+    const info = await m.getCompilationInfo();
+    const errs = info.messages.filter((x) => x.type === "error");
+    if (errs.length) throw new Error("Shader error: " + errs.map((x) => `${x.lineNum}:${x.linePos} ${x.message}`).join("; "));
+  }
+  cpipe = device.createComputePipeline({ layout: "auto", compute: { module: cm, entryPoint: "main" } });
+  rpipe = device.createRenderPipeline({ layout: "auto", vertex: { module: rm, entryPoint: "vs" },
+    fragment: { module: rm, entryPoint: "fs", targets: [{ format }] }, primitive: { topology: "triangle-list" } });
+  ubuf = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  statsBuf = device.createBuffer({ size: NSTATS * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+  for (let k = 0; k < 3; k++) staging.push(device.createBuffer({ size: NSTATS * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }));
+}
+function bindGroups() {
+  if (!posBuf || !gridBuf) return;
+  cbg = device.createBindGroup({ layout: cpipe.getBindGroupLayout(0), entries: [
+    { binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: posBuf } }, { binding: 2, resource: { buffer: attrBuf } },
+    { binding: 3, resource: { buffer: gridBuf } }, { binding: 4, resource: { buffer: statsBuf } } ] });
+  rbg = device.createBindGroup({ layout: rpipe.getBindGroupLayout(0), entries: [
+    { binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: gridBuf } }, { binding: 2, resource: { buffer: statsBuf } } ] });
+}
+function upload(d) {
+  posBuf?.destroy(); attrBuf?.destroy();
+  posBuf = device.createBuffer({ size: d.pos.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  attrBuf = device.createBuffer({ size: d.attr.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  device.queue.writeBuffer(posBuf, 0, d.pos);
+  device.queue.writeBuffer(attrBuf, 0, d.attr);
+  bindGroups();
+}
+function ensureSize() {
+  const W = Math.max(1, Math.round(mapEl.clientWidth * DPR)), H = Math.max(1, Math.round(mapEl.clientHeight * DPR));
+  if (gpuCanvas.width !== W || gpuCanvas.height !== H) { gpuCanvas.width = W; gpuCanvas.height = H; }
+  const bp = binCss * DPR;
+  gridW = Math.ceil(W / bp); gridH = Math.ceil(H / bp);
+  if (gridW * gridH > gridCap) {
+    gridCap = Math.ceil(gridW * gridH * 1.3);
+    gridBuf?.destroy();
+    gridBuf = device.createBuffer({ size: gridCap * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    bindGroups();
+  }
+}
+function brushWorld() {
+  if (!brush) return null;
+  return [lngToX(brush.w), latToY(brush.s), lngToX(brush.e), latToY(brush.n)];
+}
+function writeUniforms() {
+  UF[0] = lngToX(vs.longitude); UF[1] = latToY(vs.latitude); UF[2] = Math.pow(2, vs.zoom) * DPR; UF[3] = binCss * DPR;
+  UF[4] = gpuCanvas.width; UF[5] = gpuCanvas.height; UU[6] = gridW; UU[7] = gridH;
+  UU[8] = filters.month[0]; UU[9] = filters.month[1]; UU[10] = filters.day[0]; UU[11] = filters.day[1];
+  UU[12] = filters.hour[0]; UU[13] = filters.hour[1]; UU[14] = data.N;
+  const bw = brushWorld();
+  UU[15] = bw ? 1 : 0;
+  UF[16] = bw ? bw[0] : 0; UF[17] = bw ? bw[1] : 0; UF[18] = bw ? bw[2] : 0; UF[19] = bw ? bw[3] : 0;
+  device.queue.writeBuffer(ubuf, 0, ubytes);
+}
+function requestFrame() { if (!rafId) rafId = requestAnimationFrame(frame); }
+function frame() {
+  rafId = 0;
+  if (!data || !vs || !cbg) return;
+  ensureSize(); writeUniforms();
+  const id = ++frameNo;
+  const enc = device.createCommandEncoder();
+  enc.clearBuffer(gridBuf, 0, gridW * gridH * 4);
+  enc.clearBuffer(statsBuf);
+  const cp = enc.beginComputePass();
+  cp.setPipeline(cpipe); cp.setBindGroup(0, cbg);
+  cp.dispatchWorkgroups(Math.ceil(data.N / 256));
+  cp.end();
+  const rp = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: { r: 0.165, g: 0.169, b: 0.176, a: 1 } }] });
+  rp.setPipeline(rpipe); rp.setBindGroup(0, rbg); rp.draw(3); rp.end();
+  const sb = staging.pop();
+  if (sb) enc.copyBufferToBuffer(statsBuf, 0, sb, 0, NSTATS * 4); else statsWanted = true;
+  const t0 = performance.now();
+  device.queue.submit([enc.finish()]);
+  device.queue.onSubmittedWorkDone().then(() => { times.push(performance.now() - t0); if (times.length > 30) times.shift(); });
+  if (sb) {
+    sb.mapAsync(GPUMapMode.READ).then(() => {
+      const a = new Uint32Array(sb.getMappedRange()).slice();
+      sb.unmap(); staging.push(sb);
+      if (id > lastStatsFrame) { lastStatsFrame = id; onStats(a); }
+      if (statsWanted) { statsWanted = false; requestFrame(); }
+    });
+  }
+}
+function onStats(a) {
+  lastStats = a;
+  drawAllHists();
+  $("#selCount").textContent = fmt(a[67]);
+  const inView = a[69];
+  $("#selSub").textContent = `of ${fmt(data.N)} check-ins match the brushes · ${fmt(inView)} on screen`;
+  $("#maxbin").textContent = fmt(a[68]);
+  $("#binsInfo").textContent = `${fmt(gridW)} × ${fmt(gridH)}`;
+  if (times.length) { const s = [...times].sort((p, q) => p - q); $("#gpuMs").textContent = s[s.length >> 1].toFixed(1) + " ms"; }
+}
+setInterval(() => { if (lastStats && times.length) onStats(lastStats); }, 500);
+
+// Same query on the CPU, for comparison
+function cpuQuery() {
+  const { pos, attr, N } = data;
+  const cx = UF[0], cy = UF[1], sc = UF[2], bin = UF[3], vw = UF[4], vh = UF[5];
+  const grid = new Uint32Array(gridW * gridH), hist = new Uint32Array(NSTATS);
+  const [m0, m1] = filters.month, [d0, d1] = filters.day, [h0, h1] = filters.hour;
+  const bw = brushWorld();
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) {
+    const a = attr[i], m = a & 15, d = (a >> 4) & 31, h = (a >> 9) & 31, x = pos[2 * i], y = pos[2 * i + 1];
+    const okM = m >= m0 && m <= m1, okD = d >= d0 && d <= d1, okH = h >= h0 && h <= h1;
+    const okS = !bw || (x >= bw[0] && y >= bw[1] && x <= bw[2] && y <= bw[3]);
+    if (okD && okH && okS) hist[m]++;
+    if (okM && okH && okS) hist[12 + d]++;
+    if (okM && okD && okS) hist[43 + h]++;
+    if (okM && okD && okH) {
+      const sx = (x - cx) * sc + vw / 2, sy = vh / 2 - (y - cy) * sc;
+      if (sx >= 0 && sy >= 0 && sx < vw && sy < vh) grid[((sy / bin) | 0) * gridW + ((sx / bin) | 0)]++;
+    }
+  }
+  return performance.now() - t0;
+}
+$("#cpuBtn").addEventListener("click", () => {
+  if (!data) return;
+  $("#cpuMs").textContent = "running…";
+  setTimeout(() => { const ms = cpuQuery(); $("#cpuMs").textContent = ms.toFixed(0) + " ms"; }, 30);
+});
+
+// ---------- Controls ----------
+$("#bin").addEventListener("input", (e) => { binCss = +e.target.value; $("#binVal").textContent = binCss + " px"; requestFrame(); });
+$("#labels").addEventListener("change", (e) => { showLabels = e.target.checked; changed(); });
+$("#regionBtn").addEventListener("click", (e) => {
+  regionMode = !regionMode; e.currentTarget.setAttribute("aria-pressed", String(regionMode));
+  mapEl.classList.toggle("region", regionMode);
+  deckgl?.setProps({ controller: { dragRotate: false, touchRotate: false, keyboard: true, dragPan: !regionMode } });
+});
+$("#resetBtn").addEventListener("click", () => {
+  filters.month = [0, 11]; filters.day = [0, 30]; filters.hour = [0, 23]; brush = null; changed();
+});
+$("#rows").addEventListener("change", (e) => load(+e.target.value));
+
+function showOverlay(t) { overlay.hidden = !t; if (t) overlay.textContent = t; }
+function load(N) {
+  showOverlay(`Generating ${fmt(N)} check-ins…`);
+  $("#cpuMs").textContent = "–"; times.length = 0;
+  setTimeout(() => {
+    data = generate(N);
+    showOverlay(`Uploading ${(data.pos.byteLength + data.attr.byteLength) / 1e6 | 0} MB to the GPU…`);
+    setTimeout(() => { upload(data); showOverlay(null); requestFrame(); }, 20);
+  }, 30);
+}
+
+new ResizeObserver(() => { requestFrame(); drawAllHists(); }).observe(mapEl);
+
+buildHists();
+drawAllHists();
+initDeck();
+initGPU().then(() => { ensureSize(); load(+$("#rows").value); }).catch((err) => { console.error(err); showOverlay(err.message); });
+})();
+</script>
+
+</body></html>

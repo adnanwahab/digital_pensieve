@@ -6,18 +6,6 @@ const ROOT = join(import.meta.dir, "public");
 const VISUALIZATIONS_DIR = join(ROOT, "visualizations");
 const PORT = Number(process.env.PORT ?? 8080);
 const COMPRESSIBLE = new Set([".html", ".js", ".css", ".svg"]);
-const PREVIEWABLE_VISUALIZATION_EXTENSIONS = new Set([
-  ".html",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".gif",
-  ".svg",
-  ".bmp",
-  ".tif",
-  ".tiff",
-]);
 const gzCache = new Map<string, ArrayBuffer>();
 
 const BALLOT_MAX_ARTWORK_LENGTH = 200;
@@ -146,34 +134,31 @@ function compareVisualizationPaths(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
 
+async function walkVisualizationFiles(dirPath: string, urlPrefix = ""): Promise<string[]> {
+  const entries = await readdir(dirPath, { withFileTypes: true });
+  const paths: string[] = [];
+
+  for (const entry of entries) {
+    const nextFsPath = join(dirPath, entry.name);
+    const nextUrlPath = urlPrefix ? `${urlPrefix}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      const nested = await walkVisualizationFiles(nextFsPath, nextUrlPath);
+      paths.push(...nested);
+      continue;
+    }
+
+    if (entry.isFile()) {
+      paths.push(nextUrlPath);
+    }
+  }
+
+  return paths;
+}
+
 async function listVisualizationFiles(): Promise<string[]> {
-  const entries = await readdir(VISUALIZATIONS_DIR, { withFileTypes: true });
-  const directFiles = entries
-    .filter((entry) => entry.isFile() && PREVIEWABLE_VISUALIZATION_EXTENSIONS.has(extname(entry.name).toLowerCase()))
-    .map((entry) => entry.name);
-
-  const folderPreviews = await Promise.all(
-    entries
-      .filter((entry) => entry.isDirectory())
-      .map(async (entry) => {
-        const folderPath = join(VISUALIZATIONS_DIR, entry.name);
-        const folderEntries = await readdir(folderPath, { withFileTypes: true });
-
-        const indexHtml = folderEntries.find(
-          (child) => child.isFile() && child.name.localeCompare("index.html", undefined, { sensitivity: "base" }) === 0
-        );
-        if (indexHtml) return `${entry.name}/index.html`;
-
-        const firstRenderable = folderEntries
-          .filter((child) => child.isFile() && PREVIEWABLE_VISUALIZATION_EXTENSIONS.has(extname(child.name).toLowerCase()))
-          .map((child) => child.name)
-          .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))[0];
-
-        return firstRenderable ? `${entry.name}/${firstRenderable}` : null;
-      })
-  );
-
-  return [...directFiles, ...folderPreviews.filter((value): value is string => Boolean(value))].sort(compareVisualizationPaths);
+  const files = await walkVisualizationFiles(VISUALIZATIONS_DIR);
+  return files.sort(compareVisualizationPaths);
 }
 
 async function serveFile(req: Request, urlPath: string): Promise<Response | null> {

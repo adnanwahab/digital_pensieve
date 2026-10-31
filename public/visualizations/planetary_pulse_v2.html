@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Planetary Pulse — Cinematic</title>
+
+  <style>
+    :root {
+      --text:#eaf6ff;
+      --muted:#9bb6ca;
+      --cyan:#66e3ff;
+      --mint:#70ffd2;
+      --violet:#aa82ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    html,body {
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 50% 45%, #081a2b 0%, #030912 40%, #010205 78%, #000 100%);
+      color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    canvas { display:block; }
+
+    #app {
+      position:fixed;
+      inset:0;
+    }
+
+    .hud {
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:20;
+    }
+
+    .top-left {
+      position:absolute;
+      left:24px;
+      top:22px;
+      width:min(430px,calc(100vw - 48px));
+    }
+
+    .eyebrow {
+      margin-bottom:7px;
+      font-size:10px;
+      letter-spacing:.28em;
+      text-transform:uppercase;
+      color:rgba(150,220,255,.72);
+    }
+
+    h1 {
+      margin:0;
+      font-weight:650;
+      font-size:clamp(28px,4vw,48px);
+      line-height:.95;
+      letter-spacing:-.04em;
+      text-shadow:
+        0 0 24px rgba(50,180,255,.24),
+        0 0 70px rgba(100,70,255,.12);
+    }
+
+    .sub {
+      margin-top:12px;
+      max-width:360px;
+      color:rgba(214,236,251,.68);
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .status-row {
+      margin-top:15px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .pill {
+      min-height:29px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 11px;
+      border:1px solid rgba(130,210,255,.15);
+      border-radius:999px;
+      background:rgba(5,15,26,.32);
+      backdrop-filter:blur(14px);
+      box-shadow:inset 0 0 20px rgba(100,180,255,.035);
+      font-size:10px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:rgba(226,244,255,.86);
+    }
+
+    .pulse-dot {
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:#72f5da;
+      box-shadow:0 0 8px #72f5da,0 0 18px rgba(114,245,218,.5);
+      animation:blink 1.3s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity:.3; transform:scale(.72); }
+    }
+
+    .counter-wrap {
+      position:absolute;
+      right:24px;
+      top:22px;
+      text-align:right;
+    }
+
+    .counter {
+      font-size:clamp(24px,4vw,46px);
+      line-height:1;
+      font-variant-numeric:tabular-nums;
+      font-weight:600;
+      letter-spacing:-.035em;
+      text-shadow:0 0 28px rgba(110,240,255,.18);
+    }
+
+    .counter-label {
+      margin-top:7px;
+      font-size:9px;
+      letter-spacing:.23em;
+      text-transform:uppercase;
+      color:rgba(180,210,230,.55);
+    }
+
+    .bottom {
+      position:absolute;
+      left:24px;
+      right:24px;
+      bottom:20px;
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      align-items:flex-end;
+    }
+
+    .phase-card {
+      width:min(420px,70vw);
+      padding:12px 13px;
+      border:1px solid rgba(120,210,255,.12);
+      border-radius:16px;
+      background:linear-gradient(180deg,rgba(8,19,31,.34),rgba(3,9,16,.25));
+      backdrop-filter:blur(13px);
+      box-shadow:0 18px 80px rgba(0,0,0,.2);
+    }
+
+    .phase-label {
+      font-size:9px;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+      color:rgba(180,215,238,.48);
+    }
+
+    #phase {
+      margin-top:5px;
+      font-size:13px;
+      color:rgba(234,248,255,.9);
+    }
+
+    .bar {
+      margin-top:9px;
+      height:2px;
+      overflow:hidden;
+      border-radius:2px;
+      background:rgba(255,255,255,.06);
+    }
+
+    .bar > div {
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#4ecfff,#8f7bff,#65ffd0);
+      box-shadow:0 0 14px rgba(90,220,255,.65);
+    }
+
+    .help {
+      text-align:right;
+      color:rgba(190,214,230,.42);
+      font-size:10px;
+      line-height:1.65;
+      letter-spacing:.04em;
+    }
+
+    .vignette {
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at center,transparent 42%,rgba(0,0,0,.18) 72%,rgba(0,0,0,.5) 100%);
+      pointer-events:none;
+      mix-blend-mode:multiply;
+    }
+
+    @media (max-width:700px) {
+      .counter-wrap { top:auto; bottom:105px; right:18px; }
+      .top-left { left:18px; top:18px; }
+      .bottom { left:18px; right:18px; bottom:15px; }
+      .help { display:none; }
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div class="top-left">
+    <div class="eyebrow">Collective decision field</div>
+    <h1>The Planetary Pulse</h1>
+    <div class="sub">
+      Individual votes appear as local flashes. Cities synchronize into continental waves,
+      then the entire planet resolves into one shared heartbeat.
+    </div>
+    <div class="status-row">
+      <div class="pill"><span class="pulse-dot"></span><span id="network">network active</span></div>
+      <div class="pill" id="waveCount">0 live waves</div>
+    </div>
+  </div>
+
+  <div class="counter-wrap">
+    <div class="counter" id="counter">0</div>
+    <div class="counter-label">illustrative votes flowing</div>
+  </div>
+
+  <div class="bottom">
+    <div class="phase-card">
+      <div class="phase-label">Current phase</div>
+      <div id="phase">Local signals igniting</div>
+      <div class="bar"><div id="phaseBar"></div></div>
+    </div>
+
+    <div class="help">
+      drag · orbit<br>
+      scroll · zoom<br>
+      click globe · cast a pulse<br>
+      H · global heartbeat
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+
+// -----------------------------------------------------------------------------
+// DOM
+// -----------------------------------------------------------------------------
+const app = document.querySelector('#app');
+const phaseEl = document.querySelector('#phase');
+const phaseBar = document.querySelector('#phaseBar');
+const waveCountEl = document.querySelector('#waveCount');
+const counterEl = document.querySelector('#counter');
+
+const fmt = d3.format(",");
+
+// -----------------------------------------------------------------------------
+// Scene
+// -----------------------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x010205, 0.026);
+
+const camera = new THREE.PerspectiveCamera(
+  46,
+  innerWidth / innerHeight,
+  0.1,
+  200
+);
+camera.position.set(0.2, 0.45, 8.6);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true,
+  powerPreference: 'high-performance'
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+app.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = .055;
+controls.enablePan = false;
+controls.minDistance = 5.4;
+controls.maxDistance = 13;
+controls.autoRotate = true;
+controls.autoRotateSpeed = .16;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(innerWidth, innerHeight),
+  1.45,
+  .7,
+  .14
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// -----------------------------------------------------------------------------
+// Lights
+// -----------------------------------------------------------------------------
+scene.add(new THREE.AmbientLight(0x18354d, 1.25));
+
+const key = new THREE.DirectionalLight(0x78b8ff, 3.2);
+key.position.set(4, 3, 6);
+scene.add(key);
+
+const rimLight = new THREE.DirectionalLight(0xa886ff, 2.0);
+rimLight.position.set(-5, 1.5, -4);
+scene.add(rimLight);
+
+// -----------------------------------------------------------------------------
+// Utilities
+// -----------------------------------------------------------------------------
+const R = 2.35;
+const earthGroup = new THREE.Group();
+scene.add(earthGroup);
+
+function latLonToVec3(lat, lon, radius = R) {
+  const phi = (90 - lat) * Math.PI / 180;
+  const theta = (lon + 180) * Math.PI / 180;
+
+  return new THREE.Vector3(
+    -(radius * Math.sin(phi) * Math.cos(theta)),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function tangentBasis(normal) {
+  const helper = Math.abs(normal.y) > .92
+    ? new THREE.Vector3(1,0,0)
+    : new THREE.Vector3(0,1,0);
+
+  const u = new THREE.Vector3().crossVectors(helper, normal).normalize();
+  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+
+  return { u, v };
+}
+
+// -----------------------------------------------------------------------------
+// Procedural Earth shader
+// -----------------------------------------------------------------------------
+const earthMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uPulse: { value: 0 },
+    uLightDir: { value: key.position.clone().normalize() }
+  },
+  vertexShader: `
+    varying vec3 vN;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+
+    void main(){
+      vUv = uv;
+      vN = normalize(normalMatrix * normal);
+      vec4 wp = modelMatrix * vec4(position,1.0);
+      vWorld = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: `
+    precision highp float;
+
+    uniform float uTime;
+    uniform float uPulse;
+    uniform vec3 uLightDir;
+
+    varying vec3 vN;
+    varying vec3 vWorld;
+    varying vec2 vUv;
+
+    float hash(vec2 p){
+      p = fract(p * vec2(123.34,456.21));
+      p += dot(p,p+45.32);
+      return fract(p.x*p.y);
+    }
+
+    float noise(vec2 p){
+      vec2 i=floor(p);
+      vec2 f=fract(p);
+      f=f*f*(3.0-2.0*f);
+      float a=hash(i);
+      float b=hash(i+vec2(1.0,0.0));
+      float c=hash(i+vec2(0.0,1.0));
+      float d=hash(i+vec2(1.0,1.0));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+    }
+
+    float fbm(vec2 p){
+      float v=0.0;
+      float a=.5;
+      for(int i=0;i<5;i++){
+        v+=a*noise(p);
+        p*=2.03;
+        a*=.5;
+      }
+      return v;
+    }
+
+    void main(){
+      float ndl = max(dot(normalize(vN), normalize(uLightDir)),0.0);
+
+      vec2 p = vec2(vUv.x*7.0, vUv.y*4.0);
+      float land = fbm(p + vec2(1.7,3.1));
+      land += .34*fbm(p*2.15 + 8.3);
+      land = smoothstep(.57,.71,land);
+
+      vec3 ocean = vec3(.004,.018,.04);
+      vec3 deep = vec3(.006,.05,.085);
+      vec3 landC = vec3(.025,.075,.065);
+
+      vec3 base = mix(ocean,deep,ndl*.75);
+      base = mix(base,landC,land*.48);
+
+      float lat = abs(vUv.y-.5);
+      float polar = smoothstep(.34,.5,lat);
+      base += vec3(.02,.035,.055)*polar;
+
+      // very subtle lat/lon circuitry
+      float gx = pow(1.0-abs(sin(vUv.x*3.14159265*24.0)),70.0);
+      float gy = pow(1.0-abs(sin(vUv.y*3.14159265*12.0)),70.0);
+      float grid = (gx+gy)*.032;
+
+      float fres = pow(1.0-max(dot(normalize(vN),normalize(-vWorld)),0.0),2.2);
+
+      vec3 pulseColor = vec3(.18,1.0,.82);
+      vec3 col = base;
+      col += vec3(.04,.11,.18)*grid;
+      col += vec3(.06,.20,.27)*fres*.7;
+      col += pulseColor*uPulse*(.16 + fres*.42);
+
+      gl_FragColor = vec4(col,1.0);
+    }
+  `
+});
+
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(R, 192, 192),
+  earthMat
+);
+earthGroup.add(earth);
+
+// -----------------------------------------------------------------------------
+// Atmosphere layers
+// -----------------------------------------------------------------------------
+const atmosphere = new THREE.Mesh(
+  new THREE.SphereGeometry(R*1.045,128,128),
+  new THREE.ShaderMaterial({
+    transparent:true,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+    side:THREE.BackSide,
+    uniforms:{
+      uColor:{value:new THREE.Color(0x4dcfff)},
+      uStrength:{value:1}
+    },
+    vertexShader:`
+      varying vec3 vN;
+      varying vec3 vV;
+      void main(){
+        vec4 mv = modelViewMatrix * vec4(position,1.0);
+        vN = normalize(normalMatrix*normal);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix*mv;
+      }
+    `,
+    fragmentShader:`
+      uniform vec3 uColor;
+      uniform float uStrength;
+      varying vec3 vN;
+      varying vec3 vV;
+
+      void main(){
+        float f = pow(1.0-max(dot(vN,vV),0.0),3.0);
+        gl_FragColor = vec4(uColor,f*.55*uStrength);
+      }
+    `
+  })
+);
+earthGroup.add(atmosphere);
+
+const aurora = new THREE.Mesh(
+  new THREE.SphereGeometry(R*1.075,128,128),
+  new THREE.ShaderMaterial({
+    transparent:true,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+    side:THREE.DoubleSide,
+    uniforms:{
+      uTime:{value:0}
+    },
+    vertexShader:`
+      varying vec2 vUv;
+      varying vec3 vN;
+      void main(){
+        vUv=uv;
+        vN=normal;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+      }
+    `,
+    fragmentShader:`
+      precision highp float;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying vec3 vN;
+
+      float band(float y,float c,float w){
+        return exp(-pow((y-c)/w,2.0));
+      }
+
+      void main(){
+        float polar =
+          band(vUv.y,.16,.065) +
+          band(vUv.y,.84,.065);
+
+        float waves =
+          .55 +
+          .45*sin(vUv.x*45.0 + sin(vUv.x*9.0-uTime*.35)*3.0 + uTime*.55);
+
+        float alpha = polar * waves * .12;
+
+        vec3 a=vec3(.0,.9,1.0);
+        vec3 b=vec3(.35,1.0,.55);
+        vec3 c=mix(a,b,.5+.5*sin(vUv.x*11.0+uTime*.4));
+
+        gl_FragColor=vec4(c,alpha);
+      }
+    `
+  })
+);
+earthGroup.add(aurora);
+
+// -----------------------------------------------------------------------------
+// Stars + cosmic dust
+// -----------------------------------------------------------------------------
+function makeStars(count, minR, maxR, size, opacity){
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count*3);
+
+  for(let i=0;i<count;i++){
+    const r=minR+Math.random()*(maxR-minR);
+    const z=Math.random()*2-1;
+    const a=Math.random()*Math.PI*2;
+    const s=Math.sqrt(1-z*z);
+
+    pos[i*3]=Math.cos(a)*s*r;
+    pos[i*3+1]=z*r;
+    pos[i*3+2]=Math.sin(a)*s*r;
+  }
+
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+
+  return new THREE.Points(
+    geo,
+    new THREE.PointsMaterial({
+      color:0xbfe8ff,
+      size,
+      transparent:true,
+      opacity,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending
+    })
+  );
+}
+
+scene.add(makeStars(5200,28,110,.075,.72));
+scene.add(makeStars(1700,14,60,.14,.19));
+
+// -----------------------------------------------------------------------------
+// City lights
+// -----------------------------------------------------------------------------
+const cities = [
+  ['New York',40.7128,-74.0060,24,'North America'],
+  ['Los Angeles',34.0522,-118.2437,16,'North America'],
+  ['Mexico City',19.4326,-99.1332,25,'North America'],
+  ['Toronto',43.6532,-79.3832,9,'North America'],
+  ['Chicago',41.8781,-87.6298,11,'North America'],
+  ['Houston',29.7604,-95.3698,10,'North America'],
+
+  ['São Paulo',-23.5505,-46.6333,28,'South America'],
+  ['Buenos Aires',-34.6037,-58.3816,18,'South America'],
+  ['Lima',-12.0464,-77.0428,14,'South America'],
+  ['Bogotá',4.7110,-74.0721,14,'South America'],
+
+  ['London',51.5072,-0.1276,17,'Europe'],
+  ['Paris',48.8566,2.3522,14,'Europe'],
+  ['Berlin',52.5200,13.4050,9,'Europe'],
+  ['Madrid',40.4168,-3.7038,8,'Europe'],
+  ['Rome',41.9028,12.4964,7,'Europe'],
+  ['Istanbul',41.0082,28.9784,18,'Europe'],
+
+  ['Cairo',30.0444,31.2357,22,'Africa'],
+  ['Lagos',6.5244,3.3792,23,'Africa'],
+  ['Nairobi',-1.2921,36.8219,8,'Africa'],
+  ['Johannesburg',-26.2041,28.0473,11,'Africa'],
+  ['Kinshasa',-4.4419,15.2663,16,'Africa'],
+
+  ['Mumbai',19.0760,72.8777,30,'Asia'],
+  ['Delhi',28.6139,77.2090,34,'Asia'],
+  ['Karachi',24.8607,67.0011,22,'Asia'],
+  ['Dhaka',23.8103,90.4125,24,'Asia'],
+  ['Beijing',39.9042,116.4074,24,'Asia'],
+  ['Shanghai',31.2304,121.4737,30,'Asia'],
+  ['Tokyo',35.6762,139.6503,38,'Asia'],
+  ['Seoul',37.5665,126.9780,16,'Asia'],
+  ['Jakarta',-6.2088,106.8456,31,'Asia'],
+  ['Manila',14.5995,120.9842,26,'Asia'],
+  ['Bangkok',13.7563,100.5018,19,'Asia'],
+
+  ['Sydney',-33.8688,151.2093,8,'Oceania'],
+  ['Melbourne',-37.8136,144.9631,7,'Oceania'],
+  ['Auckland',-36.8509,174.7645,4,'Oceania'],
+  ['Perth',-31.9505,115.8605,4,'Oceania']
+].map(([name,lat,lon,weight,continent]) => ({name,lat,lon,weight,continent}));
+
+const density = d3.scaleSqrt()
+  .domain(d3.extent(cities,d=>d.weight))
+  .range([120,1200]);
+
+const cityPositions = [];
+const cityColors = [];
+const glowScale = d3.scaleLinear().domain([0,1]).range([.75,1.0]);
+
+for(const city of cities){
+  const count=Math.round(density(city.weight));
+
+  for(let i=0;i<count;i++){
+    const spread = 1.05 + Math.random()*.7;
+    const lat = city.lat + d3.randomNormal(0,spread)();
+    const lon = city.lon + d3.randomNormal(0,spread*1.2)();
+
+    const p=latLonToVec3(lat,lon,R+.018+Math.random()*.025);
+    cityPositions.push(p.x,p.y,p.z);
+
+    const t=Math.random();
+    const warm = new THREE.Color().setRGB(
+      1.0,
+      glowScale(t),
+      .58 + t*.28
+    );
+    cityColors.push(warm.r,warm.g,warm.b);
+  }
+}
+
+const cityGeo = new THREE.BufferGeometry();
+cityGeo.setAttribute('position',new THREE.Float32BufferAttribute(cityPositions,3));
+cityGeo.setAttribute('color',new THREE.Float32BufferAttribute(cityColors,3));
+
+const cityMat = new THREE.PointsMaterial({
+  size:.028,
+  vertexColors:true,
+  transparent:true,
+  opacity:.9,
+  blending:THREE.AdditiveBlending,
+  depthWrite:false,
+  sizeAttenuation:true
+});
+
+const cityLights = new THREE.Points(cityGeo,cityMat);
+earthGroup.add(cityLights);
+
+// city beacons
+const beaconGeo = new THREE.SphereGeometry(.028,10,10);
+const beaconMat = new THREE.MeshBasicMaterial({color:0xd9fbff});
+
+for(const city of cities){
+  const p=latLonToVec3(city.lat,city.lon,R+.055);
+  const b=new THREE.Mesh(beaconGeo,beaconMat.clone());
+  b.position.copy(p);
+  b.userData.city=city;
+  earthGroup.add(b);
+}
+
+// -----------------------------------------------------------------------------
+// Vote arcs
+// -----------------------------------------------------------------------------
+const activeArcs=[];
+
+function spawnArc(a,b){
+  const p1=latLonToVec3(a.lat,a.lon,R+.06);
+  const p2=latLonToVec3(b.lat,b.lon,R+.06);
+
+  const midpoint=p1.clone().add(p2).multiplyScalar(.5);
+  const lift=.55 + p1.distanceTo(p2)*.28;
+  midpoint.normalize().multiplyScalar(R+lift);
+
+  const curve=new THREE.QuadraticBezierCurve3(p1,midpoint,p2);
+  const points=curve.getPoints(72);
+
+  const geo=new THREE.BufferGeometry().setFromPoints(points);
+  geo.setDrawRange(0,2);
+
+  const mat=new THREE.LineBasicMaterial({
+    color:Math.random()>.5?0x64eaff:0xa886ff,
+    transparent:true,
+    opacity:.0,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  const line=new THREE.Line(geo,mat);
+  earthGroup.add(line);
+
+  activeArcs.push({
+    line,geo,mat,
+    born:performance.now()/1000,
+    duration:1.8+Math.random()*.8,
+    count:points.length
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Surface rings
+// -----------------------------------------------------------------------------
+const activeRings=[];
+
+function createSurfaceRing(lat,lon,{
+  color=0x65e7ff,
+  duration=2.2,
+  maxAngle=.42,
+  width=.018,
+  opacity=.9
+}={}){
+  const center=latLonToVec3(lat,lon,R+.055);
+  const normal=center.clone().normalize();
+  const {u,v}=tangentBasis(normal);
+
+  const ringGeo=new THREE.RingGeometry(.96,1,160);
+  const ringMat=new THREE.MeshBasicMaterial({
+    color,
+    transparent:true,
+    opacity:0,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+
+  const ring=new THREE.Mesh(ringGeo,ringMat);
+
+  // Orient local Z axis to point out from the globe
+  ring.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0,0,1),
+    normal
+  );
+
+  ring.position.copy(center);
+  ring.scale.setScalar(.001);
+  earthGroup.add(ring);
+
+  activeRings.push({
+    ring,mat:ringMat,geo:ringGeo,
+    born:performance.now()/1000,
+    duration,maxAngle,width,opacity,
+    center,normal,u,v
+  });
+}
+
+function spawnCityPulse(city){
+  createSurfaceRing(city.lat,city.lon,{
+    color:0x65e7ff,
+    duration:1.9,
+    maxAngle:.36 + Math.random()*.18,
+    opacity:.88
+  });
+
+  // occasional echo
+  if(Math.random()<.4){
+    setTimeout(()=>{
+      createSurfaceRing(city.lat,city.lon,{
+        color:0x9a85ff,
+        duration:2.35,
+        maxAngle:.55,
+        opacity:.42
+      });
+    },170);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Continental waves
+// -----------------------------------------------------------------------------
+const continents = Array.from(
+  d3.rollup(
+    cities,
+    v=>({
+      name:v[0].continent,
+      lat:d3.mean(v,d=>d.lat),
+      lon:d3.mean(v,d=>d.lon),
+      weight:d3.sum(v,d=>d.weight),
+      cities:v
+    }),
+    d=>d.continent
+  ).values()
+);
+
+function spawnContinentWave(c){
+  createSurfaceRing(c.lat,c.lon,{
+    color:0xac84ff,
+    duration:3.2,
+    maxAngle:1.05,
+    opacity:.68
+  });
+
+  createSurfaceRing(c.lat,c.lon,{
+    color:0x5ff5d4,
+    duration:3.8,
+    maxAngle:1.35,
+    opacity:.34
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Global heartbeat shells
+// -----------------------------------------------------------------------------
+const shells=[];
+
+function makeShell(color){
+  const mat=new THREE.MeshBasicMaterial({
+    color,
+    transparent:true,
+    opacity:0,
+    side:THREE.BackSide,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending
+  });
+
+  const mesh=new THREE.Mesh(
+    new THREE.SphereGeometry(R*1.02,96,96),
+    mat
+  );
+  earthGroup.add(mesh);
+
+  return {mesh,mat,active:false,start:0,delay:0};
+}
+
+shells.push(makeShell(0x66f5da));
+shells.push(makeShell(0x69cfff));
+shells.push(makeShell(0xae84ff));
+
+let globalPulse=0;
+
+function triggerHeartbeat(){
+  const now=performance.now()/1000;
+
+  shells.forEach((s,i)=>{
+    s.active=true;
+    s.start=now;
+    s.delay=i*.14;
+    s.mesh.scale.setScalar(1);
+    s.mat.opacity=0;
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Interaction: click globe
+// -----------------------------------------------------------------------------
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  const rect=renderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-rect.left)/rect.width)*2-1;
+  pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+
+  raycaster.setFromCamera(pointer,camera);
+  const hit=raycaster.intersectObject(earth,false)[0];
+
+  if(hit){
+    const p=earth.worldToLocal(hit.point.clone()).normalize().multiplyScalar(R);
+    const r=Math.sqrt(p.x*p.x+p.y*p.y+p.z*p.z);
+    const lat=90-Math.acos(p.y/r)*180/Math.PI;
+    const lon=Math.atan2(p.z,-p.x)*180/Math.PI-180;
+
+    createSurfaceRing(lat,lon,{
+      color:0x72f5da,
+      duration:2.15,
+      maxAngle:.52,
+      opacity:1
+    });
+  }
+});
+
+addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()==='h') triggerHeartbeat();
+});
+
+// -----------------------------------------------------------------------------
+// Simulation
+// -----------------------------------------------------------------------------
+const totalWeight=d3.sum(cities,d=>d.weight);
+let cycleStart=performance.now()/1000;
+const cycleDuration=18;
+let voteDisplay=0;
+let targetVotes=8_000_000_000;
+let lastCityPulse=0;
+let lastArc=0;
+let lastContinent=0;
+let lastHeartbeatCycle=-1;
+
+function weightedCity(){
+  let t=Math.random()*totalWeight;
+  for(const city of cities){
+    t-=city.weight;
+    if(t<=0) return city;
+  }
+  return cities.at(-1);
+}
+
+function updateSimulation(now){
+  const cycleIndex=Math.floor((now-cycleStart)/cycleDuration);
+  const t=((now-cycleStart)%cycleDuration)/cycleDuration;
+
+  // Illustrative vote flow. This is deliberately not presented as real vote data.
+  voteDisplay = Math.min(
+    targetVotes,
+    Math.floor(targetVotes * d3.easeCubicInOut(Math.min(1,t*1.08)))
+  );
+  counterEl.textContent=fmt(voteDisplay);
+
+  if(t<.54){
+    phaseEl.textContent='Local signals igniting across cities';
+    phaseBar.style.width=`${(t/.54)*100}%`;
+
+    if(now-lastCityPulse>.22){
+      spawnCityPulse(weightedCity());
+      lastCityPulse=now;
+    }
+
+    if(now-lastArc>.55){
+      const a=weightedCity();
+      let b=weightedCity();
+      if(a===b) b=cities[(cities.indexOf(a)+5)%cities.length];
+      spawnArc(a,b);
+      lastArc=now;
+    }
+  } else if(t<.83){
+    phaseEl.textContent='Regional waves merging into continental consensus';
+    phaseBar.style.width=`${((t-.54)/.29)*100}%`;
+
+    if(now-lastContinent>.75){
+      const c=continents[Math.floor(Math.random()*continents.length)];
+      spawnContinentWave(c);
+      lastContinent=now;
+    }
+
+    if(now-lastArc>.34){
+      const a=weightedCity();
+      const b=weightedCity();
+      if(a!==b) spawnArc(a,b);
+      lastArc=now;
+    }
+  } else {
+    phaseEl.textContent='Planet synchronizing into a single heartbeat';
+    phaseBar.style.width=`${((t-.83)/.17)*100}%`;
+
+    if(cycleIndex!==lastHeartbeatCycle && t>.865){
+      triggerHeartbeat();
+      lastHeartbeatCycle=cycleIndex;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Animation
+// -----------------------------------------------------------------------------
+const clock=new THREE.Clock();
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  const dt=clock.getDelta();
+  const now=performance.now()/1000;
+
+  controls.update();
+
+  earthGroup.rotation.y += dt*.018;
+
+  earthMat.uniforms.uTime.value=now;
+  aurora.material.uniforms.uTime.value=now;
+
+  // city shimmer
+  cityMat.opacity=.78 + Math.sin(now*2.0)*.08 + Math.sin(now*5.1)*.035;
+
+  // rings
+  for(let i=activeRings.length-1;i>=0;i--){
+    const r=activeRings[i];
+    const k=(now-r.born)/r.duration;
+
+    if(k>=1){
+      earthGroup.remove(r.ring);
+      r.geo.dispose();
+      r.mat.dispose();
+      activeRings.splice(i,1);
+      continue;
+    }
+
+    const e=d3.easeCubicOut(Math.max(0,k));
+
+    // approximate geodesic growth while keeping rings tangent to surface
+    const linearRadius=Math.tan(r.maxAngle*e)*R;
+    r.ring.scale.set(linearRadius,linearRadius,1);
+
+    // keep slightly outside globe to reduce z-fighting
+    r.ring.position.copy(r.normal).multiplyScalar(R+.045+.018*e);
+
+    const fade=Math.sin(Math.PI*Math.min(1,k));
+    r.mat.opacity=r.opacity*fade*(1-k*.25);
+  }
+
+  // arcs
+  for(let i=activeArcs.length-1;i>=0;i--){
+    const a=activeArcs[i];
+    const k=(now-a.born)/a.duration;
+
+    if(k>=1){
+      earthGroup.remove(a.line);
+      a.geo.dispose();
+      a.mat.dispose();
+      activeArcs.splice(i,1);
+      continue;
+    }
+
+    const draw=Math.floor(
+      THREE.MathUtils.clamp(k*1.6,0,1)*a.count
+    );
+    a.geo.setDrawRange(0,Math.max(2,draw));
+
+    a.mat.opacity=
+      Math.sin(Math.PI*THREE.MathUtils.clamp(k,0,1))*.52;
+  }
+
+  // heartbeat
+  globalPulse=0;
+
+  for(const s of shells){
+    if(!s.active) continue;
+
+    const k=(now-s.start-s.delay)/1.75;
+    if(k<0) continue;
+
+    if(k>=1){
+      s.active=false;
+      s.mat.opacity=0;
+      s.mesh.scale.setScalar(1);
+      continue;
+    }
+
+    const e=d3.easeCubicOut(k);
+    const beat=Math.sin(Math.PI*k);
+
+    s.mesh.scale.setScalar(1 + e*.22);
+    s.mat.opacity=beat*.33*(1-k);
+    globalPulse=Math.max(globalPulse,beat);
+  }
+
+  earthMat.uniforms.uPulse.value=globalPulse*.9;
+  atmosphere.material.uniforms.uStrength.value=1+globalPulse*1.7;
+
+  // subtle global breathing even outside the climax
+  const breathing=1+Math.sin(now*.65)*.0025+globalPulse*.012;
+  earthGroup.scale.setScalar(breathing);
+
+  waveCountEl.textContent=
+    `${activeRings.length + activeArcs.length} live waves`;
+
+  updateSimulation(now);
+
+  composer.render();
+}
+
+animate();
+
+// -----------------------------------------------------------------------------
+// Resize
+// -----------------------------------------------------------------------------
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  composer.setSize(innerWidth,innerHeight);
+  bloom.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

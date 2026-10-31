@@ -1,0 +1,783 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>NYC 311 GPU Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed request-density map of the five boroughs; linked-filter rail on the right (stacks under the map on phones). Single dark look, a night-time city plan. */
+:root {
+  --ink: #12161c;
+  --mapbg: #0f1318;
+  --panel: #181d25;
+  --line: #2b323d;
+  --fg: #e3e9ef;
+  --muted: #8b97a4;
+  --accent: #5fd4c4;
+  --hot: #ffb454;
+  --f-ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--fg); font-family: var(--f-ui); font-size: 15px; line-height: 1.4; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 350px; height: 100%; }
+#map { position: relative; overflow: hidden; min-height: 0; touch-action: none; background: var(--mapbg); }
+#gpu, #deckc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#deckc { z-index: 1; }
+#map.region, #map.region #deckc { cursor: crosshair !important; }
+
+.chip { position: absolute; z-index: 2; background: color-mix(in srgb, var(--ink) 84%, transparent); border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; font-size: 13px; color: var(--fg); pointer-events: none; }
+.legend { left: calc(12px + env(safe-area-inset-left, 0px)); bottom: 12px; display: grid; gap: 4px; }
+.legend .bar { width: 160px; height: 8px; border-radius: 1px; background: linear-gradient(90deg, #1a5466, #40b8b0 40%, #c7f2d9 80%, #ffffff); }
+.legend .ends { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { right: calc(12px + env(safe-area-inset-right, 0px)); bottom: 12px; color: var(--muted); }
+.hint kbd { font-family: var(--f-data); font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--fg); }
+#overlay { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--f-data); font-size: 13px; color: var(--fg); text-align: center; padding-inline: 24px; }
+
+.rail { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 18px 22px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 2px 0 0; font-size: 30px; font-weight: 700; font-stretch: 72%; line-height: 1.02; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.count { display: grid; gap: 2px; }
+.count .big { font-family: var(--f-data); font-size: 24px; font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; }
+.count .sub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.hists { display: grid; gap: 14px; }
+.hist header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.hist .name { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hist .range { font-family: var(--f-data); font-size: 12px; color: var(--fg); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist canvas { width: 100%; height: 84px; display: block; cursor: ew-resize; touch-action: none; }
+.hist.cat canvas { height: 240px; cursor: pointer; }
+.tip { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.controls { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.row { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; }
+.row label { color: var(--muted); }
+select, input[type=range] { width: 100%; accent-color: var(--accent); }
+select { background: var(--ink); color: var(--fg); border: 1px solid var(--line); border-radius: 3px; padding: 5px 6px; font-family: var(--f-data); font-size: 12px; }
+.val { font-family: var(--f-data); font-size: 12px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font-family: var(--f-ui); font-size: 14px; font-weight: 500; color: var(--fg); background: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button[aria-pressed="true"] { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+
+.timing { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 14px; }
+.timing .line { display: flex; justify-content: space-between; gap: 10px; }
+.timing .line span:last-child { font-family: var(--f-data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.gpu-ms { color: var(--accent); }
+.cpu-ms { color: var(--hot); }
+.note { font-size: 13px; color: var(--muted); max-width: 65ch; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.note p { margin: 0; }
+
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 64vh auto; height: auto; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .hint { display: none; }
+}
+</style>
+
+<div class="app">
+  <div id="map">
+    <canvas id="gpu"></canvas>
+    <canvas id="deckc"></canvas>
+    <div class="chip legend"><span>Requests per bin</span><div class="bar"></div><div class="ends"><span>1</span><span id="maxbin">–</span></div></div>
+    <div class="chip hint">Drag to pan · scroll to zoom · <kbd>Shift</kbd>-drag to brush an area</div>
+    <div id="overlay">Starting WebGPU…</div>
+  </div>
+
+  <aside class="rail">
+    <div>
+      <div class="eyebrow">imMens-style linked brushing · WebGPU compute</div>
+      <h1>A year of <span>311</span> in New York</h1>
+    </div>
+
+    <div class="count">
+      <span class="big" id="selCount">–</span>
+      <span class="sub" id="selSub">service requests match the filters</span>
+    </div>
+
+    <div class="hists" id="hists"></div>
+
+    <div class="controls">
+      <div class="row"><label for="rows">Requests</label>
+        <select id="rows">
+          <option value="1000000">1,000,000</option>
+          <option value="3200000" selected>3,200,000 (about one year)</option>
+          <option value="10000000">10,000,000</option>
+        </select></div>
+      <div class="row"><label for="bin">Bin size</label>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:center"><input id="bin" type="range" min="1" max="12" step="1" value="2"><span class="val" id="binVal">2 px</span></div></div>
+      <label class="check"><input type="checkbox" id="labels" checked> Borough and neighborhood labels</label>
+      <div class="buttons">
+        <button id="regionBtn" aria-pressed="false">Brush an area</button>
+        <button id="resetBtn">Clear all filters</button>
+      </div>
+    </div>
+
+    <div class="timing">
+      <div class="line"><span>GPU query + render, per frame</span><span class="gpu-ms" id="gpuMs">–</span></div>
+      <div class="line"><span>Bins on screen</span><span id="binsInfo">–</span></div>
+      <div class="line"><span>Same query in plain JS</span><span class="cpu-ms" id="cpuMs">–</span></div>
+      <div class="buttons"><button id="cpuBtn">Time the CPU query</button></div>
+    </div>
+
+    <div class="note">
+      <p>Every frame, a compute shader filters every request against all four histograms and the map brush, bins the survivors into screen tiles with atomic adds, and rebuilds the cross-filtered histograms in workgroup memory. A fragment shader then colors each pixel by its bin. deck.gl owns the camera and draws the labels and brush.</p>
+      <p>Try Heat/Hot Water and drag the month chart through winter, or pick the three noise types and narrow the hours to 10 pm to 2 am.</p>
+      <p>The requests are synthetic, because NYC Open Data can't be reached from this page. Type shares, places, hours and seasons are modeled on the real 311 feed, and the shares are approximate.</p>
+    </div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const mapEl = $("#map"), gpuCanvas = $("#gpu"), overlay = $("#overlay");
+const fmt = (n) => n.toLocaleString("en-US");
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+// ---------- Rough borough outlines [lng, lat]; angle = street-grid bearing in degrees ----------
+const BOROUGHS = [
+  { name: "Manhattan", angle: 29, su: 260, sv: 80, poly: [[-74.0188,40.7006],[-74.0130,40.7300],[-74.0095,40.7525],[-73.9990,40.7720],[-73.9600,40.8250],[-73.9440,40.8480],[-73.9280,40.8780],[-73.9110,40.8740],[-73.9330,40.8350],[-73.9340,40.8090],[-73.9290,40.7980],[-73.9430,40.7750],[-73.9720,40.7440],[-73.9710,40.7270],[-73.9770,40.7110],[-73.9990,40.7080]] },
+  { name: "Bronx", angle: 6, su: 160, sv: 90, poly: [[-73.9270,40.8800],[-73.9050,40.8760],[-73.9270,40.8350],[-73.9280,40.8080],[-73.9100,40.7990],[-73.8700,40.8030],[-73.8250,40.8060],[-73.7900,40.8200],[-73.7850,40.8500],[-73.8100,40.8850],[-73.8380,40.9020],[-73.8550,40.9100],[-73.9100,40.9150]] },
+  { name: "Brooklyn", angle: 14, su: 200, sv: 85, poly: [[-74.0420,40.6280],[-74.0300,40.6000],[-74.0000,40.5800],[-73.9500,40.5750],[-73.9050,40.5850],[-73.8650,40.6200],[-73.8550,40.6550],[-73.8650,40.6830],[-73.8960,40.6850],[-73.9050,40.6980],[-73.9250,40.7050],[-73.9400,40.7280],[-73.9600,40.7330],[-73.9720,40.7100],[-73.9980,40.7030],[-74.0150,40.6800],[-74.0250,40.6600]] },
+  { name: "Queens", angle: 20, su: 190, sv: 90, poly: [[-73.9600,40.7400],[-73.9400,40.7310],[-73.9250,40.7085],[-73.9050,40.7005],[-73.8960,40.6875],[-73.8650,40.6855],[-73.8550,40.6575],[-73.8300,40.6500],[-73.7900,40.6300],[-73.7700,40.6150],[-73.7400,40.6350],[-73.7250,40.6700],[-73.7000,40.7400],[-73.7020,40.7550],[-73.7550,40.7700],[-73.7700,40.7900],[-73.8000,40.7950],[-73.8400,40.7900],[-73.8700,40.7850],[-73.9000,40.7800],[-73.9150,40.7900],[-73.9300,40.7750],[-73.9450,40.7600]] },
+  { name: "Queens", angle: 25, su: 180, sv: 90, poly: [[-73.9400,40.5450],[-73.9000,40.5600],[-73.8300,40.5750],[-73.7600,40.5900],[-73.7400,40.5980],[-73.7450,40.5880],[-73.8300,40.5640],[-73.9000,40.5520],[-73.9400,40.5400]] },
+  { name: "Staten Island", angle: 32, su: 220, sv: 110, poly: [[-74.0720,40.6440],[-74.0700,40.6100],[-74.0600,40.6000],[-74.1100,40.5600],[-74.1700,40.5300],[-74.2500,40.5000],[-74.2550,40.5200],[-74.2200,40.5600],[-74.2000,40.6000],[-74.1900,40.6400],[-74.1500,40.6450],[-74.0900,40.6480]] },
+];
+const HOLES = [ // Central Park, LaGuardia, JFK runways
+  [[-73.9815,40.7681],[-73.9730,40.7644],[-73.9495,40.7968],[-73.9581,40.8006]],
+  [[-73.8900,40.7660],[-73.8550,40.7660],[-73.8550,40.7810],[-73.8900,40.7810]],
+  [[-73.8150,40.6300],[-73.7650,40.6300],[-73.7650,40.6600],[-73.8150,40.6600]],
+];
+for (const b of [...BOROUGHS.map((b) => b.poly), ...HOLES]) b.bbox = bboxOf(b);
+for (const b of BOROUGHS) b.bbox = b.poly.bbox;
+function bboxOf(p) { let a = 1e9, c = 1e9, d = -1e9, e = -1e9; for (const [x, y] of p) { a = Math.min(a, x); c = Math.min(c, y); d = Math.max(d, x); e = Math.max(e, y); } return [a, c, d, e]; }
+function pip(p, x, y) {
+  const bb = p.bbox; if (x < bb[0] || x > bb[2] || y < bb[1] || y > bb[3]) return false;
+  let ins = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const xi = p[i][0], yi = p[i][1], xj = p[j][0], yj = p[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins;
+  }
+  return ins;
+}
+function boroughAt(x, y) {
+  for (const h of HOLES) if (pip(h, x, y)) return -1;
+  for (let i = 0; i < BOROUGHS.length; i++) if (pip(BOROUGHS[i].poly, x, y)) return i;
+  return -1;
+}
+
+// ---------- Neighborhood hotspots by character: [lat, lng, sigma deg, weight] ----------
+const SPOTS = {
+  res: [[40.830,-73.910,.022,3],[40.845,-73.937,.011,2],[40.812,-73.945,.010,2],[40.680,-73.940,.018,3],[40.648,-73.955,.014,2.2],[40.697,-73.920,.011,1.6],
+        [40.748,-73.882,.013,2],[40.862,-73.892,.014,2],[40.665,-73.910,.009,1.2],[40.645,-74.008,.011,1.2],[40.765,-73.920,.011,1.4],[40.875,-73.870,.012,1.2],
+        [40.705,-73.865,.015,1],[40.600,-73.960,.015,1.1],[40.790,-73.945,.008,1.2],[40.640,-74.080,.010,.6]],
+  core: [[40.755,-73.985,.011,3],[40.724,-73.987,.009,2],[40.745,-74.000,.009,1.6],[40.785,-73.975,.010,2],[40.773,-73.955,.010,2],[40.709,-74.009,.005,1],[40.690,-73.990,.008,1.2],[40.745,-73.945,.006,.8]],
+  night: [[40.721,-73.988,.006,2.2],[40.716,-73.958,.007,2],[40.705,-73.922,.007,1.4],[40.764,-73.920,.007,1],[40.762,-73.990,.006,1.4],[40.737,-74.003,.005,1.2],[40.678,-73.980,.006,.8],[40.817,-73.947,.005,.6]],
+  outer: [[40.720,-73.770,.035,3],[40.680,-73.790,.025,2.4],[40.590,-74.140,.040,2.6],[40.612,-73.960,.022,2],[40.840,-73.840,.022,2],[40.626,-74.026,.011,1],
+          [40.640,-73.900,.014,1.4],[40.760,-73.810,.020,1.8],[40.725,-73.850,.012,1],[40.600,-73.760,.020,.8]],
+};
+// Major arterials, as rough polylines [lng, lat]
+const ARTERIALS = [
+  [[-74.0135,40.7050],[-74.0060,40.7180],[-73.9970,40.7300],[-73.9900,40.7390],[-73.9870,40.7560],[-73.9820,40.7680],[-73.9790,40.7840],[-73.9640,40.8060],[-73.9430,40.8380],[-73.9270,40.8650],[-73.9100,40.8780]],
+  [[-73.9870,40.7300],[-73.9700,40.7530],[-73.9500,40.7800],[-73.9370,40.7990]],
+  [[-74.0030,40.7400],[-73.9880,40.7600],[-73.9720,40.7900],[-73.9590,40.8100]],
+  [[-73.9580,40.8160],[-73.9330,40.8050]],
+  [[-73.9290,40.8150],[-73.9230,40.8300],[-73.9050,40.8600],[-73.8880,40.8800]],
+  [[-73.9100,40.8610],[-73.8850,40.8610],[-73.8600,40.8570]],
+  [[-73.9150,40.8400],[-73.8800,40.8420],[-73.8400,40.8400]],
+  [[-73.9400,40.7450],[-73.9180,40.7420],[-73.8900,40.7390],[-73.8650,40.7330],[-73.8360,40.7170],[-73.8100,40.7060]],
+  [[-73.9350,40.7520],[-73.9000,40.7570],[-73.8600,40.7580],[-73.8000,40.7620],[-73.7500,40.7640],[-73.7100,40.7600]],
+  [[-73.8700,40.6880],[-73.8350,40.6950],[-73.8000,40.7020],[-73.7600,40.7100],[-73.7200,40.7250]],
+  [[-73.9050,40.7450],[-73.8800,40.7480],[-73.8300,40.7590]],
+  [[-73.8300,40.7600],[-73.8250,40.7350],[-73.8200,40.7100]],
+  [[-73.9950,40.6900],[-73.9750,40.6840],[-73.9400,40.6790],[-73.9000,40.6760],[-73.8700,40.6800]],
+  [[-73.9800,40.6890],[-73.9690,40.6730],[-73.9590,40.6550],[-73.9470,40.6320],[-73.9300,40.6100],[-73.9050,40.5900]],
+  [[-73.9700,40.6720],[-73.9400,40.6690],[-73.9100,40.6700]],
+  [[-73.9720,40.6450],[-73.9700,40.6100],[-73.9690,40.5780]],
+  [[-73.9900,40.6800],[-74.0050,40.6600],[-74.0230,40.6400],[-74.0300,40.6200]],
+  [[-73.9600,40.7100],[-73.9400,40.7020],[-73.9100,40.6870]],
+  [[-73.9400,40.6530],[-73.9000,40.6600],[-73.8500,40.6700],[-73.7600,40.6900]],
+  [[-74.0700,40.6100],[-74.1100,40.5750],[-74.1600,40.5400],[-74.2300,40.5100]],
+  [[-74.0800,40.6420],[-74.1300,40.6200],[-74.1600,40.5900],[-74.1700,40.5500]],
+];
+const LABELS = [
+  ["MANHATTAN", 40.7830, -73.9712, 1], ["BRONX", 40.8448, -73.8648, 1], ["BROOKLYN", 40.6500, -73.9496, 1], ["QUEENS", 40.7282, -73.7949, 1], ["STATEN ISLAND", 40.5795, -74.1502, 1],
+  ["Midtown", 40.7549, -73.9840, 0], ["Harlem", 40.8116, -73.9465, 0], ["Washington Heights", 40.8417, -73.9394, 0], ["Williamsburg", 40.7081, -73.9571, 0],
+  ["Bed-Stuy", 40.6872, -73.9418, 0], ["Flatbush", 40.6410, -73.9595, 0], ["Jackson Heights", 40.7557, -73.8831, 0], ["Astoria", 40.7644, -73.9235, 0],
+  ["Fordham", 40.8615, -73.8904, 0], ["Jamaica", 40.7027, -73.7890, 0], ["Lower East Side", 40.7150, -73.9843, 0], ["Coney Island", 40.5755, -73.9707, 0],
+];
+
+// ---------- Request types ----------
+const DAYH = { peak: 11.5, sig: 3.6, floor: .07 };
+const TYPES = [
+  // name, share, location mix [res, core, night, outer, anywhere], hour profile, day-of-week profile, month profile, repeat-building share
+  // location mix: [residential, core, nightlife, outer boroughs, spread out, arterials]
+  ["Illegal Parking",        .150, [.30,.15,0,.25,.10,.20], { peak: 12, sig: 4.5, floor: .2 }, "weekday", "flat", 0],
+  ["Noise – Residential",    .110, [.65,0,0,0,.30,.05], "night", "weekend", "summer", .25],
+  ["Heat/Hot Water",         .080, [.85,0,0,0,.15,0], "heat", "flat", "winter", .55],
+  ["Blocked Driveway",       .050, [.20,0,0,.65,.10,.05], DAYH, "weekday", "flat", 0],
+  ["Noise – Street/Sidewalk",.050, [.45,0,.30,0,.15,.10], "night", "weekend", "summerStrong", 0],
+  ["Unsanitary Condition",   .030, [.90,0,0,0,.10,0], DAYH, "weekday", "flat", .5],
+  ["Noise – Commercial",     .030, [.10,.20,.60,0,0,.10], "night", "weekendStrong", "summer", .15],
+  ["Street Condition",       .030, [0,.10,0,.20,.30,.40], DAYH, "weekday", "spring", 0],
+  ["Abandoned Vehicle",      .025, [.20,0,0,.60,.10,.10], DAYH, "weekday", "flat", 0],
+  ["Noise – Vehicle",        .025, [.35,0,0,.20,.15,.30], { peak: 22, sig: 3.5, floor: .15 }, "weekend", "summer", 0],
+  ["Water System",           .020, [0,0,0,.40,.50,.10], DAYH, "flat", "winterMild", 0],
+  ["Dirty Condition",        .020, [.45,.25,0,0,.20,.10], DAYH, "weekday", "summerMild", 0],
+  ["Street Light Condition", .020, [0,0,0,.35,.30,.35], { peak: 19.5, sig: 3, floor: .15 }, "flat", "winterMild", 0],
+  ["Rodent",                 .015, [.50,.30,0,0,.20,0], DAYH, "weekday", "summerStrong", .2],
+  ["Everything else",        .345, [.35,.20,0,.20,.15,.10], { peak: 12, sig: 4, floor: .12 }, "weekday", "flat", 0],
+];
+const NT = TYPES.length;
+const MONTHS = {
+  flat:         [.94,.86,.98,.97,1.03,1.04,1.06,1.05,1.0,1.02,.96,.95],
+  winter:       [1.0,.9,.62,.3,.1,.05,.04,.04,.07,.35,.72,.95],
+  winterMild:   [1.2,1.15,1.05,.95,.9,.85,.85,.85,.9,.95,1.05,1.15],
+  summer:       [.72,.7,.84,.95,1.12,1.22,1.26,1.2,1.08,.98,.85,.76],
+  summerMild:   [.85,.82,.92,.98,1.05,1.1,1.12,1.1,1.04,1.0,.92,.88],
+  summerStrong: [.45,.45,.65,.9,1.3,1.6,1.7,1.6,1.3,1.0,.65,.5],
+  spring:       [1.2,1.6,1.7,1.3,1.0,.85,.8,.8,.8,.85,.9,1.0],
+};
+const DOWS = { // Mon..Sun
+  flat: [1,1,1,1,1,1,1], weekday: [1.12,1.1,1.1,1.1,1.05,.8,.7],
+  weekend: [.8,.75,.75,.8,1.0,1.4,1.35], weekendStrong: [.55,.5,.55,.7,1.1,1.9,1.6],
+};
+function hourProfile(p) {
+  const circ = (h, c) => { const d = Math.abs(h - c); return Math.min(d, 24 - d); };
+  const g = (h, c, s) => Math.exp(-0.5 * (circ(h, c) / s) ** 2);
+  const out = [];
+  for (let h = 0; h < 24; h++) {
+    if (p === "night") out.push(.08 + g(h, 23.3, 2.3) + .25 * g(h, 14, 3));
+    else if (p === "heat") out.push(.35 + g(h, 7.5, 1.8) + .7 * g(h, 20, 2.6));
+    else out.push(p.floor + g(h, p.peak, p.sig));
+  }
+  return out;
+}
+const cumOf = (w) => { const c = new Float64Array(w.length); let s = 0; for (let i = 0; i < w.length; i++) { s += w[i]; c[i] = s; } for (let i = 0; i < c.length; i++) c[i] /= s; return c; };
+const pick = (c, r) => { let lo = 0, hi = c.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (c[m] < r) lo = m + 1; else hi = m; } return lo; };
+
+// ---------- Web Mercator, deck.gl's 512-unit world ----------
+const lngToX = (lng) => 512 * (lng + 180) / 360;
+const latToY = (lat) => 512 * (Math.PI + Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))) / (2 * Math.PI);
+
+// ---------- Synthetic 311 generator ----------
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function generate(N) {
+  const rnd = mulberry32(311);
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd() || 1e-12)) * Math.cos(6.283185307179586 * rnd());
+  const LNG0 = -73.95, LAT0 = 40.7, MX = 84300, MY = 111000;
+
+  function snap(lng, lat, bi) {
+    const b = BOROUGHS[bi], t = b.angle * Math.PI / 180, s = Math.sin(t), c = Math.cos(t);
+    const x = (lng - LNG0) * MX, y = (lat - LAT0) * MY;
+    let along = x * s + y * c, across = x * c - y * s;
+    if (rnd() < 0.5) across = Math.round(across / b.su) * b.su + gauss() * 5;
+    else along = Math.round(along / b.sv) * b.sv + gauss() * 5;
+    const nx = along * s + across * c, ny = along * c - across * s;
+    return [nx / MX + LNG0, ny / MY + LAT0];
+  }
+  const kinds = ["res", "core", "night", "outer"];
+  const spotCum = {}; for (const k of kinds) spotCum[k] = cumOf(SPOTS[k].map((s) => s[3]));
+  const allSpots = kinds.flatMap((k) => SPOTS[k]), allCum = cumOf(allSpots.map((s) => s[3]));
+  const segs = []; for (const line of ARTERIALS) for (let i = 1; i < line.length; i++) segs.push([line[i - 1], line[i], Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1])]);
+  const segCum = cumOf(segs.map((s) => s[2]));
+  function samplePoint(kind) {
+    for (let tries = 0; tries < 40; tries++) {
+      let lng, lat;
+      if (tries > 25 || (kind === 4 && rnd() < 0.35)) { lng = -74.26 + rnd() * 0.57; lat = 40.49 + rnd() * 0.43; }
+      else if (kind === 4) { const sp = allSpots[pick(allCum, rnd())]; lat = sp[0] + gauss() * sp[2] * 3; lng = sp[1] + gauss() * sp[2] * 3.9; }
+      else if (kind === 5) {
+        const [a, b, len] = segs[pick(segCum, rnd())], t = rnd(), off = gauss() * 0.0007;
+        const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len;
+        lng = a[0] + (b[0] - a[0]) * t + nx * off * 1.3; lat = a[1] + (b[1] - a[1]) * t + ny * off;
+        if (boroughAt(lng, lat) >= 0) return [lng, lat];
+        continue;
+      } else {
+        const k = kinds[kind], sp = SPOTS[k][pick(spotCum[k], rnd())], sig = rnd() < 0.3 ? sp[2] * 2.2 : sp[2];
+        lat = sp[0] + gauss() * sig; lng = sp[1] + gauss() * sig * 1.3;
+      }
+      const bi = boroughAt(lng, lat);
+      if (bi < 0) continue;
+      if (rnd() < 0.85) { const q = snap(lng, lat, bi); if (boroughAt(q[0], q[1]) === bi) return q; }
+      return [lng, lat];
+    }
+    return [-73.95, 40.65];
+  }
+  // Apartment buildings that call again and again (heat, pests, noise)
+  const NB = 7000, bld = new Float64Array(NB * 2), bw = [];
+  for (let k = 0; k < NB; k++) { const p = samplePoint(rnd() < .8 ? 0 : 1); bld[2 * k] = p[0]; bld[2 * k + 1] = p[1]; bw.push(1 / Math.pow(k + 8, 1.15)); }
+  const bldCum = cumOf(bw);
+
+  const typeCum = cumOf(TYPES.map((t) => t[1]));
+  const T = TYPES.map((t) => ({
+    loc: cumOf(t[2].map((v) => v + 1e-9)), hour: cumOf(hourProfile(t[3])), dow: cumOf(DOWS[t[4]]), month: cumOf(MONTHS[t[5]]), bld: t[6],
+  }));
+  const pos = new Float32Array(N * 2), attr = new Uint32Array(N);
+  for (let i = 0; i < N; i++) {
+    const ti = pick(typeCum, rnd()), t = T[ti];
+    let lng, lat;
+    if (rnd() < t.bld) { const k = pick(bldCum, rnd()); lng = bld[2 * k]; lat = bld[2 * k + 1]; }
+    else { const p = samplePoint(pick(t.loc, rnd())); lng = p[0]; lat = p[1]; }
+    pos[2 * i] = lngToX(lng); pos[2 * i + 1] = latToY(lat);
+    const m = pick(t.month, rnd()), d = pick(t.dow, rnd()), h = pick(t.hour, rnd());
+    attr[i] = ti | (m << 4) | (d << 8) | (h << 11);
+  }
+  return { pos, attr, N };
+}
+
+// ---------- WGSL ----------
+// stats: 0-14 type, 15-38 hour, 39-45 weekday, 46-57 month, 58 selected, 59 max bin, 60 selected on screen
+const NSTATS = 61;
+const STRUCT = /* wgsl */`
+struct U {
+  center: vec2f, scale: f32, binSize: f32,
+  viewSize: vec2f, gridW: u32, gridH: u32,
+  hourR: vec2u, dowR: vec2u,
+  monthR: vec2u, typeMask: u32, n: u32,
+  hasBrush: u32, pad: u32, brushMin: vec2f,
+  brushMax: vec2f,
+};`;
+const COMPUTE = STRUCT + /* wgsl */`
+@group(0) @binding(0) var<uniform> u: U;
+@group(0) @binding(1) var<storage, read> pos: array<vec2f>;
+@group(0) @binding(2) var<storage, read> attr: array<u32>;
+@group(0) @binding(3) var<storage, read_write> grid: array<atomic<u32>>;
+@group(0) @binding(4) var<storage, read_write> stats: array<atomic<u32>>;
+var<workgroup> lh: array<atomic<u32>, 61>;
+
+fn inR(v: u32, r: vec2u) -> bool { return v >= r.x && v <= r.y; }
+
+@compute @workgroup_size(256)
+fn main(@builtin(global_invocation_id) gid: vec3u, @builtin(local_invocation_index) li: u32) {
+  if (li < 61u) { atomicStore(&lh[li], 0u); }
+  workgroupBarrier();
+  let i = gid.x;
+  if (i < u.n) {
+    let a = attr[i];
+    let t = a & 15u;
+    let m = (a >> 4u) & 15u;
+    let d = (a >> 8u) & 7u;
+    let h = (a >> 11u) & 31u;
+    let p = pos[i];
+    let okT = ((u.typeMask >> t) & 1u) == 1u;
+    let okM = inR(m, u.monthR);
+    let okD = inR(d, u.dowR);
+    let okH = inR(h, u.hourR);
+    var okS = true;
+    if (u.hasBrush == 1u) { okS = all(p >= u.brushMin) && all(p <= u.brushMax); }
+    // Cross-filter: each histogram ignores its own filter
+    if (okM && okD && okH && okS) { atomicAdd(&lh[t], 1u); }
+    if (okT && okM && okD && okS) { atomicAdd(&lh[15u + h], 1u); }
+    if (okT && okM && okH && okS) { atomicAdd(&lh[39u + d], 1u); }
+    if (okT && okD && okH && okS) { atomicAdd(&lh[46u + m], 1u); }
+    if (okT && okM && okD && okH) {
+      if (okS) { atomicAdd(&lh[58], 1u); }
+      // The map ignores the area brush so the selection stays in context
+      let s = vec2f((p.x - u.center.x) * u.scale + u.viewSize.x * 0.5,
+                    u.viewSize.y * 0.5 - (p.y - u.center.y) * u.scale);
+      if (s.x >= 0.0 && s.y >= 0.0 && s.x < u.viewSize.x && s.y < u.viewSize.y) {
+        let b = min(vec2u(s / u.binSize), vec2u(u.gridW - 1u, u.gridH - 1u));
+        let c = atomicAdd(&grid[b.y * u.gridW + b.x], 1u) + 1u;
+        atomicMax(&lh[59], c);
+        if (okS) { atomicAdd(&lh[60], 1u); }
+      }
+    }
+  }
+  workgroupBarrier();
+  if (li < 61u) {
+    let v = atomicLoad(&lh[li]);
+    if (v > 0u) {
+      if (li == 59u) { atomicMax(&stats[59], v); } else { atomicAdd(&stats[li], v); }
+    }
+  }
+}`;
+const RENDER = STRUCT + /* wgsl */`
+@group(0) @binding(0) var<uniform> u: U;
+@group(0) @binding(1) var<storage, read> grid: array<u32>;
+@group(0) @binding(2) var<storage, read> stats: array<u32>;
+
+@vertex fn vs(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4f {
+  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(p[vi], 0.0, 1.0);
+}
+fn ramp(t: f32) -> vec3f {
+  let c0 = vec3f(0.10, 0.33, 0.40);
+  let c1 = vec3f(0.25, 0.72, 0.69);
+  let c2 = vec3f(0.78, 0.95, 0.85);
+  let c3 = vec3f(1.0, 1.0, 1.0);
+  if (t < 0.4) { return mix(c0, c1, t / 0.4); }
+  if (t < 0.8) { return mix(c1, c2, (t - 0.4) / 0.4); }
+  return mix(c2, c3, (t - 0.8) / 0.2);
+}
+@fragment fn fs(@builtin(position) fp: vec4f) -> @location(0) vec4f {
+  let bg = vec3f(0.059, 0.075, 0.094);
+  let bin = vec2u(fp.xy / u.binSize);
+  if (bin.x >= u.gridW || bin.y >= u.gridH) { return vec4f(bg, 1.0); }
+  let c = grid[bin.y * u.gridW + bin.x];
+  if (c == 0u) { return vec4f(bg, 1.0); }
+  let mx = max(stats[59], 2u);
+  let t = clamp(log(1.0 + f32(c)) / log(1.0 + f32(mx)), 0.0, 1.0);
+  var col = ramp(t);
+  let f = fract(fp.xy / u.binSize) * u.binSize;
+  if (u.binSize >= 4.0 && (f.x > u.binSize - 1.0 || f.y > u.binSize - 1.0)) { col = mix(bg, col, 0.5); }
+  return vec4f(col, 1.0);
+}`;
+
+// ---------- Filters ----------
+const ALL_TYPES = (1 << NT) - 1;
+let typeMask = ALL_TYPES;
+const DIMS = [
+  { key: "hour", name: "Hour opened", n: 24, off: 15, tick: (i) => String(i).padStart(2, "0"), tickAt: [0, 6, 12, 18, 23],
+    fmt: (r) => String(r[0]).padStart(2, "0") + ":00 – " + String(r[1]).padStart(2, "0") + ":59" },
+  { key: "dow", name: "Day of week", n: 7, off: 39, tick: (i) => ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i],
+    fmt: (r) => { const D = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]; return r[0] === r[1] ? D[r[0]] : D[r[0]] + " – " + D[r[1]]; } },
+  { key: "month", name: "Month", n: 12, off: 46, tick: (i) => "JFMAMJJASOND"[i],
+    fmt: (r) => { const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return r[0] === r[1] ? M[r[0]] : M[r[0]] + " – " + M[r[1]]; } },
+];
+const filters = { hour: [0, 23], dow: [0, 6], month: [0, 11] };
+let brush = null;
+let regionMode = false, showLabels = true, binCss = 2;
+let vs = null, deckgl = null;
+let device, ctx, format, cpipe, rpipe, cbg, rbg;
+let data = null, posBuf, attrBuf, gridBuf, gridCap = 0, statsBuf, ubuf;
+const ubytes = new ArrayBuffer(96), UF = new Float32Array(ubytes), UU = new Uint32Array(ubytes);
+let gridW = 1, gridH = 1, rafId = 0, frameNo = 0, lastStatsFrame = -1, statsWanted = false;
+const staging = [], times = [];
+let lastStats = null;
+
+// ---------- Histograms ----------
+const cssv = getComputedStyle(document.documentElement);
+const C = { accent: cssv.getPropertyValue("--accent").trim(), line: cssv.getPropertyValue("--line").trim(), muted: cssv.getPropertyValue("--muted").trim(), fg: cssv.getPropertyValue("--fg").trim() };
+const FONT_DATA = '"IBM Plex Mono", ui-monospace, Menlo, monospace', FONT_UI = '"Archivo", "Helvetica Neue", Arial, sans-serif';
+const histEls = {};
+function prep(cv) {
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * DPR) || cv.height !== Math.round(h * DPR)) { cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); }
+  const g = cv.getContext("2d"); g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, w, h);
+  return { g, w, h };
+}
+function buildHists() {
+  const host = $("#hists");
+  // Request type: categorical, horizontal bars
+  const tw = document.createElement("div");
+  tw.className = "hist cat";
+  tw.innerHTML = `<header><span class="name">Request type</span><span class="range"></span></header><canvas tabindex="0" aria-label="Request type histogram"></canvas><div class="tip">Click a type to isolate it. Shift- or Cmd-click to add or remove types.</div>`;
+  host.appendChild(tw);
+  const tcv = tw.querySelector("canvas");
+  histEls.type = { cv: tcv, range: tw.querySelector(".range") };
+  tcv.addEventListener("click", (e) => {
+    const r = tcv.getBoundingClientRect(), i = Math.floor((e.clientY - r.top) / (r.height / NT));
+    if (i < 0 || i >= NT) return;
+    const bit = 1 << i;
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
+      typeMask = typeMask === ALL_TYPES ? bit : typeMask ^ bit;
+      if (typeMask === 0) typeMask = ALL_TYPES;
+    } else typeMask = typeMask === bit ? ALL_TYPES : bit;
+    changed();
+  });
+  tcv.addEventListener("keydown", (e) => { if (e.key === "Escape") { typeMask = ALL_TYPES; changed(); } });
+
+  for (const d of DIMS) {
+    const wrap = document.createElement("div");
+    wrap.className = "hist";
+    wrap.innerHTML = `<header><span class="name">${d.name}</span><span class="range"></span></header><canvas tabindex="0" aria-label="${d.name} histogram"></canvas>`;
+    host.appendChild(wrap);
+    const cv = wrap.querySelector("canvas");
+    histEls[d.key] = { cv, range: wrap.querySelector(".range"), dim: d };
+    const binAt = (e) => { const r = cv.getBoundingClientRect(); return Math.max(0, Math.min(d.n - 1, Math.floor((e.clientX - r.left) / (r.width / d.n)))); };
+    let drag = null;
+    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); drag = { start: binAt(e), moved: false }; });
+    cv.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const b = binAt(e);
+      if (b !== drag.start) drag.moved = true;
+      if (drag.moved) { filters[d.key] = [Math.min(b, drag.start), Math.max(b, drag.start)]; changed(); }
+    });
+    cv.addEventListener("pointerup", () => {
+      if (drag && !drag.moved) {
+        const f = filters[d.key], full = f[0] === 0 && f[1] === d.n - 1;
+        filters[d.key] = full ? [drag.start, drag.start] : [0, d.n - 1];
+        changed();
+      }
+      drag = null;
+    });
+    cv.addEventListener("keydown", (e) => {
+      const f = filters[d.key];
+      if (e.key === "Escape") { filters[d.key] = [0, d.n - 1]; changed(); }
+      if (e.key === "ArrowRight" && f[1] < d.n - 1) { filters[d.key] = [f[0] + 1, f[1] + 1]; changed(); e.preventDefault(); }
+      if (e.key === "ArrowLeft" && f[0] > 0) { filters[d.key] = [f[0] - 1, f[1] - 1]; changed(); e.preventDefault(); }
+    });
+  }
+}
+function drawTypeHist(stats) {
+  const { cv, range } = histEls.type;
+  const nSel = popcount(typeMask);
+  range.textContent = typeMask === ALL_TYPES ? "All" : nSel === 1 ? TYPES[Math.log2(typeMask)][0] : nSel + " types";
+  const { g, w, h } = prep(cv);
+  const rowH = h / NT, labelW = Math.min(158, w * 0.48), numW = 62, barMax = Math.max(10, w - labelW - numW - 8);
+  let mx = 1; if (stats) for (let i = 0; i < NT; i++) mx = Math.max(mx, stats[i]);
+  g.textBaseline = "middle";
+  for (let i = 0; i < NT; i++) {
+    const v = stats ? stats[i] : 0, on = (typeMask >> i) & 1, y = i * rowH;
+    g.fillStyle = on ? C.fg : C.muted; g.font = `500 12px ${FONT_UI}`; g.textAlign = "left";
+    g.fillText(TYPES[i][0], 0, y + rowH / 2, labelW - 6);
+    const bl = v > 0 ? Math.max(1, (v / mx) * barMax) : 0;
+    g.fillStyle = on ? C.accent : C.line;
+    g.fillRect(labelW, y + 3, bl, rowH - 6);
+    g.fillStyle = on ? C.fg : C.muted; g.font = `11px ${FONT_DATA}`; g.textAlign = "right";
+    g.fillText(stats ? fmt(v) : "", w, y + rowH / 2);
+  }
+}
+function drawHist(key, stats) {
+  const { cv, range, dim } = histEls[key];
+  const f = filters[key], full = f[0] === 0 && f[1] === dim.n - 1;
+  range.textContent = full ? "All" : dim.fmt(f);
+  const { g, w, h } = prep(cv);
+  const plotH = h - 16, bw = w / dim.n;
+  let mx = 1; if (stats) for (let i = 0; i < dim.n; i++) mx = Math.max(mx, stats[dim.off + i]);
+  if (!full) { g.fillStyle = "rgba(95,212,196,0.08)"; g.fillRect(f[0] * bw, 0, (f[1] - f[0] + 1) * bw, plotH); }
+  g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(0, plotH + 0.5); g.lineTo(w, plotH + 0.5); g.stroke();
+  for (let i = 0; i < dim.n; i++) {
+    const v = stats ? stats[dim.off + i] : 0, bh = Math.max(v > 0 ? 1 : 0, (v / mx) * (plotH - 4));
+    g.fillStyle = i >= f[0] && i <= f[1] ? C.accent : C.line;
+    const gap = bw > 12 ? 3 : bw > 6 ? 1 : 0.5;
+    g.fillRect(i * bw + gap / 2, plotH - bh, Math.max(1, bw - gap), bh);
+  }
+  g.fillStyle = C.muted; g.font = `10px ${FONT_DATA}`; g.textAlign = "center"; g.textBaseline = "alphabetic";
+  const ticks = dim.tickAt || [...Array(dim.n).keys()];
+  for (const i of ticks) g.fillText(dim.tick(i), Math.min(w - 10, Math.max(10, (i + 0.5) * bw)), h - 3);
+}
+function popcount(x) { let c = 0; while (x) { c += x & 1; x >>>= 1; } return c; }
+function drawAllHists() { drawTypeHist(lastStats); for (const d of DIMS) drawHist(d.key, lastStats); }
+
+// ---------- deck.gl ----------
+function viewport() { return new deck.WebMercatorViewport({ ...vs, width: mapEl.clientWidth, height: mapEl.clientHeight }); }
+function layers() {
+  const L = [];
+  if (showLabels) {
+    L.push(new deck.TextLayer({ id: "boroughs", data: LABELS.filter((d) => d[3]), getPosition: (d) => [d[2], d[1]], getText: (d) => d[0],
+      getSize: 15, getColor: [227, 233, 239, 235], fontFamily: FONT_UI, fontWeight: 700, characterSet: "auto",
+      fontSettings: { sdf: true }, outlineWidth: 4, outlineColor: [15, 19, 24, 255] }));
+    L.push(new deck.TextLayer({ id: "hoods", data: LABELS.filter((d) => !d[3]), getPosition: (d) => [d[2], d[1]], getText: (d) => d[0],
+      getSize: 11.5, getColor: [190, 205, 215, 220], fontFamily: FONT_UI, fontWeight: 500, characterSet: "auto",
+      fontSettings: { sdf: true }, outlineWidth: 3, outlineColor: [15, 19, 24, 255] }));
+  }
+  if (brush) {
+    L.push(new deck.PolygonLayer({ id: "brush", data: [brush], getPolygon: (b) => [[b.w, b.s], [b.e, b.s], [b.e, b.n], [b.w, b.n]],
+      filled: true, stroked: true, getFillColor: [95, 212, 196, 24], getLineColor: [95, 212, 196, 235], lineWidthUnits: "pixels", getLineWidth: 1.5 }));
+  }
+  return L;
+}
+function initDeck() {
+  const w = mapEl.clientWidth, h = mapEl.clientHeight;
+  const fit = new deck.WebMercatorViewport({ width: w, height: h }).fitBounds([[-74.26, 40.495], [-73.70, 40.915]], { padding: Math.min(24, w / 14) });
+  vs = { longitude: fit.longitude, latitude: fit.latitude, zoom: fit.zoom, pitch: 0, bearing: 0, minZoom: 8.5, maxZoom: 17 };
+  deckgl = new deck.Deck({
+    canvas: "deckc",
+    views: new deck.MapView({ repeat: false }),
+    viewState: vs,
+    controller: { dragRotate: false, touchRotate: false, keyboard: true },
+    onViewStateChange: ({ viewState }) => {
+      vs = { ...viewState, pitch: 0, bearing: 0 };
+      deckgl.setProps({ viewState: vs });
+      requestFrame();
+      return vs;
+    },
+    layers: layers(),
+    getCursor: ({ isDragging }) => regionMode ? "crosshair" : isDragging ? "grabbing" : "grab",
+  });
+}
+mapEl.addEventListener("pointerdown", (e) => {
+  if (!(e.shiftKey || regionMode) || e.button !== 0 || !vs) return;
+  e.stopPropagation(); e.preventDefault();
+  const r = mapEl.getBoundingClientRect(), x0 = e.clientX - r.left, y0 = e.clientY - r.top, vp = viewport();
+  brush = null; let px = 0;
+  const move = (ev) => {
+    const x = Math.max(0, Math.min(r.width, ev.clientX - r.left)), y = Math.max(0, Math.min(r.height, ev.clientY - r.top));
+    px = Math.abs(x - x0) + Math.abs(y - y0);
+    const a = vp.unproject([Math.min(x0, x), Math.min(y0, y)]), b = vp.unproject([Math.max(x0, x), Math.max(y0, y)]);
+    brush = { w: a[0], n: a[1], e: b[0], s: b[1] };
+    changed();
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move, true); window.removeEventListener("pointerup", up, true);
+    if (px < 6) brush = null;
+    changed();
+  };
+  window.addEventListener("pointermove", move, true); window.addEventListener("pointerup", up, true);
+}, true);
+function changed() { if (deckgl) deckgl.setProps({ layers: layers() }); drawAllHists(); requestFrame(); }
+
+// ---------- WebGPU ----------
+async function initGPU() {
+  if (!navigator.gpu) throw new Error("This browser doesn't expose WebGPU. Try a current Chrome, Edge or Safari, or Firefox with WebGPU enabled.");
+  const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+  if (!adapter) throw new Error("No WebGPU adapter is available on this device.");
+  device = await adapter.requestDevice({ requiredLimits: {
+    maxStorageBufferBindingSize: Math.min(adapter.limits.maxStorageBufferBindingSize, 256 * 1024 * 1024),
+    maxBufferSize: Math.min(adapter.limits.maxBufferSize, 256 * 1024 * 1024) } });
+  device.addEventListener("uncapturederror", (e) => { console.error(e.error); showOverlay("GPU error: " + e.error.message); });
+  ctx = gpuCanvas.getContext("webgpu");
+  format = navigator.gpu.getPreferredCanvasFormat();
+  ctx.configure({ device, format, alphaMode: "opaque" });
+  const cm = device.createShaderModule({ code: COMPUTE }), rm = device.createShaderModule({ code: RENDER });
+  for (const m of [cm, rm]) {
+    const info = await m.getCompilationInfo();
+    const errs = info.messages.filter((x) => x.type === "error");
+    if (errs.length) throw new Error("Shader error: " + errs.map((x) => `${x.lineNum}:${x.linePos} ${x.message}`).join("; "));
+  }
+  cpipe = device.createComputePipeline({ layout: "auto", compute: { module: cm, entryPoint: "main" } });
+  rpipe = device.createRenderPipeline({ layout: "auto", vertex: { module: rm, entryPoint: "vs" },
+    fragment: { module: rm, entryPoint: "fs", targets: [{ format }] }, primitive: { topology: "triangle-list" } });
+  ubuf = device.createBuffer({ size: 96, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  statsBuf = device.createBuffer({ size: 64 * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+  for (let k = 0; k < 3; k++) staging.push(device.createBuffer({ size: 64 * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }));
+}
+function bindGroups() {
+  if (!posBuf || !gridBuf) return;
+  cbg = device.createBindGroup({ layout: cpipe.getBindGroupLayout(0), entries: [
+    { binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: posBuf } }, { binding: 2, resource: { buffer: attrBuf } },
+    { binding: 3, resource: { buffer: gridBuf } }, { binding: 4, resource: { buffer: statsBuf } } ] });
+  rbg = device.createBindGroup({ layout: rpipe.getBindGroupLayout(0), entries: [
+    { binding: 0, resource: { buffer: ubuf } }, { binding: 1, resource: { buffer: gridBuf } }, { binding: 2, resource: { buffer: statsBuf } } ] });
+}
+function upload(d) {
+  posBuf?.destroy(); attrBuf?.destroy();
+  posBuf = device.createBuffer({ size: d.pos.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  attrBuf = device.createBuffer({ size: d.attr.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  device.queue.writeBuffer(posBuf, 0, d.pos);
+  device.queue.writeBuffer(attrBuf, 0, d.attr);
+  bindGroups();
+}
+function ensureSize() {
+  const W = Math.max(1, Math.round(mapEl.clientWidth * DPR)), H = Math.max(1, Math.round(mapEl.clientHeight * DPR));
+  if (gpuCanvas.width !== W || gpuCanvas.height !== H) { gpuCanvas.width = W; gpuCanvas.height = H; }
+  const bp = binCss * DPR;
+  gridW = Math.ceil(W / bp); gridH = Math.ceil(H / bp);
+  if (gridW * gridH > gridCap) {
+    gridCap = Math.ceil(gridW * gridH * 1.3);
+    gridBuf?.destroy();
+    gridBuf = device.createBuffer({ size: gridCap * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    bindGroups();
+  }
+}
+const brushWorld = () => brush ? [lngToX(brush.w), latToY(brush.s), lngToX(brush.e), latToY(brush.n)] : null;
+function writeUniforms() {
+  UF[0] = lngToX(vs.longitude); UF[1] = latToY(vs.latitude); UF[2] = Math.pow(2, vs.zoom) * DPR; UF[3] = binCss * DPR;
+  UF[4] = gpuCanvas.width; UF[5] = gpuCanvas.height; UU[6] = gridW; UU[7] = gridH;
+  UU[8] = filters.hour[0]; UU[9] = filters.hour[1]; UU[10] = filters.dow[0]; UU[11] = filters.dow[1];
+  UU[12] = filters.month[0]; UU[13] = filters.month[1]; UU[14] = typeMask; UU[15] = data.N;
+  const bw = brushWorld();
+  UU[16] = bw ? 1 : 0; UU[17] = 0;
+  UF[18] = bw ? bw[0] : 0; UF[19] = bw ? bw[1] : 0; UF[20] = bw ? bw[2] : 0; UF[21] = bw ? bw[3] : 0;
+  device.queue.writeBuffer(ubuf, 0, ubytes);
+}
+function requestFrame() { if (!rafId) rafId = requestAnimationFrame(frame); }
+function frame() {
+  rafId = 0;
+  if (!data || !vs || !cbg) return;
+  ensureSize(); writeUniforms();
+  const id = ++frameNo;
+  const enc = device.createCommandEncoder();
+  enc.clearBuffer(gridBuf, 0, gridW * gridH * 4);
+  enc.clearBuffer(statsBuf);
+  const cp = enc.beginComputePass();
+  cp.setPipeline(cpipe); cp.setBindGroup(0, cbg);
+  cp.dispatchWorkgroups(Math.ceil(data.N / 256));
+  cp.end();
+  const rp = enc.beginRenderPass({ colorAttachments: [{ view: ctx.getCurrentTexture().createView(), loadOp: "clear", storeOp: "store", clearValue: { r: 0.059, g: 0.075, b: 0.094, a: 1 } }] });
+  rp.setPipeline(rpipe); rp.setBindGroup(0, rbg); rp.draw(3); rp.end();
+  const sb = staging.pop();
+  if (sb) enc.copyBufferToBuffer(statsBuf, 0, sb, 0, NSTATS * 4); else statsWanted = true;
+  const t0 = performance.now();
+  device.queue.submit([enc.finish()]);
+  device.queue.onSubmittedWorkDone().then(() => { times.push(performance.now() - t0); if (times.length > 30) times.shift(); });
+  if (sb) {
+    sb.mapAsync(GPUMapMode.READ).then(() => {
+      const a = new Uint32Array(sb.getMappedRange(), 0, NSTATS).slice();
+      sb.unmap(); staging.push(sb);
+      if (id > lastStatsFrame) { lastStatsFrame = id; onStats(a); }
+      if (statsWanted) { statsWanted = false; requestFrame(); }
+    });
+  }
+}
+function onStats(a) {
+  lastStats = a;
+  drawAllHists();
+  $("#selCount").textContent = fmt(a[58]);
+  $("#selSub").textContent = `of ${fmt(data.N)} requests match the filters · ${fmt(a[60])} on screen`;
+  $("#maxbin").textContent = fmt(a[59]);
+  $("#binsInfo").textContent = `${fmt(gridW)} × ${fmt(gridH)}`;
+  if (times.length) { const s = [...times].sort((p, q) => p - q); $("#gpuMs").textContent = s[s.length >> 1].toFixed(1) + " ms"; }
+}
+setInterval(() => { if (lastStats && times.length) onStats(lastStats); }, 500);
+
+function cpuQuery() {
+  const { pos, attr, N } = data;
+  const cx = UF[0], cy = UF[1], sc = UF[2], bin = UF[3], vw = UF[4], vh = UF[5];
+  const grid = new Uint32Array(gridW * gridH), hist = new Uint32Array(NSTATS);
+  const [h0, h1] = filters.hour, [d0, d1] = filters.dow, [m0, m1] = filters.month, tm = typeMask;
+  const bw = brushWorld();
+  const t0 = performance.now();
+  for (let i = 0; i < N; i++) {
+    const a = attr[i], t = a & 15, m = (a >> 4) & 15, d = (a >> 8) & 7, h = (a >> 11) & 31, x = pos[2 * i], y = pos[2 * i + 1];
+    const okT = ((tm >> t) & 1) === 1, okM = m >= m0 && m <= m1, okD = d >= d0 && d <= d1, okH = h >= h0 && h <= h1;
+    const okS = !bw || (x >= bw[0] && y >= bw[1] && x <= bw[2] && y <= bw[3]);
+    if (okM && okD && okH && okS) hist[t]++;
+    if (okT && okM && okD && okS) hist[15 + h]++;
+    if (okT && okM && okH && okS) hist[39 + d]++;
+    if (okT && okD && okH && okS) hist[46 + m]++;
+    if (okT && okM && okD && okH) {
+      const sx = (x - cx) * sc + vw / 2, sy = vh / 2 - (y - cy) * sc;
+      if (sx >= 0 && sy >= 0 && sx < vw && sy < vh) grid[((sy / bin) | 0) * gridW + ((sx / bin) | 0)]++;
+    }
+  }
+  return performance.now() - t0;
+}
+$("#cpuBtn").addEventListener("click", () => {
+  if (!data) return;
+  $("#cpuMs").textContent = "running…";
+  setTimeout(() => { $("#cpuMs").textContent = cpuQuery().toFixed(0) + " ms"; }, 30);
+});
+
+// ---------- Controls ----------
+$("#bin").addEventListener("input", (e) => { binCss = +e.target.value; $("#binVal").textContent = binCss + " px"; requestFrame(); });
+$("#labels").addEventListener("change", (e) => { showLabels = e.target.checked; changed(); });
+$("#regionBtn").addEventListener("click", (e) => {
+  regionMode = !regionMode; e.currentTarget.setAttribute("aria-pressed", String(regionMode));
+  mapEl.classList.toggle("region", regionMode);
+  deckgl?.setProps({ controller: { dragRotate: false, touchRotate: false, keyboard: true, dragPan: !regionMode } });
+});
+$("#resetBtn").addEventListener("click", () => {
+  filters.hour = [0, 23]; filters.dow = [0, 6]; filters.month = [0, 11]; typeMask = ALL_TYPES; brush = null; changed();
+});
+$("#rows").addEventListener("change", (e) => load(+e.target.value));
+
+function showOverlay(t) { overlay.hidden = !t; if (t) overlay.textContent = t; }
+function load(N) {
+  showOverlay(`Generating ${fmt(N)} service requests…`);
+  $("#cpuMs").textContent = "–"; times.length = 0;
+  setTimeout(() => {
+    data = generate(N);
+    showOverlay(`Uploading ${(data.pos.byteLength + data.attr.byteLength) / 1e6 | 0} MB to the GPU…`);
+    setTimeout(() => { upload(data); showOverlay(null); requestFrame(); }, 20);
+  }, 30);
+}
+
+new ResizeObserver(() => { requestFrame(); drawAllHists(); }).observe(mapEl);
+buildHists();
+drawAllHists();
+initDeck();
+initGPU().then(() => { ensureSize(); load(+$("#rows").value); }).catch((err) => { console.error(err); showOverlay(err.message); });
+})();
+</script>
+
+</body></html>

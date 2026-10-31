@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Billion-Person Amphitheater</title>
+
+  <style>
+    :root{
+      --bg:#02050a;
+      --text:#eef7ff;
+      --muted:#9fb8ca;
+      --cyan:#6be6ff;
+      --violet:#af85ff;
+      --mint:#72ffd9;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 50% 35%, #091523 0%, #030813 38%, #010204 78%, #000 100%);
+      color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    canvas{ display:block; }
+
+    #app{
+      position:fixed;
+      inset:0;
+    }
+
+    .hud{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:20;
+    }
+
+    .top-left{
+      position:absolute;
+      left:22px;
+      top:20px;
+      width:min(430px,calc(100vw - 44px));
+    }
+
+    .eyebrow{
+      font-size:10px;
+      letter-spacing:.25em;
+      text-transform:uppercase;
+      color:rgba(166,222,255,.72);
+      margin-bottom:8px;
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(28px,4vw,48px);
+      font-weight:650;
+      line-height:.94;
+      letter-spacing:-.045em;
+      text-shadow:
+        0 0 24px rgba(90,220,255,.18),
+        0 0 80px rgba(130,90,255,.12);
+    }
+
+    .sub{
+      margin-top:12px;
+      font-size:12px;
+      line-height:1.55;
+      color:rgba(215,235,247,.68);
+      max-width:370px;
+    }
+
+    .status-row{
+      margin-top:15px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-height:29px;
+      padding:7px 11px;
+      border-radius:999px;
+      border:1px solid rgba(130,210,255,.14);
+      background:rgba(7,15,28,.34);
+      backdrop-filter:blur(13px);
+      box-shadow:inset 0 0 24px rgba(120,200,255,.04);
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:rgba(233,245,255,.88);
+    }
+
+    .live-dot{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:#74ffe0;
+      box-shadow:0 0 9px #74ffe0, 0 0 18px rgba(116,255,224,.6);
+      animation:blink 1.25s ease-in-out infinite;
+    }
+
+    @keyframes blink{
+      50%{ opacity:.35; transform:scale(.7); }
+    }
+
+    .counter-wrap{
+      position:absolute;
+      right:22px;
+      top:20px;
+      text-align:right;
+    }
+
+    .counter{
+      font-size:clamp(24px,4.1vw,46px);
+      font-weight:620;
+      line-height:1;
+      letter-spacing:-.04em;
+      font-variant-numeric:tabular-nums;
+      text-shadow:0 0 30px rgba(112,235,255,.16);
+    }
+
+    .counter-label{
+      margin-top:7px;
+      font-size:9px;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+      color:rgba(182,212,230,.55);
+    }
+
+    .bottom{
+      position:absolute;
+      left:22px;
+      right:22px;
+      bottom:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:18px;
+    }
+
+    .phase-card{
+      width:min(450px,74vw);
+      padding:12px 13px;
+      border-radius:16px;
+      border:1px solid rgba(130,210,255,.12);
+      background:linear-gradient(180deg,rgba(9,18,32,.38),rgba(3,8,16,.25));
+      backdrop-filter:blur(13px);
+      box-shadow:0 18px 80px rgba(0,0,0,.18);
+    }
+
+    .phase-label{
+      font-size:9px;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+      color:rgba(180,214,236,.48);
+    }
+
+    #phase{
+      margin-top:5px;
+      font-size:13px;
+      color:rgba(235,247,255,.92);
+    }
+
+    .bar{
+      margin-top:10px;
+      height:2px;
+      border-radius:2px;
+      overflow:hidden;
+      background:rgba(255,255,255,.06);
+    }
+
+    .bar > div{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#59d6ff,#a27dff,#73ffd8);
+      box-shadow:0 0 14px rgba(90,220,255,.65);
+    }
+
+    .help{
+      text-align:right;
+      color:rgba(190,214,230,.44);
+      font-size:10px;
+      line-height:1.65;
+      letter-spacing:.04em;
+    }
+
+    .vignette{
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at center, transparent 35%, rgba(0,0,0,.12) 68%, rgba(0,0,0,.42) 100%);
+      mix-blend-mode:multiply;
+      pointer-events:none;
+    }
+
+    @media (max-width:700px){
+      .top-left{ left:18px; top:18px; }
+      .counter-wrap{ right:18px; top:auto; bottom:100px; }
+      .bottom{ left:18px; right:18px; bottom:14px; }
+      .help{ display:none; }
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="hud">
+    <div class="top-left">
+      <div class="eyebrow">Collective decision spectacle</div>
+      <h1>The Billion-Person Amphitheater</h1>
+      <div class="sub">
+        An impossible amphitheater extends into the dark. Each seat stands for a person.
+        As votes arrive, sectors ignite, luminous waves sweep through the audience,
+        and the entire arena resolves into a synchronized public will.
+      </div>
+      <div class="status-row">
+        <div class="pill"><span class="live-dot"></span><span id="network">audience network active</span></div>
+        <div class="pill" id="waveCount">0 live waves</div>
+      </div>
+    </div>
+
+    <div class="counter-wrap">
+      <div class="counter" id="counter">0</div>
+      <div class="counter-label">illustrative votes flowing</div>
+    </div>
+
+    <div class="bottom">
+      <div class="phase-card">
+        <div class="phase-label">Current phase</div>
+        <div id="phase">The crowd begins to illuminate in local sections</div>
+        <div class="bar"><div id="phaseBar"></div></div>
+      </div>
+
+      <div class="help">
+        drag · orbit<br>
+        scroll · zoom<br>
+        click · cast a vote pulse<br>
+        H · arena heartbeat
+      </div>
+    </div>
+
+    <div class="vignette"></div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+
+    // -------------------------------------------------------------------------
+    // DOM
+    // -------------------------------------------------------------------------
+    const app = document.querySelector('#app');
+    const phaseEl = document.querySelector('#phase');
+    const phaseBar = document.querySelector('#phaseBar');
+    const counterEl = document.querySelector('#counter');
+    const waveCountEl = document.querySelector('#waveCount');
+    const fmt = d3.format(',');
+
+    // -------------------------------------------------------------------------
+    // Scene
+    // -------------------------------------------------------------------------
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x02050a, 0.036);
+
+    const camera = new THREE.PerspectiveCamera(
+      46,
+      innerWidth / innerHeight,
+      0.1,
+      220
+    );
+    camera.position.set(0, 9.5, 17.5);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias:true,
+      alpha:true,
+      powerPreference:'high-performance'
+    });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    app.appendChild(renderer.domElement);
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+
+    const bloom = new UnrealBloomPass(
+      new THREE.Vector2(innerWidth, innerHeight),
+      1.65,
+      0.85,
+      0.12
+    );
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.dampingFactor = 0.055;
+    controls.minDistance = 8;
+    controls.maxDistance = 30;
+    controls.maxPolarAngle = Math.PI * 0.47;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.08;
+    controls.target.set(0, 2.4, 0);
+
+    // -------------------------------------------------------------------------
+    // Lights
+    // -------------------------------------------------------------------------
+    scene.add(new THREE.AmbientLight(0x23435a, 1.05));
+
+    const key = new THREE.SpotLight(0x79b7ff, 140, 0, Math.PI / 4, 0.45, 1.2);
+    key.position.set(0, 24, 0);
+    key.target.position.set(0, 0, 0);
+    scene.add(key);
+    scene.add(key.target);
+
+    const fill = new THREE.DirectionalLight(0xa885ff, 1.65);
+    fill.position.set(-6, 8, -4);
+    scene.add(fill);
+
+    const rim = new THREE.DirectionalLight(0x5ff6dc, 1.1);
+    rim.position.set(8, 5, 6);
+    scene.add(rim);
+
+    // -------------------------------------------------------------------------
+    // Background stars / dust
+    // -------------------------------------------------------------------------
+    function makeStars(count, minR, maxR, size, opacity){
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(count * 3);
+      for(let i=0;i<count;i++){
+        const r = minR + Math.random() * (maxR - minR);
+        const z = Math.random() * 2 - 1;
+        const a = Math.random() * Math.PI * 2;
+        const s = Math.sqrt(1 - z*z);
+        pos[i*3+0] = Math.cos(a) * s * r;
+        pos[i*3+1] = z * r;
+        pos[i*3+2] = Math.sin(a) * s * r;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+      return new THREE.Points(
+        geo,
+        new THREE.PointsMaterial({
+          color:0xbfe8ff,
+          size,
+          transparent:true,
+          opacity,
+          depthWrite:false,
+          blending:THREE.AdditiveBlending
+        })
+      );
+    }
+
+    scene.add(makeStars(4200, 35, 120, 0.085, 0.62));
+    scene.add(makeStars(1600, 18, 70, 0.16, 0.16));
+
+    // -------------------------------------------------------------------------
+    // Amphitheater architecture
+    // -------------------------------------------------------------------------
+    const world = new THREE.Group();
+    scene.add(world);
+
+    const floorMat = new THREE.MeshStandardMaterial({
+      color:0x07111b,
+      roughness:0.92,
+      metalness:0.1,
+      emissive:0x071420,
+      emissiveIntensity:0.5
+    });
+
+    const tierMat = new THREE.MeshStandardMaterial({
+      color:0x08121c,
+      roughness:0.95,
+      metalness:0.07,
+      emissive:0x06111b,
+      emissiveIntensity:0.36
+    });
+
+    const ringLineMat = new THREE.MeshBasicMaterial({
+      color:0x123349,
+      transparent:true,
+      opacity:0.38,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
+    });
+
+    // central stage
+    const stage = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 2.6, 0.34, 96),
+      new THREE.MeshStandardMaterial({
+        color:0x0b1522,
+        roughness:0.75,
+        metalness:0.15,
+        emissive:0x10263a,
+        emissiveIntensity:1.2
+      })
+    );
+    stage.position.y = -0.18;
+    world.add(stage);
+
+    // stage glow disc
+    const stageGlow = new THREE.Mesh(
+      new THREE.RingGeometry(1.6, 2.9, 96),
+      new THREE.MeshBasicMaterial({
+        color:0x67dfff,
+        transparent:true,
+        opacity:0.22,
+        blending:THREE.AdditiveBlending,
+        side:THREE.DoubleSide,
+        depthWrite:false
+      })
+    );
+    stageGlow.rotation.x = -Math.PI / 2;
+    stageGlow.position.y = 0.01;
+    world.add(stageGlow);
+
+    // beam from center
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 1.4, 10.5, 24, 1, true),
+      new THREE.MeshBasicMaterial({
+        color:0x5cdcff,
+        transparent:true,
+        opacity:0.06,
+        side:THREE.DoubleSide,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending
+      })
+    );
+    beam.position.y = 4.8;
+    world.add(beam);
+
+    const beam2 = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.6, 13.5, 18, 1, true),
+      new THREE.MeshBasicMaterial({
+        color:0xad83ff,
+        transparent:true,
+        opacity:0.045,
+        side:THREE.DoubleSide,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending
+      })
+    );
+    beam2.position.y = 5.9;
+    world.add(beam2);
+
+    // stepped terraces to imply impossible scale
+    const terraceGroup = new THREE.Group();
+    world.add(terraceGroup);
+
+    const terraceCount = 14;
+    for(let i=0;i<terraceCount;i++){
+      const inner = 2.9 + i * 1.25;
+      const outer = inner + 0.95;
+      const y = 0.05 + i * 0.19;
+
+      const terrace = new THREE.Mesh(
+        new THREE.RingGeometry(inner, outer, 160, 1),
+        tierMat
+      );
+      terrace.rotation.x = -Math.PI / 2;
+      terrace.position.y = y;
+      terraceGroup.add(terrace);
+
+      const line = new THREE.Mesh(
+        new THREE.RingGeometry(outer - 0.06, outer, 160, 1),
+        ringLineMat
+      );
+      line.rotation.x = -Math.PI / 2;
+      line.position.y = y + 0.003;
+      terraceGroup.add(line);
+    }
+
+    // outer shell suggestion
+    const outerWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(21.8, 18.3, 7.8, 128, 1, true),
+      new THREE.MeshStandardMaterial({
+        color:0x06101a,
+        roughness:1,
+        metalness:0.02,
+        emissive:0x0a1520,
+        emissiveIntensity:0.36,
+        side:THREE.DoubleSide
+      })
+    );
+    outerWall.position.y = 3.7;
+    world.add(outerWall);
+
+    // -------------------------------------------------------------------------
+    // Instanced seats / people markers
+    // -------------------------------------------------------------------------
+    const seatGeo = new THREE.BoxGeometry(0.11, 0.08, 0.11);
+    const seatMat = new THREE.MeshPhongMaterial({
+      color:0x0b1a24,
+      shininess:65,
+      specular:0x36556a
+    });
+
+    const ringCount = 108;
+    const radiusStart = 3.35;
+    const ringGap = 0.22;
+    const tierStep = 0.035;
+    const totalSeats = d3.sum(d3.range(ringCount), i => Math.floor(26 + i * 4.35));
+
+    const seats = new THREE.InstancedMesh(seatGeo, seatMat, totalSeats);
+    seats.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+    const color = new THREE.Color();
+    const dummy = new THREE.Object3D();
+
+    const angleArr = new Float32Array(totalSeats);
+    const radiusArr = new Float32Array(totalSeats);
+    const tierArr = new Float32Array(totalSeats);
+    const seedArr = new Float32Array(totalSeats);
+
+    let idx = 0;
+    for(let ring=0; ring<ringCount; ring++){
+      const radius = radiusStart + ring * ringGap;
+      const count = Math.floor(26 + ring * 4.35);
+      const y = 0.19 + ring * tierStep;
+      const angleOffset = (ring % 2) * (Math.PI / count);
+
+      for(let j=0; j<count; j++){
+        const a = (j / count) * Math.PI * 2 + angleOffset;
+        const x = Math.cos(a) * radius;
+        const z = Math.sin(a) * radius;
+
+        dummy.position.set(x, y, z);
+        dummy.rotation.y = -a + Math.PI / 2;
+
+        const s = 0.84 + Math.random() * 0.45;
+        dummy.scale.set(s, 1.0 + Math.random() * 0.7, s);
+        dummy.updateMatrix();
+
+        seats.setMatrixAt(idx, dummy.matrix);
+
+        color.setHSL(0.56, 0.28, 0.08 + Math.random() * 0.05);
+        seats.setColorAt(idx, color);
+
+        angleArr[idx] = a;
+        radiusArr[idx] = ring / (ringCount - 1);
+        tierArr[idx] = ring / (ringCount - 1);
+        seedArr[idx] = Math.random();
+
+        idx++;
+      }
+    }
+
+    seatGeo.setAttribute('aAngle', new THREE.InstancedBufferAttribute(angleArr, 1));
+    seatGeo.setAttribute('aRadius', new THREE.InstancedBufferAttribute(radiusArr, 1));
+    seatGeo.setAttribute('aTier', new THREE.InstancedBufferAttribute(tierArr, 1));
+    seatGeo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seedArr, 1));
+
+    world.add(seats);
+
+    // -------------------------------------------------------------------------
+    // Seat shader enhancement
+    // -------------------------------------------------------------------------
+    const PULSE_SLOTS = 6;
+    const SWEEP_SLOTS = 3;
+    const pulseUniformArray = Array.from({length:PULSE_SLOTS}, () => new THREE.Vector4(-999, 0, 0, 0));
+    const sweepUniformArray = Array.from({length:SWEEP_SLOTS}, () => new THREE.Vector4(-999, 0, 0, 0));
+    const globalUniform = { value: 0 };
+    const timeUniform = { value: 0 };
+
+    seatMat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = timeUniform;
+      shader.uniforms.uGlobalBeat = globalUniform;
+      shader.uniforms.uPulseData = { value: pulseUniformArray };
+      shader.uniforms.uSweepData = { value: sweepUniformArray };
+
+      shader.vertexShader =
+        `
+        attribute float aAngle;
+        attribute float aRadius;
+        attribute float aTier;
+        attribute float aSeed;
+        varying float vAngle;
+        varying float vRadius;
+        varying float vTier;
+        varying float vSeed;
+        ` + shader.vertexShader;
+
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `
+        #include <begin_vertex>
+        vAngle = aAngle;
+        vRadius = aRadius;
+        vTier = aTier;
+        vSeed = aSeed;
+        `
+      );
+
+      shader.fragmentShader =
+        `
+        uniform float uTime;
+        uniform float uGlobalBeat;
+        uniform vec4 uPulseData[` + PULSE_SLOTS + `];
+        uniform vec4 uSweepData[` + SWEEP_SLOTS + `];
+        varying float vAngle;
+        varying float vRadius;
+        varying float vTier;
+        varying float vSeed;
+
+        float angDiff(float a, float b){
+          float d = abs(mod(a - b + 3.14159265, 6.2831853) - 3.14159265);
+          return d;
+        }
+        ` + shader.fragmentShader;
+
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `
+        #include <color_fragment>
+
+        float twinkle = 0.035 + 0.03 * sin(uTime * 2.4 + vSeed * 28.0 + vTier * 12.0);
+        float glow = twinkle;
+
+        for(int i=0; i<` + PULSE_SLOTS + `; i++){
+          vec4 p = uPulseData[i];
+          float start = p.x;
+          float dur = p.y;
+          float angleCenter = p.z;
+          float width = p.w;
+
+          if(dur > 0.0){
+            float t = (uTime - start) / dur;
+            if(t > 0.0 && t < 1.3){
+              float waveR = t * 1.18;
+              float radial = exp(-pow((vRadius - waveR) * 14.0, 2.0));
+              float ad = angDiff(vAngle, angleCenter);
+              float sector = 1.0 - smoothstep(width * 0.22, width, ad);
+              glow += sector * radial * (1.18 - min(t, 1.18)) * 2.15;
+            }
+          }
+        }
+
+        for(int i=0; i<` + SWEEP_SLOTS + `; i++){
+          vec4 s = uSweepData[i];
+          float start = s.x;
+          float dur = s.y;
+          float offset = s.z;
+          float speed = s.w;
+
+          if(dur > 0.0){
+            float t = (uTime - start) / dur;
+            if(t > 0.0 && t < 1.0){
+              float pos = offset + t * speed * 6.2831853;
+              float ad = angDiff(vAngle, pos);
+              float sweep = exp(-pow(ad * 5.4, 2.0));
+              float ringBands = 0.5 + 0.5 * sin((vRadius * 18.0 - t * 10.0) * 3.14159265);
+              glow += sweep * max(0.0, ringBands) * (1.0 - t) * 0.95;
+            }
+          }
+        }
+
+        float beat = uGlobalBeat * (0.55 + 0.45 * pow(1.0 - vRadius, 0.45));
+        glow += beat * 1.25;
+
+        vec3 base = diffuseColor.rgb + vec3(0.018, 0.05, 0.08);
+        vec3 cool = vec3(0.30, 0.88, 1.0);
+        vec3 vio = vec3(0.72, 0.52, 1.0);
+        float blendA = clamp(glow * 0.6, 0.0, 1.0);
+        float blendB = clamp((glow - 0.25) * 0.4, 0.0, 1.0);
+
+        diffuseColor.rgb = mix(base, cool, blendA);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vio, blendB);
+        `
+      );
+
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `
+        gl_FragColor.rgb += vec3(0.14, 0.70, 1.0) * (0.18 + uGlobalBeat * 0.45);
+        #include <dithering_fragment>
+        `
+      );
+
+      seatMat.userData.shader = shader;
+    };
+    seatMat.customProgramCacheKey = () => 'billion-person-amphitheater-v1';
+    seatMat.needsUpdate = true;
+
+    // -------------------------------------------------------------------------
+    // Crowd waves / simulation data
+    // -------------------------------------------------------------------------
+    const pulses = [];
+    const sweeps = [];
+
+    function spawnSectionPulse(angle = Math.random() * Math.PI * 2, width = 0.38 + Math.random() * 0.34){
+      pulses.push({
+        start: performance.now() / 1000,
+        duration: 1.8 + Math.random() * 0.65,
+        angle,
+        width
+      });
+      if(pulses.length > PULSE_SLOTS) pulses.shift();
+    }
+
+    function spawnSweep(offset = Math.random() * Math.PI * 2, speed = (Math.random() > 0.5 ? 1 : -1) * (0.62 + Math.random() * 0.4)){
+      sweeps.push({
+        start: performance.now() / 1000,
+        duration: 2.6 + Math.random() * 0.7,
+        offset,
+        speed
+      });
+      if(sweeps.length > SWEEP_SLOTS) sweeps.shift();
+    }
+
+    let heartbeatStart = -999;
+    function triggerHeartbeat(){
+      heartbeatStart = performance.now() / 1000;
+    }
+
+    // click to cast a vote pulse
+    renderer.domElement.addEventListener('pointerdown', () => {
+      spawnSectionPulse();
+      if(Math.random() < 0.45) spawnSweep();
+    });
+
+    addEventListener('keydown', (e) => {
+      if(e.key.toLowerCase() === 'h') triggerHeartbeat();
+    });
+
+    // -------------------------------------------------------------------------
+    // D3 driven arena rhythm
+    // -------------------------------------------------------------------------
+    const totalIllustrativeVotes = 8_000_000_000;
+    let cycleStart = performance.now() / 1000;
+    const cycleDuration = 19;
+    let displayedVotes = 0;
+    let lastPulse = 0;
+    let lastSweep = 0;
+    let heartbeatCycle = -1;
+
+    function updateSimulation(now){
+      const cycleIndex = Math.floor((now - cycleStart) / cycleDuration);
+      const phase = ((now - cycleStart) % cycleDuration) / cycleDuration;
+
+      displayedVotes = Math.floor(totalIllustrativeVotes * d3.easeCubicInOut(Math.min(1, phase * 1.08)));
+      counterEl.textContent = fmt(displayedVotes);
+
+      if(phase < 0.48){
+        phaseEl.textContent = 'Local sections of the audience begin to illuminate';
+        phaseBar.style.width = `${(phase / 0.48) * 100}%`;
+
+        if(now - lastPulse > 0.28){
+          spawnSectionPulse();
+          lastPulse = now;
+        }
+      } else if(phase < 0.82){
+        phaseEl.textContent = 'Enormous waves sweep through the tiers of the crowd';
+        phaseBar.style.width = `${((phase - 0.48) / 0.34) * 100}%`;
+
+        if(now - lastPulse > 0.48){
+          spawnSectionPulse();
+          lastPulse = now;
+        }
+        if(now - lastSweep > 0.88){
+          spawnSweep();
+          lastSweep = now;
+        }
+      } else {
+        phaseEl.textContent = 'The entire amphitheater converges into one public heartbeat';
+        phaseBar.style.width = `${((phase - 0.82) / 0.18) * 100}%`;
+
+        if(cycleIndex !== heartbeatCycle && phase > 0.86){
+          triggerHeartbeat();
+          heartbeatCycle = cycleIndex;
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Animation
+    // -------------------------------------------------------------------------
+    const clock = new THREE.Clock();
+
+    function animate(){
+      requestAnimationFrame(animate);
+
+      const dt = clock.getDelta();
+      const now = performance.now() / 1000;
+
+      controls.update();
+
+      // slow world breathing
+      world.rotation.y += dt * 0.03;
+      world.scale.setScalar(1 + Math.sin(now * 0.5) * 0.0028);
+
+      stageGlow.material.opacity = 0.18 + Math.sin(now * 1.6) * 0.045;
+      beam.material.opacity = 0.04 + Math.sin(now * 1.2) * 0.015;
+      beam2.material.opacity = 0.03 + Math.sin(now * 1.8 + 1.2) * 0.012;
+
+      updateSimulation(now);
+
+      // heartbeat envelope
+      let globalBeat = 0;
+      if(heartbeatStart > 0){
+        const elapsed = now - heartbeatStart;
+        if(elapsed < 2.4){
+          const beatA = Math.max(0, Math.sin(elapsed * Math.PI * 1.45)) * Math.exp(-elapsed * 0.78);
+          const beatB = Math.max(0, Math.sin((elapsed - 0.34) * Math.PI * 1.9)) * Math.exp(-(elapsed - 0.34) * 1.15);
+          globalBeat = Math.max(beatA, beatB * 0.9);
+        }
+      }
+
+      if(seatMat.userData.shader){
+        timeUniform.value = now;
+        globalUniform.value = globalBeat;
+
+        // active pulses
+        for(let i=0;i<PULSE_SLOTS;i++){
+          const p = pulses[pulses.length - 1 - i];
+          if(p){
+            pulseUniformArray[i].set(p.start, p.duration, p.angle, p.width);
+          } else {
+            pulseUniformArray[i].set(-999, 0, 0, 0);
+          }
+        }
+
+        // active sweeps
+        for(let i=0;i<SWEEP_SLOTS;i++){
+          const s = sweeps[sweeps.length - 1 - i];
+          if(s){
+            sweepUniformArray[i].set(s.start, s.duration, s.offset, s.speed);
+          } else {
+            sweepUniformArray[i].set(-999, 0, 0, 0);
+          }
+        }
+      }
+
+      waveCountEl.textContent = `${pulses.length + sweeps.length + (globalBeat > 0.02 ? 1 : 0)} live waves`;
+
+      composer.render();
+    }
+
+    animate();
+
+    // -------------------------------------------------------------------------
+    // Resize
+    // -------------------------------------------------------------------------
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+      composer.setSize(innerWidth, innerHeight);
+      bloom.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>

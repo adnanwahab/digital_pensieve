@@ -123,10 +123,21 @@
     .wall,
     .floor,
     .ceiling{
-      backface-visibility:hidden;
-      -webkit-backface-visibility:hidden;
       transform-style:preserve-3d;
       will-change:transform;
+    }
+
+    /* Section walls should be visible from both directions. */
+    .wall{
+      backface-visibility:visible;
+      -webkit-backface-visibility:visible;
+    }
+
+    /* Horizontal slabs are safer with hidden backfaces. */
+    .floor,
+    .ceiling{
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
     }
 
     .frame{
@@ -276,7 +287,7 @@
   <div class="crosshair" aria-hidden="true"></div>
 
   <aside class="ballot" aria-label="Open ballot for museum paintings">
-    <h2></h2>Open Ballot</h2>
+    <h2>Open Ballot</h2>
     <p>Vote and comment on each artwork.</p>
     <select id="ballotArtwork" aria-label="Select artwork"></select>
     <div class="ballot-row" style="margin-top:8px;">
@@ -290,7 +301,7 @@
     </form>
     <div id="ballotStatus" class="ballot-status" aria-live="polite"></div>
     <ul id="ballotComments" class="ballot-comments"></ul>
-  </aside></p>
+  </aside>
 
   <script type="importmap">
     {
@@ -342,6 +353,11 @@
     const ROOM_FRONT_Z = 900;
     const ROOM_SIDE_X = 2140;
     const DOOR_GAP = 1100;
+    const WALL_HEIGHT = 2600;
+
+    // Doorway opening in section separators (so sections stay connected).
+    const FLOOR_Y = -260;
+    const DOOR_CLEAR_HEIGHT = 860;
 
     // Avoid coplanar/overlapping shell surfaces between adjacent rooms.
     // CSS3D has no depth buffer, so overlapping planes can create cutout/flicker artifacts.
@@ -376,7 +392,6 @@
     }
 
     const roomMeta = [];
-    const floorPanels = [];
 
     for (let i = 0; i < ROOM_COUNT; i++){
       const frontZ = ROOM_FRONT_Z - i * ROOM_DEPTH;
@@ -384,53 +399,64 @@
       const centerZ = (frontZ + backZ) / 2;
       roomMeta.push({ frontZ, backZ, centerZ });
 
-      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, 2600, wallMaterial('#3f3b35')));
+      const sideWallL = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, WALL_HEIGHT, wallMaterial('#3f3b35')));
       sideWallL.position.set(-ROOM_SIDE_X, 310, centerZ);
       sideWallL.rotation.y = Math.PI / 2;
       scene.add(sideWallL);
 
-      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, 2600, wallMaterial('#443f38')));
+      const sideWallR = new CSS3DObject(cssPanel('wall', ROOM_SHELL_DEPTH, WALL_HEIGHT, wallMaterial('#443f38')));
       sideWallR.position.set(ROOM_SIDE_X, 310, centerZ);
       sideWallR.rotation.y = -Math.PI / 2;
       scene.add(sideWallR);
 
-      const floorEl = cssPanel('floor', ROOM_SHELL_WIDTH, ROOM_SHELL_DEPTH,
-        'background:' +
-        'linear-gradient(90deg, rgba(0,0,0,.26) 2px, transparent 2px) 0 0 / 700px 700px,' +
-        'linear-gradient(0deg, rgba(0,0,0,.24) 2px, transparent 2px) 0 0 / 700px 700px,' +
-        '#4a4d50;');
-      floorPanels.push({ el: floorEl, roomIndex: i });
-      const floor = new CSS3DObject(floorEl);
-      floor.position.set(0, -260, centerZ);
-      floor.rotation.x = -Math.PI / 2;
-      scene.add(floor);
-
-      const ceiling = new CSS3DObject(cssPanel('ceiling', ROOM_SHELL_WIDTH, ROOM_SHELL_DEPTH,
-        'background:' +
-        'radial-gradient(ellipse at 50% 10%, rgba(255,231,178,.10), transparent 52%),' +
-        'repeating-linear-gradient(90deg, rgba(33,31,29,.95) 0 150px, rgba(57,54,50,.95) 150px 220px),' +
-        '#2f2c2a;'));
-      ceiling.position.set(0, 920, centerZ);
-      ceiling.rotation.x = Math.PI / 2;
-      scene.add(ceiling);
 
       if (i === ROOM_COUNT - 1){
-        const backWall = new CSS3DObject(cssPanel('wall', ROOM_SHELL_WIDTH, 2600, wallMaterial('#4b463f')));
+        const backWall = new CSS3DObject(cssPanel('wall', ROOM_SHELL_WIDTH, WALL_HEIGHT, wallMaterial('#4b463f')));
         backWall.position.set(0, 310, backZ);
         scene.add(backWall);
       } else {
         const segW = (ROOM_SHELL_WIDTH - DOOR_GAP) / 2;
-        const leftDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#4a453f')));
+        const leftDivider = new CSS3DObject(cssPanel('wall', segW, WALL_HEIGHT, wallMaterial('#4a453f')));
         leftDivider.position.set(-(DOOR_GAP / 2 + segW / 2), 310, backZ);
         scene.add(leftDivider);
 
-        const rightDivider = new CSS3DObject(cssPanel('wall', segW, 2600, wallMaterial('#4a453f')));
+        const rightDivider = new CSS3DObject(cssPanel('wall', segW, WALL_HEIGHT, wallMaterial('#4a453f')));
         rightDivider.position.set(DOOR_GAP / 2 + segW / 2, 310, backZ);
         scene.add(rightDivider);
+
+        // Add a top lintel so each room boundary reads as a true section wall.
+        const wallTopY = 310 + WALL_HEIGHT / 2;
+        const doorwayTopY = FLOOR_Y + DOOR_CLEAR_HEIGHT;
+        const lintelHeight = Math.max(120, wallTopY - doorwayTopY);
+        const lintelY = wallTopY - lintelHeight / 2;
+        const topDivider = new CSS3DObject(cssPanel('wall', DOOR_GAP, lintelHeight, wallMaterial('#49443d')));
+        topDivider.position.set(0, lintelY, backZ);
+        scene.add(topDivider);
       }
     }
 
+    const galleryFrontZ = ROOM_FRONT_Z + 420;
+    const galleryBackZ = roomMeta[roomMeta.length - 1].backZ - 260;
+    const galleryDepth = galleryFrontZ - galleryBackZ;
+    const galleryCenterZ = (galleryFrontZ + galleryBackZ) / 2;
 
+    const floor = new CSS3DObject(cssPanel('floor', ROOM_SHELL_WIDTH, galleryDepth,
+      'background:' +
+      'linear-gradient(90deg, rgba(0,0,0,.18) 2px, transparent 2px) 0 0 / 700px 700px,' +
+      'linear-gradient(0deg, rgba(0,0,0,.16) 2px, transparent 2px) 0 0 / 700px 700px,' +
+      '#4a4d50;'));
+    floor.position.set(0, FLOOR_Y, galleryCenterZ);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    const ceiling = new CSS3DObject(cssPanel('ceiling', ROOM_SHELL_WIDTH, galleryDepth,
+      'background:' +
+      'radial-gradient(ellipse at 50% 10%, rgba(255,231,178,.10), transparent 52%),' +
+      'repeating-linear-gradient(90deg, rgba(33,31,29,.95) 0 150px, rgba(57,54,50,.95) 150px 220px),' +
+      '#2f2c2a;'));
+    ceiling.position.set(0, 920, galleryCenterZ);
+    ceiling.rotation.x = Math.PI / 2;
+    scene.add(ceiling);
 
     async function loadVisualizationFiles(){
       try {
